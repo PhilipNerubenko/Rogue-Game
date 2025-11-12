@@ -10,7 +10,7 @@ tasks.shadowJar {
     archiveVersion.set("1.0")
 }
 application {
-    mainClass.set("org.rogue.Main")
+    mainClass.set("org.rogue.presentation.Main")
 }
 
 group = 'org.rogue'

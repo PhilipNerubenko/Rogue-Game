@@ -1,4 +1,4 @@
-package org.rogue;
+package org.rogue.presentation;
 
 import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
