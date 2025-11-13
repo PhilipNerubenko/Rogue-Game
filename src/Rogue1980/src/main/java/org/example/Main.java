@@ -1,29 +1,81 @@
 package org.example;
 
 import jcurses.system.CharColor;
+import jcurses.system.InputChar;
 import jcurses.system.Toolkit;
-import jcurses.widgets.*;
+import sun.misc.Signal;
 
 public class Main {
     public static void main(String[] args) {
-//        Toolkit.init();
-//        Window window = new Window(5, 5, 30, 10, true, "Привет");
-//        Toolkit.printString("Hello, JCurses!", 2, 2, new CharColor(CharColor.WHITE, CharColor.BLUE));
-//        window.show();
-//        Toolkit.readCharacter();
-//        window.close();
-//        Toolkit.shutdown();
+        // Безопасное завершение при Ctrl+C
+        System.out.println("start Rogue!");
+        Signal.handle(new Signal("INT"), signal -> {
+            Toolkit.shutdown();
+            System.out.println("\nTerminated via Ctrl+C");
+            System.exit(0);
+        });
 
-
+        System.setProperty("jcurses.lib.path", "src/Rogue1980/libs");
         Toolkit.init();
-        Window window = new Window(10, 10, 80, 80, false, "Example");
-        Toolkit.printString("Hello, JCurses1!", 5, 5, new CharColor(CharColor.BLACK,
-                CharColor.RED));
 
-        window.show();
-        Toolkit.printString("Hello, JCurses2!", 5, 7, new CharColor(CharColor.BLUE, CharColor.WHITE));
+        int width = 40;
+        int height = 20;
+
+        // Координаты игрока
+        int playerX = width / 2;
+        int playerY = height / 2;
+
+        boolean running = true;
+
+        // Цвета
+        CharColor bg = new CharColor(CharColor.BLACK, CharColor.BLACK);
+        CharColor playerColor = new CharColor(CharColor.YELLOW, CharColor.BLACK);
+        CharColor hintColor = new CharColor(CharColor.CYAN, CharColor.BLACK);
+
+        // Очистка экрана один раз
+        Toolkit.clearScreen(bg);
+
+        // Нарисуем карту — просто фон с точками
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                Toolkit.printString(".", x, y, new CharColor(CharColor.WHITE, CharColor.BLACK));
+            }
+        }
+
+        Toolkit.printString("Use arrows to move, ESC to exit", 2, height - 1, hintColor);
+
+        while (running) {
+            // Рисуем игрока
+            Toolkit.printString("@", playerX, playerY, playerColor);
+
+            // Читаем клавишу
+            InputChar ch = Toolkit.readCharacter();
+            int code = ch.getCode();
+
+            // Затираем старое положение игрока (возвращаем '.')
+            Toolkit.printString(".", playerX, playerY, new CharColor(CharColor.WHITE, CharColor.BLACK));
+
+            // Обработка движения
+//            if (code == InputChar.KEY_UP && playerY > 0) playerY--;
+//            else if (code == InputChar.KEY_DOWN && playerY < height - 2) playerY++;
+//            else if (code == InputChar.KEY_LEFT && playerX > 0) playerX--;
+//            else if (code == InputChar.KEY_RIGHT && playerX < width - 1) playerX++;
+
+            // Замените проверку стрелок на:
+//            if (code == 'w' && playerY > 0) playerY--;
+//            else if (code == 's' && playerY < height - 2) playerY++;
+//            else if (code == 'a' && playerX > 0) playerX--;
+//            else if (code == 'd' && playerX < width - 1) playerX++;
+
+            // Замените в Main.java:
+            if (code == 'w' || code == 'W') playerY--;
+            else if (code == 's' || code == 'S') playerY++;
+            else if (code == 'a' || code == 'A') playerX--;
+            else if (code == 'd' || code == 'D') playerX++;
+            else if (code == 27) running = false; // ESC
+        }
+
         Toolkit.shutdown();
+        System.out.println("\nProgram finished normally.");
     }
-
-
 }

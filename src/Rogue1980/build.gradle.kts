@@ -8,30 +8,56 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
-    flatDir {
-        dirs("libs")
-    }
+    flatDir { dirs("libs") }
 }
 
 dependencies {
-    implementation(files("libs/jcurses-0.9.5.3.jar"))
+    implementation(files("libs/jcurses.jar"))
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-// Укажите главный класс с main() вашей программы
 application {
     mainClass.set("org.example.Main")
-    applicationDefaultJvmArgs = listOf("-Djava.library.path=${projectDir}/libs")
 }
 
-// Обеспечим, что JVM параметр java.library.path передается в другие задачи запуска
-tasks.withType<JavaExec> {
-    jvmArgs = listOf("-Djava.library.path=${projectDir}/libs")
-}
+// ⬇️⬇️⬇️ ВОТ ЭТОТ БЛОК РЕШАЕТ ВСЕ ПРОБЛЕМЫ ⬇️⬇️⬇️
+tasks.jar {
+    // ВКЛЮЧАЕМ скомпилированные классы в JAR
+    from(sourceSets.main.get().output)
 
-tasks.test {
-    useJUnitPlatform()
+    // ВКЛЮЧАЕМ зависимости (jcurses.jar) в JAR
+    from({
+        configurations.runtimeClasspath.get()
+            .filter { it.name.contains("jcurses") }
+            .map { zipTree(it) }
+    })
+
+    // НАСТРАИВАЕМ манифест
+    manifest {
+        attributes(
+            "Main-Class" to "org.example.Main",
+            "Class-Path" to "libs/jcurses.jar"
+        )
+    }
+}
+// ⬆️⬆️⬆️ ДОБАВЬТЕ ВОТ ЭТО ⬆️⬆️⬆️
+
+// Задача для удобного запуска
+tasks.register("runGame") {
+    group = "application"
+    description = "Запуск Rogue1980"
+
+    dependsOn("jar")
+
+    doFirst {
+        javaexec {
+            workingDir = projectDir
+            mainClass.set("org.example.Main")
+            classpath = sourceSets.main.get().runtimeClasspath + files("libs")
+            systemProperty("java.library.path", "libs")
+            standardInput = System.`in`
+        }
+    }
 }
