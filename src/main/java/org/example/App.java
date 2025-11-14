@@ -14,10 +14,11 @@ public class App {
             System.exit(0);
         });
 
+	System.out.print("\033[?25l");
         Toolkit.init();
 
-        int width = 40;
-        int height = 20;
+        int width = 80;
+        int height = 24;
 
         // Координаты игрока
         int playerX = width / 2;
@@ -27,7 +28,7 @@ public class App {
 
         // Цвета
         CharColor bg = new CharColor(CharColor.BLACK, CharColor.BLACK);
-        CharColor playerColor = new CharColor(CharColor.YELLOW, CharColor.BLACK);
+        CharColor playerColor = new CharColor(CharColor.BLACK, CharColor.YELLOW);
         CharColor hintColor = new CharColor(CharColor.CYAN, CharColor.BLACK);
 
         // Очистка экрана один раз
@@ -36,7 +37,7 @@ public class App {
         // Нарисуем карту — просто фон с точками
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                Toolkit.printString(".", x, y, new CharColor(CharColor.WHITE, CharColor.BLACK));
+                Toolkit.printString(".", x, y, new CharColor(CharColor.BLACK, CharColor.WHITE));
             }
         }
 
@@ -51,7 +52,7 @@ public class App {
             int code = ch.getCode();
 
             // Затираем старое положение игрока (возвращаем '.')
-            Toolkit.printString(".", playerX, playerY, new CharColor(CharColor.WHITE, CharColor.BLACK));
+            Toolkit.printString(".", playerX, playerY, new CharColor(CharColor.BLACK, CharColor.WHITE));
 
             // Обработка движения
             if (code == InputChar.KEY_UP && playerY > 0) playerY--;
@@ -63,5 +64,6 @@ public class App {
 
         Toolkit.shutdown();
         System.out.println("\nProgram finished normally.");
+        System.out.print("\033[?25h");
     }
 }
