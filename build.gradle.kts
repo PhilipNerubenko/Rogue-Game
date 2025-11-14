@@ -20,10 +20,9 @@ dependencies {
 }
 
 application {
-    mainClass.set("org.example.Main")
+    mainClass.set("org.example.App")
 }
 
-// ⬇️⬇️⬇️ ВОТ ЭТОТ БЛОК РЕШАЕТ ВСЕ ПРОБЛЕМЫ ⬇️⬇️⬇️
 tasks.jar {
     // ВКЛЮЧАЕМ скомпилированные классы в JAR
     from(sourceSets.main.get().output)
@@ -38,7 +37,7 @@ tasks.jar {
     // НАСТРАИВАЕМ манифест
     manifest {
         attributes(
-            "Main-Class" to "org.example.Main",
+            "Main-Class" to "org.example.App",
             "Class-Path" to "libs/jcurses.jar"
         )
     }

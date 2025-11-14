@@ -5,7 +5,7 @@ import jcurses.system.InputChar;
 import jcurses.system.Toolkit;
 import sun.misc.Signal;
 
-public class Main {
+public class App {
     public static void main(String[] args) {
         // Безопасное завершение при Ctrl+C
         Signal.handle(new Signal("INT"), signal -> {
