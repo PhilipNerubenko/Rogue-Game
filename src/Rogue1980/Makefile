@@ -2,26 +2,23 @@
 # ./gradlew clean
 # ./gradlew jar
 # ./gradlew runGame
+# java -jar build/libs/Rogue1980-1.0-SNAPSHOT.jar
 
 
 all: clean build run
 
 
-#build:
-#	./gradlew build
+build:
+	./gradlew jar
 
 run:
-	./gradlew runGame
+	java -jar build/libs/Rogue1980-1.0-SNAPSHOT.jar
 
-runG:
-	@STTY_SAVE=$$(stty -g); stty raw -echo; java -Djava.library.path=libs -jar build/libs/Rogue1980-1.0-SNAPSHOT.jar; stty $$STTY_SAVE
 
-start:
-	java -Djava.library.path=libs -jar build/libs/Rogue1980-1.0-SNAPSHOT.jar
 
-build:
-	java -Djava.library.path=libs -jar build/libs/Rogue1980-1.0-SNAPSHOT.jar
-	# ./gradlew jar --stacktrace --info
+#build:
+	#java -Djava.library.path=libs -jar build/libs/Rogue1980-1.0-SNAPSHOT.jar
+	## ./gradlew jar --stacktrace --info
 
 clean:
 	./gradlew clean

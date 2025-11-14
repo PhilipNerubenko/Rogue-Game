@@ -8,14 +8,12 @@ import sun.misc.Signal;
 public class Main {
     public static void main(String[] args) {
         // Безопасное завершение при Ctrl+C
-        System.out.println("start Rogue!");
         Signal.handle(new Signal("INT"), signal -> {
             Toolkit.shutdown();
             System.out.println("\nTerminated via Ctrl+C");
             System.exit(0);
         });
 
-        System.setProperty("jcurses.lib.path", "src/Rogue1980/libs");
         Toolkit.init();
 
         int width = 40;
@@ -56,22 +54,10 @@ public class Main {
             Toolkit.printString(".", playerX, playerY, new CharColor(CharColor.WHITE, CharColor.BLACK));
 
             // Обработка движения
-//            if (code == InputChar.KEY_UP && playerY > 0) playerY--;
-//            else if (code == InputChar.KEY_DOWN && playerY < height - 2) playerY++;
-//            else if (code == InputChar.KEY_LEFT && playerX > 0) playerX--;
-//            else if (code == InputChar.KEY_RIGHT && playerX < width - 1) playerX++;
-
-            // Замените проверку стрелок на:
-//            if (code == 'w' && playerY > 0) playerY--;
-//            else if (code == 's' && playerY < height - 2) playerY++;
-//            else if (code == 'a' && playerX > 0) playerX--;
-//            else if (code == 'd' && playerX < width - 1) playerX++;
-
-            // Замените в Main.java:
-            if (code == 'w' || code == 'W') playerY--;
-            else if (code == 's' || code == 'S') playerY++;
-            else if (code == 'a' || code == 'A') playerX--;
-            else if (code == 'd' || code == 'D') playerX++;
+            if (code == InputChar.KEY_UP && playerY > 0) playerY--;
+            else if (code == InputChar.KEY_DOWN && playerY < height - 2) playerY++;
+            else if (code == InputChar.KEY_LEFT && playerX > 0) playerX--;
+            else if (code == InputChar.KEY_RIGHT && playerX < width - 1) playerX++;
             else if (code == 27) running = false; // ESC
         }
 

@@ -8,11 +8,12 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
-    flatDir { dirs("libs") }
+    //flatDir { dirs("libs") }
 }
 
 dependencies {
-    implementation(files("libs/jcurses.jar"))
+    //implementation(files("libs/jcurses.jar"))
+    implementation("com.baulsupp.kolja:jcurses:0.9.5.3")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -42,22 +43,4 @@ tasks.jar {
         )
     }
 }
-// ⬆️⬆️⬆️ ДОБАВЬТЕ ВОТ ЭТО ⬆️⬆️⬆️
 
-// Задача для удобного запуска
-tasks.register("runGame") {
-    group = "application"
-    description = "Запуск Rogue1980"
-
-    dependsOn("jar")
-
-    doFirst {
-        javaexec {
-            workingDir = projectDir
-            mainClass.set("org.example.Main")
-            classpath = sourceSets.main.get().runtimeClasspath + files("libs")
-            systemProperty("java.library.path", "libs")
-            standardInput = System.`in`
-        }
-    }
-}
