@@ -3,6 +3,8 @@ package org.example;
 import jcurses.system.CharColor;
 import jcurses.system.InputChar;
 import jcurses.system.Toolkit;
+import org.example.config.GameConstants;
+import org.example.domain.service.LevelGenerator;
 import sun.misc.Signal;
 
 public class App {
@@ -14,14 +16,14 @@ public class App {
             System.exit(0);
         });
 
-	System.out.print("\033[?25l");
+        System.out.print("\033[?25l");
         Toolkit.init();
 
-        int width = 80;
-        int height = 24;
+        int width = GameConstants.Map.WIDTH;
+        int height = GameConstants.Map.HEIGHT;
 
         // Координаты игрока
-        int playerX = width / 2;
+        int playerX = width / 2 + 2;
         int playerY = height / 2;
 
         boolean running = true;
@@ -34,27 +36,43 @@ public class App {
         // Очистка экрана один раз
         Toolkit.clearScreen(bg);
 
-        // Нарисуем карту — просто фон с точками
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                Toolkit.printString(".", x, y, new CharColor(CharColor.BLACK, CharColor.WHITE));
-            }
+//        // Нарисуем карту — просто фон с точками
+//        for (int y = 1; y < height+1; y++) {
+//            for (int x = 3; x < width+3; x++) {
+//                Toolkit.printString(new String( new char[]{GameConstants.Icons.FLOOR}), x, y, new CharColor(CharColor.BLACK, CharColor.WHITE));
+//            }
+//        }
+
+//        // Нарисуем карту — MokMap
+//        for (int i = 0; i < GameConstants.MokMap.myArray.length; i++) {
+//            String element = GameConstants.MokMap.myArray[i];
+//            Toolkit.printString(element, 3, i, new CharColor(CharColor.BLACK, CharColor.WHITE));
+//        }
+
+        char[][] asciiMap = new  LevelGenerator().createAsciiMap(1) ;
+        // Нарисуем карту — MokMap
+        for (int i = 0; i < GameConstants.Map.HEIGHT; i++) {
+            String element = new String(asciiMap[i]);
+            Toolkit.printString(element, 3, i, new CharColor(CharColor.BLACK, CharColor.WHITE));
         }
 
-        Toolkit.printString("Use arrows to move, ESC to exit", 2, height - 1, hintColor);
+
+
+        Toolkit.printString("Use arrows to move, ESC to exit", 3, 29, hintColor);
 
         while (running) {
             // Рисуем игрока
-            Toolkit.printString("@", playerX, playerY, playerColor);
+            Toolkit.printString(new String(new char[]{GameConstants.Icons.PLAYER}), playerX, playerY, playerColor);
 
             // Читаем клавишу
             InputChar ch = Toolkit.readCharacter();
             int code = ch.getCode();
 
             // Затираем старое положение игрока (возвращаем '.')
-            Toolkit.printString(".", playerX, playerY, new CharColor(CharColor.BLACK, CharColor.WHITE));
+            Toolkit.printString(new String(new char[]{GameConstants.Icons.FLOOR}), playerX, playerY, new CharColor(CharColor.BLACK, CharColor.WHITE));
 
             // Обработка движения
+            // TODO WASD
             if (code == InputChar.KEY_UP && playerY > 0) playerY--;
             else if (code == InputChar.KEY_DOWN && playerY < height - 2) playerY++;
             else if (code == InputChar.KEY_LEFT && playerX > 0) playerX--;
@@ -65,5 +83,23 @@ public class App {
         Toolkit.shutdown();
         System.out.println("\nProgram finished normally.");
         System.out.print("\033[?25h");
+
+//        System.out.println("Таблица ASCII:");
+//        for (int i = 0; i <= 127; i++) {
+//            // Преобразуем число в символ
+//            char asciiChar = (char) i;
+//            // Выводим код и символ
+//            System.out.printf("Код: %d, Символ: %s%n", i, asciiChar);
+//        }
+
+
     }
 }
+
+//
+//char[][] asciiMap = new LevelGenerator().createAsciiMap(1) ;
+//// Нарисуем карту — MokMap
+//        for (int i = 0; i < GameConstants.Map.HEIGHT; i++) {
+//String element = new String(asciiMap[i]);
+//            Toolkit.printString(element, 3, i, new CharColor(CharColor.BLACK, CharColor.WHITE));
+//        }
