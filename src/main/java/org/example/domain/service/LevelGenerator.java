@@ -47,8 +47,17 @@ public class LevelGenerator {
     }
 
 
+    public List<Room> getRooms() {
+        return rooms;
+    }
 
+    public List<Corridor> getCorridors() {
+        return corridors;
+    }
 
+    public Random getRand() {
+        return rand;
+    }
 
     private List<Room> createRooms(int levelNumber){
         // Генерируем 9 комнат в 3x3 сетке
@@ -110,7 +119,7 @@ public class LevelGenerator {
         int first = yRoom * 3 + xRoom;
         int second = first + 1;
         int xStart = rooms.get(first).getX2();;
-        int yStart = rand.nextInt(rooms.get(first).getY2() - rooms.get(first).getY1() - 1) + rooms.get(first).getY1() + 2;
+        int yStart = rand.nextInt(rooms.get(first).getY2() - rooms.get(first).getY1() - 1) + rooms.get(first).getY1() + 1;
         int xEnd = rooms.get(second).getX1();
         int yEnd = rand.nextInt(rooms.get(second).getY2() - rooms.get(second).getY1() - 1) + rooms.get(second).getY1() + 1;
         int crossLine = rand.nextInt(xEnd - xStart - 1) + xStart + 1;
