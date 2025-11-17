@@ -4,6 +4,7 @@ import jcurses.system.CharColor;
 import jcurses.system.InputChar;
 import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
+import org.example.domain.model.Room;
 import org.example.domain.service.LevelGenerator;
 import sun.misc.Signal;
 
@@ -23,8 +24,8 @@ public class App {
         int height = GameConstants.Map.HEIGHT;
 
         // Координаты игрока
-        int playerX = width / 2 + 2;
-        int playerY = height / 2;
+//        int playerX = width / 2 + 2;
+//        int playerY = height / 2;
 
         boolean running = true;
 
@@ -49,7 +50,8 @@ public class App {
 //            Toolkit.printString(element, 3, i, new CharColor(CharColor.BLACK, CharColor.WHITE));
 //        }
 
-        char[][] asciiMap = new  LevelGenerator().createAsciiMap(1) ;
+        LevelGenerator levelGenerator = new LevelGenerator();
+        char[][] asciiMap = levelGenerator.createAsciiMap(1) ;
         // Нарисуем карту — MokMap
         for (int i = 0; i < GameConstants.Map.HEIGHT; i++) {
             String element = new String(asciiMap[i]);
@@ -57,27 +59,72 @@ public class App {
         }
 
 
+        Room startRoom = levelGenerator.getRooms().getFirst();
+
+        int playerX = startRoom.getX1() + 1 + levelGenerator.getRand().nextInt(startRoom.getWidth() - 2);
+        int playerY = startRoom.getY1() + 1 + levelGenerator.getRand().nextInt(startRoom.getHeight() - 2);
+
+        char symbolUnderPlayer = asciiMap[playerY][playerX];
 
         Toolkit.printString("Use arrows to move, ESC to exit", 3, 29, hintColor);
 
         while (running) {
             // Рисуем игрока
-            Toolkit.printString(new String(new char[]{GameConstants.Icons.PLAYER}), playerX, playerY, playerColor);
+            Toolkit.printString(new String(new char[]{GameConstants.Icons.PLAYER}), playerX + 3, playerY, playerColor);
 
             // Читаем клавишу
             InputChar ch = Toolkit.readCharacter();
-            int code = ch.getCode();
+            //int code = ch.getCode();
+            // Пробуем получить символ, игнорируя спец-клавиши
+            char character;
+            try {
+                character = ch.getCharacter();
+            } catch (RuntimeException e) {
+                // Это стрелка или другая спец-клавиша — просто игнорируем
+                continue;
+            }
 
             // Затираем старое положение игрока (возвращаем '.')
-            Toolkit.printString(new String(new char[]{GameConstants.Icons.FLOOR}), playerX, playerY, new CharColor(CharColor.BLACK, CharColor.WHITE));
+            Toolkit.printString(new String(String.valueOf(symbolUnderPlayer)), playerX + 3, playerY, new CharColor(CharColor.BLACK, CharColor.WHITE));
 
+            int newX = playerX, newY = playerY;
             // Обработка движения
+            // 1. Проверяем ESC по коду (до всего остального)
+            if (ch.getCode() == 27) {
+                running = false;
+                continue;
+            }
+
+            // 2. Игнорируем спец-клавиши (стрелки, F1-F12 и т.д.)
+            if (character == 0) {
+                continue; // Это не буква, игнорируем
+            }
             // TODO WASD
-            if (code == InputChar.KEY_UP && playerY > 0) playerY--;
-            else if (code == InputChar.KEY_DOWN && playerY < height - 2) playerY++;
-            else if (code == InputChar.KEY_LEFT && playerX > 0) playerX--;
-            else if (code == InputChar.KEY_RIGHT && playerX < width - 1) playerX++;
-            else if (code == 27) running = false; // ESC
+            switch (Character.toLowerCase(character)) {
+                case GameConstants.control.KEY_W:
+                    newY--;
+                    break;
+                case GameConstants.control.KEY_S:
+                    newY++;
+                    break;
+                case GameConstants.control.KEY_A:
+                    newX--;
+                    break;
+                case GameConstants.control.KEY_D:
+                    newX++;
+                    break;
+                default: continue;
+            }
+
+            if (newX >= 0 && newX < GameConstants.Map.WIDTH &&
+                    newY >= 0 && newY < GameConstants.Map.HEIGHT &&
+                    asciiMap[newY][newX] != '|' && asciiMap[newY][newX] != '~'
+            && asciiMap[newY][newX] != ' ') {
+
+                playerX = newX;
+                playerY = newY;
+                symbolUnderPlayer = asciiMap[playerY][playerX];
+            }
         }
 
         Toolkit.shutdown();

@@ -37,10 +37,10 @@ public final class GameConstants {
     }
 
     public static final class control {
-        private static final int KEY_W = 'w';
-        private static final int KEY_S = 's';
-        private static final int KEY_A = 'a';
-        private static final int KEY_D = 'd';
+        public static final int KEY_W = 'w';
+        public static final int KEY_S = 's';
+        public static final int KEY_A = 'a';
+        public static final int KEY_D = 'd';
         private static final int KEY_H = 'h'; // Оружие
         private static final int KEY_J = 'j'; // Еда
         private static final int KEY_K = 'k'; // Эликсир
