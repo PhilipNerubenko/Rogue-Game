@@ -1,2 +1,0 @@
-./gradlew clean shadowJar
-java -jar build/libs/Rogue-1.0.jar
