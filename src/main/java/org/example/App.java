@@ -5,6 +5,7 @@ import jcurses.system.InputChar;
 import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
 import org.example.domain.entity.Enemy;
+import org.example.domain.entity.GameSession;
 import org.example.domain.model.Room;
 import org.example.domain.service.EnemyType;
 import org.example.domain.service.LevelGenerator;
@@ -15,9 +16,11 @@ import java.util.List;
 import java.util.Random;
 
 public class App {
-    private static List<Enemy> enemies = new ArrayList<>();
-    private static Enemy currentCombatEnemy = null;
+    private static GameSession session;
+//    private static List<Enemy> enemies = new ArrayList<>();
     public static void main(String[] args) {
+        session = new GameSession();
+        session.setEnemies(new ArrayList<>());
         // Безопасное завершение при Ctrl+C
         Signal.handle(new Signal("INT"), signal -> {
             Toolkit.shutdown();
@@ -168,7 +171,7 @@ public class App {
     }
 
     private static void drawEnemies() {
-        for (Enemy enemy : enemies) {
+        for (Enemy enemy : session.getEnemies()) {
             if (!enemy.isInvisible()) {
                 CharColor color = new CharColor(CharColor.BLACK, (short) getEnemyColor(enemy));
                 Toolkit.printString(enemy.getType(),
@@ -189,7 +192,7 @@ public class App {
     }
 
     private static Enemy getEnemyAt(int x, int y) {
-        for (Enemy enemy : enemies) {
+        for (Enemy enemy : session.getEnemies()) {
             if (enemy.getX() == x && enemy.getY() == y && enemy.getHealth() > 0) {
                 return enemy;
             }
@@ -214,11 +217,11 @@ public class App {
         Toolkit.printString(String.valueOf(asciiMap[enemy.getY()][enemy.getX()]),
                 enemy.getX() + 3, enemy.getY(),
                 new CharColor(CharColor.BLACK, CharColor.WHITE));
-        enemies.remove(enemy);
+        session.getEnemies().remove(enemy);
     }
 
     private static void moveEnemies(int playerX, int playerY, char[][] asciiMap) {
-        for (Enemy enemy : enemies) {
+        for (Enemy enemy : session.getEnemies()) {
             if (enemy.getHealth() <= 0) continue;
 
             // Огр отдыхает
@@ -339,7 +342,7 @@ public class App {
     }
 
     private static void updateEnemyEffects(int playerX, int playerY) {
-        for (Enemy enemy : enemies) {
+        for (Enemy enemy : session.getEnemies()) {
             // Призрак становится невидимым, если игрок далеко
             if (enemy.hasAbility(Enemy.ABILITY_INVISIBLE)) {
                 int distance = Math.max(Math.abs(playerX - enemy.getX()),
@@ -373,10 +376,10 @@ public class App {
             enemy.setX(enemyX);
             enemy.setY(enemyY);
 
-            enemies.add(enemy);
+            session.getEnemies().add(enemy);
         }
     }
-        
+
 }
 
 //
