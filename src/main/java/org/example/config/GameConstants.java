@@ -22,6 +22,15 @@ public final class GameConstants {
         }
     }
 
+    public static final class CharacterBase {
+        public static final int STRENGTH = 16;
+        public static final int HEALTH = 12;
+        public static final int AGILITY = 5;
+
+        private CharacterBase() {
+        }
+    }
+
     public static final class Icons {
         public static final char WWALL = '|';
         public static final char HWALL = '~';

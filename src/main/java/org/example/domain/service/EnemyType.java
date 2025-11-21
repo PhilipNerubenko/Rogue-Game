@@ -7,15 +7,11 @@ import java.awt.*;
 import static org.example.domain.entity.Enemy.*;
 
 public enum EnemyType {
-    ZOMBIE("z", 30, 2, 1, 8, 3, Color.GREEN, 0),
-    VAMPIRE("v", 25, 8, 2, 10, 5, Color.RED,
-            ABILITY_VAMPIRE_DRAIN | ABILITY_FIRST_MISS),
-    GHOST("g", 10, 9, 3, 3, 2, Color.WHITE,
-            ABILITY_TELEPORT | ABILITY_INVISIBLE),
-    OGRE("O", 40, 3, 2, 15, 4, Color.YELLOW,
-            ABILITY_OGRE_CHARGE | ABILITY_OGRE_REST),
-    SNAKE_MAGE("s", 15, 10, 2, 8, 6, Color.WHITE,
-            ABILITY_SNAKE_SLEEP | ABILITY_DIAGONAL_MOVE);
+    ZOMBIE("z", 15, 3, 1, 6, 3, Color.GREEN, 0),
+    VAMPIRE("v", 20, 5, 2, 8, 5, Color.RED, ABILITY_VAMPIRE_DRAIN | ABILITY_FIRST_MISS),
+    GHOST("g", 8, 4, 3, 3, 2, Color.WHITE, ABILITY_TELEPORT | ABILITY_INVISIBLE),
+    OGRE("O", 30, 2, 2, 12, 4, Color.YELLOW, ABILITY_OGRE_CHARGE | ABILITY_OGRE_REST),
+    SNAKE_MAGE("s", 12, 6, 2, 8, 6, Color.CYAN, ABILITY_SNAKE_SLEEP | ABILITY_DIAGONAL_MOVE);
 
     private final String type;
     private final int baseHealth;
@@ -37,14 +33,13 @@ public enum EnemyType {
         this.specialAbilities = specialAbilities;
     }
 
-    public Enemy create(int level, int playerAgility) {
-        int scaledHealth = (int)(baseHealth * (1 + 0.25 * (level - 1)));
+    public Enemy create(int level) {
+        int scaledHealth = baseHealth + (level - 1) * 5;
+        int scaledAgility = agility + (level - 1);
+        int scaledStrength = strength + (level - 1) * 2;
+        int scaledHostility = hostility + (level - 1);
 
-        int scaledStrength = (int)(strength * (1 + 0.2 * (level - 1)));
-
-        int balancedAgility = Math.max(agility, playerAgility - 5);
-
-        return new Enemy(type, scaledHealth, balancedAgility, speed,
-                scaledStrength, hostility, color, specialAbilities);
+        return new Enemy(type, scaledHealth, scaledAgility, speed,
+                scaledStrength, scaledHostility, color, specialAbilities);
     }
 }

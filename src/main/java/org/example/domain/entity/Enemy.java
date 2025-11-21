@@ -141,4 +141,8 @@ public class Enemy {
     public boolean hasAbility(int abilityMask) {
         return (specialAbility & abilityMask) == abilityMask;
     }
+
+    public void removeAbility(int abilityMask) {
+        specialAbility &= ~abilityMask;
+    }
 }
