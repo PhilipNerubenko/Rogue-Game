@@ -7,6 +7,8 @@ import org.example.GameInitializer;
 import org.example.config.GameConstants;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
+import org.example.domain.model.Direction;
+import org.example.domain.model.InputCommand;
 import org.example.domain.service.CombatService;
 import org.example.domain.service.EnemyAIService;
 import org.example.domain.service.EnemyType;
@@ -61,7 +63,7 @@ public class GameLoop {
     }
 
     public void start() {
-        // Инициализация JCurses
+        // Инициализация JCurses (оставьте как есть)
         sun.misc.Signal.handle(new sun.misc.Signal("INT"), signal -> {
             Toolkit.shutdown();
             System.out.println("\nTerminated via Ctrl+C");
@@ -78,39 +80,25 @@ public class GameLoop {
             Toolkit.printString(new String(new char[]{GameConstants.Icons.PLAYER}), playerX + 3, playerY,
                     new CharColor(CharColor.BLACK, CharColor.YELLOW));
 
-            // Читаем клавишу
-            InputChar ch = Toolkit.readCharacter();
-            char character;
-            try {
-                character = ch.getCharacter();
-            } catch (RuntimeException e) {
-                continue;
-            }
+            // Читаем КОМАНДУ (вместо прямого чтения клавиши)
+            InputCommand command = inputHandler.readCommand();
 
-            // Затираем старое положение игрока
-            Toolkit.printString(new String(String.valueOf(symbolUnderPlayer)), playerX + 3, playerY,
-                    new CharColor(CharColor.BLACK, CharColor.WHITE));
-
-            // Обработка выхода
-            if (ch.getCode() == 27) {
+            if (command.getType() == InputCommand.Type.QUIT) {
                 running = false;
                 continue;
             }
 
-            // Игнорируем спец-клавиши
-            if (character == 0) {
-                continue;
+            // Затираем старое положение
+            Toolkit.printString(new String(String.valueOf(symbolUnderPlayer)), playerX + 3, playerY,
+                    new CharColor(CharColor.BLACK, CharColor.WHITE));
+
+            // Обрабатываем команду
+            if (command.getType() == InputCommand.Type.MOVE) {
+                Direction dir = command.getDirection();
+                movePlayer(dir.getDx(), dir.getDy());
             }
 
-            // Обработка движения
-            switch (Character.toLowerCase(character)) {
-                case 'w': movePlayer(0, -1); break;
-                case 's': movePlayer(0, 1); break;
-                case 'a': movePlayer(-1, 0); break;
-                case 'd': movePlayer(1, 0); break;
-            }
-
-            // Обновление врагов
+            // Обновление врагов (оставьте как есть)
             enemyAIService.moveEnemies(session, playerX, playerY, asciiMap);
             enemyAIService.updateEnemyEffects(session, playerX, playerY);
             drawEnemies();
