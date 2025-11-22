@@ -15,6 +15,7 @@ public class JCursesRenderer implements Renderer {
     private final int width;
     private final int height;
     private final CharColor defaultColor;
+    private static final int MAP_OFFSET_X = GameConstants.Map.MAP_OFFSET_X; // <-- ДОБАВЬТЕ ЭТО
 
     public JCursesRenderer() {
         this.width = GameConstants.Map.WIDTH;
@@ -31,7 +32,7 @@ public class JCursesRenderer implements Renderer {
         // Преобразуем int цвет в CharColor
         Toolkit.printString(
                 String.valueOf(symbol),
-                x + 3, // Смещение по X (как у вас в App.java)
+                x + MAP_OFFSET_X,
                 y,
                 new CharColor(CharColor.BLACK, (short) color)
         );
@@ -41,7 +42,7 @@ public class JCursesRenderer implements Renderer {
     public void drawString(int x, int y, String text, int color) {
         Toolkit.printString(
                 text,
-                x + 3,
+                x + MAP_OFFSET_X,
                 y,
                 new CharColor(CharColor.BLACK, (short) color)
         );

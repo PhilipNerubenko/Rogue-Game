@@ -9,6 +9,7 @@ import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
 import org.example.domain.model.Direction;
 import org.example.domain.model.InputCommand;
+import org.example.domain.model.Position;
 import org.example.domain.service.CombatService;
 import org.example.domain.service.EnemyAIService;
 import org.example.domain.service.EnemyType;
@@ -45,42 +46,47 @@ public class GameLoop {
     private char symbolUnderPlayer;
 
     public GameLoop(GameInitializer initializer) {
+        // Извлекаем зависимости из инициализатора
         this.session = initializer.getSession();
         this.inputHandler = initializer.getInputHandler();
         this.renderer = initializer.getRenderer();
         this.combatService = initializer.getCombatService();
         this.enemyAIService = initializer.getEnemyAIService();
-        this.movementService = initializer.getMovementService();
         this.inventoryService = initializer.getInventoryService();
+        this.movementService = initializer.getMovementService();
         this.fogOfWarService = initializer.getFogOfWarService();
         this.levelGenerator = initializer.getLevelGenerator();
-        this.asciiMap = initializer.getLevelGenerator().createAsciiMap(1);
+        this.asciiMap = initializer.getAsciiMap();
 
         // Инициализация позиции игрока из сессии
-        this.playerX = session.getPlayer().getPosition().getX();
-        this.playerY = session.getPlayer().getPosition().getY();
+        Position playerPos = session.getPlayer().getPosition();
+        this.playerX = playerPos.getX();
+        this.playerY = playerPos.getY();
         this.symbolUnderPlayer = asciiMap[playerY][playerX];
     }
 
     public void start() {
-        // Инициализация JCurses (оставьте как есть)
+        // Инициализация JCurses
         sun.misc.Signal.handle(new sun.misc.Signal("INT"), signal -> {
-            Toolkit.shutdown();
+            renderer.shutdown();
             System.out.println("\nTerminated via Ctrl+C");
             System.exit(0);
         });
 
-        Toolkit.init();
+        renderer.clearScreen();
         System.out.print("\033[?25l");
 
         boolean running = true;
 
         while (running) {
-            // Рисуем игрока
-            Toolkit.printString(new String(new char[]{GameConstants.Icons.PLAYER}), playerX + 3, playerY,
-                    new CharColor(CharColor.BLACK, CharColor.YELLOW));
+            // 1. Очищаем и перерисовываем ВСЁ
+            renderer.clearScreen();
+            drawMap(); // Рисуем карту
+            drawEnemies(); // Рисуем врагов
+            // 2. Рендер игрока
+            renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
 
-            // Читаем КОМАНДУ (вместо прямого чтения клавиши)
+            // 3. Ввод
             InputCommand command = inputHandler.readCommand();
 
             if (command.getType() == InputCommand.Type.QUIT) {
@@ -88,25 +94,25 @@ public class GameLoop {
                 continue;
             }
 
-            // Затираем старое положение
-            Toolkit.printString(new String(String.valueOf(symbolUnderPlayer)), playerX + 3, playerY,
-                    new CharColor(CharColor.BLACK, CharColor.WHITE));
+            // 3. Затираем игрока
+            renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
 
-            // Обрабатываем команду
+            // 4. Обработка
             if (command.getType() == InputCommand.Type.MOVE) {
                 Direction dir = command.getDirection();
                 movePlayer(dir.getDx(), dir.getDy());
             }
 
-            // Обновление врагов (оставьте как есть)
+            // 5. Обновление врагов
             enemyAIService.moveEnemies(session, playerX, playerY, asciiMap);
             enemyAIService.updateEnemyEffects(session, playerX, playerY);
             drawEnemies();
+
+            // 6. Обновить экран
+            renderer.refresh();
         }
 
-        Toolkit.shutdown();
-        System.out.println("\nProgram finished normally.");
-        System.out.print("\033[?25h");
+        renderer.shutdown();
     }
 
     private void movePlayer(int dx, int dy) {
@@ -136,8 +142,8 @@ public class GameLoop {
     private void drawEnemies() {
         for (Enemy enemy : session.getEnemies()) {
             if (!enemy.isInvisible()) {
-                CharColor color = new CharColor(CharColor.BLACK, (short) getEnemyColor(enemy));
-                Toolkit.printString(enemy.getType(), enemy.getX() + 3, enemy.getY(), color);
+                short color = (short) getEnemyColor(enemy);
+                renderer.drawChar(enemy.getX(), enemy.getY(), enemy.getType().charAt(0), color);
             }
         }
     }
@@ -152,5 +158,13 @@ public class GameLoop {
             default -> CharColor.WHITE;
         };
     }
+    private void drawMap() {
+        for (int i = 0; i < GameConstants.Map.HEIGHT; i++) {
+            String element = new String(asciiMap[i]);
+            renderer.drawString(0, i, element, CharColor.WHITE); // X=3 — ваше смещение
+        }
 
+        // Подсказка
+        renderer.drawString(0, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
+    }
 }

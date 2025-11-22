@@ -26,16 +26,32 @@ public class GameInitializer {
     private FogOfWarService fogOfWarService;
     private LevelGenerator levelGenerator;
 
+    public GameInitializer(GameSession session, Renderer renderer, LevelGenerator levelGenerator,
+                           EnemyAIService enemyAIService, CombatService combatService,
+                           InputHandler inputHandler, InventoryService inventoryService,
+                           FogOfWarService fogOfWarService, MovementService movementService) {
+        this.session = session;
+        this.renderer = renderer;
+        this.levelGenerator = levelGenerator;
+        this.enemyAIService = enemyAIService;
+        this.combatService = combatService;
+        this.inputHandler = inputHandler;
+        this.inventoryService = inventoryService;
+        this.fogOfWarService = fogOfWarService;
+        this.movementService = movementService;
+    }
     public GameInitializer() {
         this.session = new GameSession();
         this.renderer = new JCursesRenderer();
-        this.inputHandler = new InputHandler();
-        this.combatService = new CombatService();
+        this.levelGenerator = new LevelGenerator();
         this.enemyAIService = new EnemyAIService();
-        this.movementService = new MovementService();
+        this.combatService = new CombatService();
+        this.inputHandler = new InputHandler();
         this.inventoryService = new InventoryService();
         this.fogOfWarService = new FogOfWarService();
-        this.levelGenerator = new LevelGenerator();
+        this.movementService = new MovementService();
+
+
     }
 
     public void initialize() {
@@ -94,14 +110,14 @@ public class GameInitializer {
         // Отрисовка карты
         for (int i = 0; i < GameConstants.Map.HEIGHT; i++) {
             String element = new String(asciiMap[i]);
-            Toolkit.printString(element, 3, i, new CharColor(CharColor.BLACK, CharColor.WHITE));
+            Toolkit.printString(element, 0, i, new CharColor(CharColor.BLACK, CharColor.WHITE));
         }
 
         // Отрисовка врагов
         drawEnemies();
 
         // Подсказка
-        Toolkit.printString("Use WASD to move, ESC to exit", 3, 29, new CharColor(CharColor.CYAN, CharColor.BLACK));
+        Toolkit.printString("Use WASD to move, ESC to exit", 0, 29, new CharColor(CharColor.CYAN, CharColor.BLACK));
     }
 
     private void drawEnemies() {
@@ -162,6 +178,7 @@ public class GameInitializer {
     public InventoryService getInventoryService() { return inventoryService; }
     public FogOfWarService getFogOfWarService() { return fogOfWarService; }
     public LevelGenerator getLevelGenerator() { return levelGenerator; }
-
+    public char[][] getAsciiMap() { return levelGenerator.createAsciiMap(1);
+    }
 
 }

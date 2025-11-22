@@ -20,21 +20,26 @@ import java.util.Random;
 public class App {
 
     public static void main(String[] args) {
+        // Обработка Ctrl+C
         Signal.handle(new Signal("INT"), signal -> {
-            System.out.println("\nTerminated via Ctrl+C");
+            System.out.println("\nЗавершение через Ctrl+C");
             System.exit(0);
         });
 
-        System.out.print("\033[?25l");
+        System.out.print("\033[?25l"); // Скрыть курсор
 
         try {
             GameInitializer initializer = new GameInitializer();
             initializer.initialize();
+
             GameLoop gameLoop = new GameLoop(initializer);
             gameLoop.start();
+
+        } catch (Exception e) {
+            System.err.println("Критическая ошибка: " + e.getMessage());
+            e.printStackTrace();
         } finally {
-            // Показать курсор
-            System.out.print("\033[?25h");
+            System.out.print("\033[?25h"); // Показать курсор
         }
     }
 
