@@ -1,20 +1,19 @@
 package org.example.presentation;
 
-//import org.example.domain.GameSession;
-//import org.example.domain.service.CombatService;
-//import org.example.domain.service.EnemyAIService;
-//import org.example.domain.service.InventoryService;
-//import org.example.domain.service.MovementService;
-//import org.example.domain.service.FogOfWarService;
-//import org.example.domain.model.InputCommand;
-//import org.example.domain.model.Level;
-
-import org.example.domain.entity.*;
-import org.example.domain.model.Direction;
-import org.example.domain.model.InputCommand;
-import org.example.domain.model.Level;
-import org.example.domain.model.Position;
-import org.example.domain.service.*;
+import jcurses.system.CharColor;
+import jcurses.system.InputChar;
+import jcurses.system.Toolkit;
+import org.example.GameInitializer;
+import org.example.config.GameConstants;
+import org.example.domain.entity.Enemy;
+import org.example.domain.entity.GameSession;
+import org.example.domain.service.CombatService;
+import org.example.domain.service.EnemyAIService;
+import org.example.domain.service.EnemyType;
+import org.example.domain.service.FogOfWarService;
+import org.example.domain.service.InventoryService;
+import org.example.domain.service.LevelGenerator;
+import org.example.domain.service.MovementService;
 
 /**
 *    GameLoop — это оркестратор игрового процесса, который:
@@ -35,146 +34,135 @@ public class GameLoop {
     private final InventoryService inventoryService;
     private final MovementService movementService;
     private final FogOfWarService fogOfWarService;
+    private final LevelGenerator levelGenerator;
+    private final char[][] asciiMap;
 
-    public GameLoop(GameSession session,
-                    InputHandler inputHandler,
-                    Renderer renderer,
-                    CombatService combatService,
-                    EnemyAIService enemyAIService,
-                    InventoryService inventoryService,
-                    MovementService movementService,
-                    FogOfWarService fogOfWarService) {
-        this.session = session;
-        this.inputHandler = inputHandler;
-        this.renderer = renderer;
-        this.combatService = combatService;
-        this.enemyAIService = enemyAIService;
-        this.inventoryService = inventoryService;
-        this.movementService = movementService;
-        this.fogOfWarService = fogOfWarService;
+    // Позиция игрока (временно, пока не полностью перейдем на Player entity)
+    private int playerX;
+    private int playerY;
+    private char symbolUnderPlayer;
+
+    public GameLoop(GameInitializer initializer) {
+        this.session = initializer.getSession();
+        this.inputHandler = initializer.getInputHandler();
+        this.renderer = initializer.getRenderer();
+        this.combatService = initializer.getCombatService();
+        this.enemyAIService = initializer.getEnemyAIService();
+        this.movementService = initializer.getMovementService();
+        this.inventoryService = initializer.getInventoryService();
+        this.fogOfWarService = initializer.getFogOfWarService();
+        this.levelGenerator = initializer.getLevelGenerator();
+        this.asciiMap = initializer.getLevelGenerator().createAsciiMap(1);
+
+        // Инициализация позиции игрока из сессии
+        this.playerX = session.getPlayer().getPosition().getX();
+        this.playerY = session.getPlayer().getPosition().getY();
+        this.symbolUnderPlayer = asciiMap[playerY][playerX];
     }
 
-///**
-// * Запускает игровой цикл. Блокирующий вызов.
-// */
-//public void start() {
-//    session.start();
-//    renderer.clearScreen();
-//
-//    // Главный цикл
-//    while (session.isRunning() && !session.isGameOver()) {
-//        // 1. RENDER - Отрисовать текущее состояние
-//        render();
-//
-//        // 2. INPUT - Прочитать команду игрока
-//        InputCommand command = inputHandler.readCommand();
-//
-//        // 3. UPDATE - Обработать команду и обновить мир
-//        processCommand(command);
-//
-//        // 4. AI - Обновить врагов
-//        updateEnemies();
-//
-//        // 5. EFFECTS - Обновить эффекты (эликсиры, туман войны)
-//        updateEffects();
-//    }
-//
-//    // Игра закончилась
-//    renderer.drawGameOver(session.getStatistics());
-//    renderer.shutdown();
-//}
-//
-//private void render() {
-//    Level level = session.getCurrentLevel();
-//
-//    // Карта с туманом войны
-//    fogOfWarService.update(session.getPlayer(), level);
-//    renderer.drawLevel(level, fogOfWarService);
-//
-//    // Враги (только если видны)
-//    enemyAIService.getVisibleEnemies().forEach(renderer::drawEnemy);
-//
-//    // Игрок
-//    renderer.drawPlayer(session.getPlayer());
-//
-//    // UI
-//    renderer.drawStatusBar(session);
-//    renderer.drawInventory(session.getPlayer().getInventory());
-//
-//    renderer.refresh();
-//}
-//
-//private void processCommand(InputCommand command) {
-//    if (command == null) return;
-//
-//    switch (command.getType()) {
-//        case MOVE:
-//            handleMoveCommand(command.getDirection());
-//            break;
-//        case USE_ITEM:
-//            handleUseItemCommand(command.getItemType());
-//            break;
-//        case QUIT:
-//            session.stop();
-//            break;
-//    }
-//}
-//
-//private void handleMoveCommand(Direction direction) {
-//    Player player = session.getPlayer();
-//    Position currentPos = player.getPosition();
-//    Position newPos = currentPos.move(direction);
-//
-//    // Проверка: можно ли туда идти?
-//    if (movementService.canMoveTo(newPos, session.getCurrentLevel())) {
-//        // Проверка: есть ли враг?
-//        Enemy enemy = enemyAIService.getEnemyAt(newPos);
-//        if (enemy != null) {
-//            // Начать бой
-//            combatService.playerAttacks(player, enemy);
-//            if (enemy.isDead()) {
-//                session.getEnemies().remove(enemy);
-//                session.getStatistics().addDefeatedEnemy();
-//            }
-//        } else {
-//            // Свободная клетка — переместиться
-//            player.setPosition(newPos);
-//            session.getStatistics().incrementSteps();
-//
-//            // Проверить, есть ли предмет на полу
-//            Item item = session.getCurrentLevel().getItemAt(newPos);
-//            if (item != null) {
-//                inventoryService.tryPickupItem(player, item);
-//            }
-//        }
-//    }
-//}
-//
-//private void handleUseItemCommand(ItemType type) {
-//    // Показать список предметов этого типа
-//    Inventory inventory = session.getPlayer().getInventory();
-//    if (inventory.count(type) == 0) return;
-//
-//    // Запросить индекс (1-9) у игрока
-//    int index = inputHandler.readNumber() - 1;
-//    Item item = inventoryService.useItem(session.getPlayer(), type, index);
-//
-//    // Применить эффект
-//    if (item != null) {
-//        item.applyTo(session.getPlayer());
-//        renderer.drawMessage("Использовано: " + item.getName());
-//    }
-//}
-//
-//private void updateEnemies() {
-//    // Для каждого врага: обновить ИИ
-//    session.getEnemies().forEach(enemy -> {
-//        enemyAIService.update(enemy, session);
-//    });
-//}
-//
-//private void updateEffects() {
-//    // Обновить туман войны, эликсиры, эффекты врагов
-//    fogOfWarService.update(session.getPlayer(), session.getCurrentLevel());
-//}
+    public void start() {
+        // Инициализация JCurses
+        sun.misc.Signal.handle(new sun.misc.Signal("INT"), signal -> {
+            Toolkit.shutdown();
+            System.out.println("\nTerminated via Ctrl+C");
+            System.exit(0);
+        });
+
+        Toolkit.init();
+        System.out.print("\033[?25l");
+
+        boolean running = true;
+
+        while (running) {
+            // Рисуем игрока
+            Toolkit.printString(new String(new char[]{GameConstants.Icons.PLAYER}), playerX + 3, playerY,
+                    new CharColor(CharColor.BLACK, CharColor.YELLOW));
+
+            // Читаем клавишу
+            InputChar ch = Toolkit.readCharacter();
+            char character;
+            try {
+                character = ch.getCharacter();
+            } catch (RuntimeException e) {
+                continue;
+            }
+
+            // Затираем старое положение игрока
+            Toolkit.printString(new String(String.valueOf(symbolUnderPlayer)), playerX + 3, playerY,
+                    new CharColor(CharColor.BLACK, CharColor.WHITE));
+
+            // Обработка выхода
+            if (ch.getCode() == 27) {
+                running = false;
+                continue;
+            }
+
+            // Игнорируем спец-клавиши
+            if (character == 0) {
+                continue;
+            }
+
+            // Обработка движения
+            switch (Character.toLowerCase(character)) {
+                case 'w': movePlayer(0, -1); break;
+                case 's': movePlayer(0, 1); break;
+                case 'a': movePlayer(-1, 0); break;
+                case 'd': movePlayer(1, 0); break;
+            }
+
+            // Обновление врагов
+            enemyAIService.moveEnemies(session, playerX, playerY, asciiMap);
+            enemyAIService.updateEnemyEffects(session, playerX, playerY);
+            drawEnemies();
+        }
+
+        Toolkit.shutdown();
+        System.out.println("\nProgram finished normally.");
+        System.out.print("\033[?25h");
+    }
+
+    private void movePlayer(int dx, int dy) {
+        int newX = playerX + dx;
+        int newY = playerY + dy;
+
+        Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
+        if (enemyAtPosition != null) {
+            combatService.attackEnemy(session, enemyAtPosition);
+            if (enemyAtPosition.getHealth() <= 0) {
+                combatService.removeEnemy(session, enemyAtPosition, asciiMap);
+            }
+            return;
+        }
+
+        if (newX >= 0 && newX < GameConstants.Map.WIDTH &&
+                newY >= 0 && newY < GameConstants.Map.HEIGHT &&
+                asciiMap[newY][newX] != '|' && asciiMap[newY][newX] != '~' &&
+                asciiMap[newY][newX] != ' ') {
+
+            playerX = newX;
+            playerY = newY;
+            symbolUnderPlayer = asciiMap[playerY][playerX];
+        }
+    }
+
+    private void drawEnemies() {
+        for (Enemy enemy : session.getEnemies()) {
+            if (!enemy.isInvisible()) {
+                CharColor color = new CharColor(CharColor.BLACK, (short) getEnemyColor(enemy));
+                Toolkit.printString(enemy.getType(), enemy.getX() + 3, enemy.getY(), color);
+            }
+        }
+    }
+
+    private int getEnemyColor(Enemy enemy) {
+        return switch (enemy.getType()) {
+            case "z" -> CharColor.GREEN;
+            case "v" -> CharColor.RED;
+            case "g" -> CharColor.WHITE;
+            case "O" -> CharColor.YELLOW;
+            case "s" -> CharColor.CYAN;
+            default -> CharColor.WHITE;
+        };
+    }
+
 }

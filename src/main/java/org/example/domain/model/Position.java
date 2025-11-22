@@ -14,7 +14,5 @@ public class Position {
         return x;
     }
 
-    public int getY() {
-        return y;
-    }
+    public int getY() { return y; }
 }

@@ -81,8 +81,5 @@ public final class GameConstants {
                 "                                                                                "
         };
 
-//        private int getLength() {
-//            return myArray.length;
-//        }
     }
 }

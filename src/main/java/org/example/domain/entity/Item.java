@@ -9,6 +9,9 @@ public class Item {
     private int strength;
     private int value;
 
+    // КОНСТАНТА для кулаков
+    public static final int FISTS_STRENGTH = 3;
+
     public Item(String type, String subType, int health, int maxHealth, int agility, int strength, int value) {
         this.type = type;
         this.subType = subType;
@@ -17,6 +20,17 @@ public class Item {
         this.agility = agility;
         this.strength = strength;
         this.value = value;
+    }
+
+    // ФАБРИЧНЫЙ МЕТОД для создания кулаков
+    public static Item createFists() {
+        return new Item(
+                ItemType.WEAPON.name().toLowerCase(), // "weapon"
+                "fists",                              // подтип
+                0, 0, 0,                              // нет эффектов
+                FISTS_STRENGTH,                       // базовый урон 3
+                0                                     // нет стоимости
+        );
     }
 
     public String getType() {
