@@ -7,9 +7,7 @@ import org.example.domain.model.Level;
 import org.example.domain.model.Room;
 import org.example.domain.model.Position;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class LevelGenerator {
     private static final int ROOMS_AT_LEVEL = GameConstants.Map.ROOMS;              //комнат на уровне
@@ -21,6 +19,12 @@ public class LevelGenerator {
     private List<Room> rooms;
     private List<Corridor> corridors;
     private Random rand;
+    // НОВЫЕ ПОЛЯ: карта клеток -> комната
+    private final Map<Position, Room> cellToRoomMap = new HashMap<>();
+    // Набор клеток коридоров
+    private final Set<Position> corridorCells = new HashSet<>();
+    // Тип клетки для быстрого доступа
+    private final Map<Position, Character> cellTypeMap = new HashMap<>();
 
     public LevelGenerator() {
         this.rand = new Random();  // Или new Random(seed), если нужен фиксированный seed для воспроизводимости
@@ -80,22 +84,29 @@ public class LevelGenerator {
     }
 
 
-    private void addRoomsOnAsciiMap(char[][] asciiMap){
-        //for (int i = 0; i < ROOMS_AT_LEVEL; i++) {
+    private void addRoomsOnAsciiMap(char[][] asciiMap) {
+        cellToRoomMap.clear(); // Очистка перед генерацией
         for (int i = 0; i < 9; i++) {
-                for (int x = rooms.get(i).getX1(); x < rooms.get(i).getX2(); x++) {
-                    asciiMap[rooms.get(i).getY1()][x] = '~';
-                    asciiMap[rooms.get(i).getY2()][x] = '~';
-                }
-                for (int y = rooms.get(i).getY1(); y <= rooms.get(i).getY2(); y++) {
-                    asciiMap[y][rooms.get(i).getX1()] = '|';
-                    asciiMap[y][rooms.get(i).getX2()] = '|';
-                }
+            Room room = rooms.get(i);
+            // Заполняем границы
+            for (int x = room.getX1(); x <= room.getX2(); x++) {
+                // Верхняя и нижняя стена
+                setCell(asciiMap, x, room.getY1(), '~', room);
+                setCell(asciiMap, x, room.getY2(), '~', room);
             }
+            for (int y = room.getY1(); y <= room.getY2(); y++) {
+                // Левая и правая стена
+                setCell(asciiMap, room.getX1(), y, '|', room);
+                setCell(asciiMap, room.getX2(), y, '|', room);
+            }
+        }
+
+        // Заполняем внутренности комнат
         for (int i = 0; i < 9; i++) {
-            for (int x = rooms.get(i).getX1() + 1; x < rooms.get(i).getX2(); x++) {
-                for (int y = rooms.get(i).getY1() + 1; y < rooms.get(i).getY2(); y++) {
-                    asciiMap[y][x] = '.';
+            Room room = rooms.get(i);
+            for (int x = room.getX1() + 1; x < room.getX2(); x++) {
+                for (int y = room.getY1() + 1; y < room.getY2(); y++) {
+                    setCell(asciiMap, x, y, '.', room); // Пол
                 }
             }
         }
@@ -128,6 +139,23 @@ public class LevelGenerator {
         addHorizontalLine(asciiMap, xStart + 1, crossLine + 1, yStart);
         addVerticalLine(asciiMap, yStart, yEnd, crossLine);
         addHorizontalLine(asciiMap, crossLine, xEnd, yEnd);
+        // После генерации corridor cells:
+        for (int x = Math.min(xStart, xEnd); x <= Math.max(xStart, xEnd); x++) {
+            for (int y = Math.min(yStart, yEnd); y <= Math.max(yStart, yEnd); y++) {
+                corridorCells.add(new Position(x, y));
+                cellTypeMap.put(new Position(x, y), '#');
+            }
+        }
+    }
+
+    // Вспомогательный метод для установки клетки
+    private void setCell(char[][] asciiMap, int x, int y, char symbol, Room room) {
+        asciiMap[y][x] = symbol;
+        Position pos = new Position(x, y);
+        cellTypeMap.put(pos, symbol);
+        if (room != null) {
+            cellToRoomMap.put(pos, room);
+        }
     }
 
     private void addVerticalCorridor(char[][] asciiMap, int xRoom, int yRoom) {
@@ -165,11 +193,16 @@ public class LevelGenerator {
 
 
 
-//    private List<Corridor> connectRooms(List<Room> rooms){
-//        // Соединяем в цепочку (0-1-2-3-...-8)
-//        for (int i = 0; i < rooms.size() - 1; i++) {
-//            Corridor corridor = createCorridor(rooms.get(i), rooms.get(i + 1));
-//            corridors.add(corridor);
-//        }
-//    }
+    // Методы доступа:
+    public Room getRoomAt(int x, int y) {
+        return cellToRoomMap.get(new Position(x, y));
+    }
+
+    public boolean isCorridor(int x, int y) {
+        return corridorCells.contains(new Position(x, y));
+    }
+
+    public Character getCellType(int x, int y) {
+        return cellTypeMap.get(new Position(x, y));
+    }
 }

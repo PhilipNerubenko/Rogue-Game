@@ -33,6 +33,11 @@ public class Player extends Character  {
         return position;
     }
 
-    public void move(Direction dir) { /* TODO */ }
+    public void move(Direction direction) {
+        this.position = new Position(
+                this.position.getX() + direction.getDx(),
+                this.position.getY() + direction.getDy()
+        );
+    }
     public void equip(Item weapon) { /* TODO */ }
 }

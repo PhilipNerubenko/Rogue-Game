@@ -5,6 +5,10 @@ import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
 import org.example.domain.entity.Inventory;
 import org.example.domain.entity.ItemType;
+import org.example.domain.entity.Player;
+import org.example.domain.model.Room;
+import org.example.domain.service.FogOfWarService;
+import org.example.domain.service.LevelGenerator;
 
 /**
  * Реализация интерфейса Renderer на базе JCurses.
@@ -15,17 +19,19 @@ public class JCursesRenderer implements Renderer {
     private final int width;
     private final int height;
     private final CharColor defaultColor;
-    private static final int MAP_OFFSET_X = GameConstants.Map.MAP_OFFSET_X; // <-- ДОБАВЬТЕ ЭТО
+    private static final int MAP_OFFSET_X = GameConstants.Map.MAP_OFFSET_X;
 
     public JCursesRenderer() {
         this.width = GameConstants.Map.WIDTH;
         this.height = GameConstants.Map.HEIGHT;
         this.defaultColor = new CharColor(CharColor.BLACK, CharColor.BLACK);
-
-        // Инициализация JCurses
         Toolkit.init();
         Toolkit.clearScreen(defaultColor);
     }
+
+
+
+
 
     @Override
     public void drawChar(int x, int y, char symbol, int color) {
@@ -57,6 +63,46 @@ public class JCursesRenderer implements Renderer {
     public void refresh() {
         // JCurses не требует explicit refresh, но оставим для совместимости
     }
+
+    public void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, LevelGenerator levelGen) {
+        fog.updateVisibility(player.getPosition(), map);
+
+        for (int y = 0; y < map.length; y++) {
+            for (int x = 0; x < map[y].length; x++) {
+                char tile = map[y][x];
+                Room room = levelGen.getRoomAt(x, y); // ← Теперь используем levelGen
+                boolean visible = fog.isVisible(x, y);
+                boolean explored = fog.isExplored(x, y);
+
+                if (visible) {
+                    // ВИДИМАЯ КЛЕТКА — рисуем всё ярко
+                    short color = getTileColorVisible(tile);
+                    drawChar(x, y, tile, color);
+                } else if (explored && (tile == '|' || tile == '~')) {
+                    // ИССЛЕДОВАННАЯ СТЕНА — тусклый синий (как тёмно-серый)
+                    drawChar(x, y, tile, CharColor.BLUE); // ✓ РАБОЧИЙ ЦВЕТ
+                } else {
+                    // Неизведанная или исследованный пол — чёрная
+                    drawChar(x, y, ' ', CharColor.BLACK);
+                }
+            }
+        }
+    }
+
+    /**
+     * Цвета для ВИДИМЫХ клеток (текущая комната)
+     */
+    private short getTileColorVisible(char tile) {
+        return switch (tile) {
+            case '.' -> CharColor.CYAN;           // Пол — голубой
+            case '|', '~' -> CharColor.WHITE;    // Стены — ЯРКО-БЕЛЫЕ
+            case '#' -> CharColor.YELLOW;        // Коридор — жёлтый
+            case '+' -> CharColor.MAGENTA;       // Дверь — пурпурная
+            case '$' -> CharColor.GREEN;         // Сокровище — зелёное
+            default -> CharColor.WHITE;
+        };
+    }
+
 
     @Override
     public void drawStatusBar(int playerHealth, int maxHealth, int level, int treasures) {

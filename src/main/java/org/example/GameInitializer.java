@@ -41,14 +41,14 @@ public class GameInitializer {
         this.movementService = movementService;
     }
     public GameInitializer() {
+        this.levelGenerator = new LevelGenerator();
+        this.fogOfWarService = new FogOfWarService(levelGenerator);
         this.session = new GameSession();
         this.renderer = new JCursesRenderer();
-        this.levelGenerator = new LevelGenerator();
         this.enemyAIService = new EnemyAIService();
         this.combatService = new CombatService();
         this.inputHandler = new InputHandler();
         this.inventoryService = new InventoryService();
-        this.fogOfWarService = new FogOfWarService();
         this.movementService = new MovementService();
 
 
@@ -107,11 +107,14 @@ public class GameInitializer {
         // Очистка экрана
         Toolkit.clearScreen(new CharColor(CharColor.BLACK, CharColor.BLACK));
 
-        // Отрисовка карты
-        for (int i = 0; i < GameConstants.Map.HEIGHT; i++) {
-            String element = new String(asciiMap[i]);
-            Toolkit.printString(element, 0, i, new CharColor(CharColor.BLACK, CharColor.WHITE));
-        }
+
+        // Отрисовка карты с туманом
+        ((JCursesRenderer) renderer).drawMapWithFog(
+                asciiMap,
+                session.getPlayer(),
+                fogOfWarService,
+                levelGenerator
+        );
 
         // Отрисовка врагов
         drawEnemies();
@@ -122,7 +125,8 @@ public class GameInitializer {
 
     private void drawEnemies() {
         for (Enemy enemy : session.getEnemies()) {
-            if (!enemy.isInvisible()) {
+            // Рисуем только если враг видим игроком
+            if (!enemy.isInvisible() && fogOfWarService.isVisible(enemy.getX(), enemy.getY())) {
                 CharColor color = new CharColor(CharColor.BLACK, (short) getEnemyColor(enemy));
                 Toolkit.printString(enemy.getType(), enemy.getX() + 3, enemy.getY(), color);
             }

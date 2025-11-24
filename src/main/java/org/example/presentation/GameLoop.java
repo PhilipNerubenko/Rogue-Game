@@ -81,6 +81,10 @@ public class GameLoop {
         while (running) {
             // 1. Очищаем и перерисовываем ВСЁ
             renderer.clearScreen();
+
+            // 2. ОБНОВЛЯЕМ ТУМАН (после перемещения игрока)
+            fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
+
             drawMap(); // Рисуем карту
             drawEnemies(); // Рисуем врагов
             // 2. Рендер игрока
@@ -100,7 +104,7 @@ public class GameLoop {
             // 4. Обработка
             if (command.getType() == InputCommand.Type.MOVE) {
                 Direction dir = command.getDirection();
-                movePlayer(dir.getDx(), dir.getDy());
+                movePlayer(dir); // Передаем Direction, а не dx/dy
             }
 
             // 5. Обновление врагов
@@ -115,9 +119,9 @@ public class GameLoop {
         renderer.shutdown();
     }
 
-    private void movePlayer(int dx, int dy) {
-        int newX = playerX + dx;
-        int newY = playerY + dy;
+    private void movePlayer(Direction direction) {
+        int newX = playerX + direction.getDx();
+        int newY = playerY + direction.getDy();
 
         Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
         if (enemyAtPosition != null) {
@@ -128,20 +132,34 @@ public class GameLoop {
             return;
         }
 
-        if (newX >= 0 && newX < GameConstants.Map.WIDTH &&
-                newY >= 0 && newY < GameConstants.Map.HEIGHT &&
-                asciiMap[newY][newX] != '|' && asciiMap[newY][newX] != '~' &&
-                asciiMap[newY][newX] != ' ') {
-
+        if (canMoveTo(newX, newY)) {
+            // Обновляем локальные переменные
             playerX = newX;
             playerY = newY;
             symbolUnderPlayer = asciiMap[playerY][playerX];
+
+            // ✅ Обновляем позицию в сущности через Direction
+            session.getPlayer().move(direction);
         }
     }
 
+    // Вспомогательный метод для читаемости
+    private boolean canMoveTo(int x, int y) {
+        return x >= 0 && x < GameConstants.Map.WIDTH &&
+                y >= 0 && y < GameConstants.Map.HEIGHT &&
+                asciiMap[y][x] != '|' && asciiMap[y][x] != '~' &&
+                asciiMap[y][x] != ' ';
+    }
+
     private void drawEnemies() {
+//        for (Enemy enemy : session.getEnemies()) {
+//            if (!enemy.isInvisible()) {
+//                short color = (short) getEnemyColor(enemy);
+//                renderer.drawChar(enemy.getX(), enemy.getY(), enemy.getType().charAt(0), color);
+//            }
+//        }
         for (Enemy enemy : session.getEnemies()) {
-            if (!enemy.isInvisible()) {
+            if (!enemy.isInvisible() && fogOfWarService.isVisible(enemy.getX(), enemy.getY())) {
                 short color = (short) getEnemyColor(enemy);
                 renderer.drawChar(enemy.getX(), enemy.getY(), enemy.getType().charAt(0), color);
             }
@@ -159,10 +177,17 @@ public class GameLoop {
         };
     }
     private void drawMap() {
-        for (int i = 0; i < GameConstants.Map.HEIGHT; i++) {
-            String element = new String(asciiMap[i]);
-            renderer.drawString(0, i, element, CharColor.WHITE); // X=3 — ваше смещение
-        }
+//        for (int i = 0; i < GameConstants.Map.HEIGHT; i++) {
+//            String element = new String(asciiMap[i]);
+//            renderer.drawString(0, i, element, CharColor.WHITE); // X=3 — ваше смещение
+//        }
+
+        ((JCursesRenderer) renderer).drawMapWithFog(
+                asciiMap,
+                session.getPlayer(),
+                fogOfWarService,
+                levelGenerator
+        );
 
         // Подсказка
         renderer.drawString(0, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
