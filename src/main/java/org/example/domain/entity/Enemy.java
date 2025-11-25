@@ -11,6 +11,8 @@ public class Enemy {
     private int hostility;
     private int x;
     private int y;
+    private int diagX = 1;
+    private int diagY = 1;
 
     // Дополнительные свойста из ТЗ
     private Color color;
@@ -135,6 +137,22 @@ public class Enemy {
 
     public void setY(int y) {
         this.y = y;
+    }
+
+    public int getDiagX() {
+        return diagX;
+    }
+
+    public void setDiagX(int diagX) {
+        this.diagX = diagX;
+    }
+
+    public int getDiagY() {
+        return diagY;
+    }
+
+    public void setDiagY(int diagY) {
+        this.diagY = diagY;
     }
 
     // Проверка, есть ли у врага определённая способность
