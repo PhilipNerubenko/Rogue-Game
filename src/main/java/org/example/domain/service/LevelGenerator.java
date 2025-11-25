@@ -2,6 +2,8 @@ package org.example.domain.service;
 
 
 import org.example.config.GameConstants;
+import org.example.domain.entity.GameSession;
+import org.example.domain.entity.Item;
 import org.example.domain.model.Corridor;
 import org.example.domain.model.Level;
 import org.example.domain.model.Room;
@@ -19,6 +21,8 @@ public class LevelGenerator {
     private List<Room> rooms;
     private List<Corridor> corridors;
     private Random rand;
+
+    private final GameSession session;    // ля сохранения предметов
     // НОВЫЕ ПОЛЯ: карта клеток -> комната
     private final Map<Position, Room> cellToRoomMap = new HashMap<>();
     // Набор клеток коридоров
@@ -26,7 +30,8 @@ public class LevelGenerator {
     // Тип клетки для быстрого доступа
     private final Map<Position, Character> cellTypeMap = new HashMap<>();
 
-    public LevelGenerator() {
+    public LevelGenerator(GameSession session) {
+        this.session = session;
         this.rand = new Random();  // Или new Random(seed), если нужен фиксированный seed для воспроизводимости
     }
 
@@ -47,6 +52,41 @@ public class LevelGenerator {
         Random rand = new Random();
 //        corridors = createCorridor();
         addCorridorsOnAsciiMap(asciiMap);
+
+        // === ГЕНЕРАЦИЯ И РАЗМЕЩЕНИЕ ПРЕДМЕТОВ ===
+        List<Item> items = ItemGenerator.generateForLevel(levelNumber);
+        Random randomItem = new Random();
+
+        for (Item item : items) {
+            boolean placed = false;
+            int attempts = 0;
+
+            while (!placed && attempts < 100) {
+                Room room = rooms.get(randomItem.nextInt(rooms.size()));
+                int rx = room.getX1() + 1 + randomItem.nextInt(room.getWidth() - 2);
+                int ry = room.getY1() + 1 + randomItem.nextInt(room.getHeight() - 2);
+
+                if (asciiMap[ry][rx] == '.') {
+                    item.setPosition(rx, ry);
+
+                    char symbol = switch (item.getType()) {
+                        case "food"     -> ',';
+                        case "elixir"   -> '!';
+                        case "scroll"   -> '?';
+                        case "weapon"   -> ')';
+                        case "treasure" -> '$';
+                        default         -> '*';
+                    };
+
+                    asciiMap[ry][rx] = symbol;
+                    placed = true;
+                }
+                attempts++;
+            }
+        }
+
+        // Сохраняем предметы в сессию (для автоподбора)
+        session.setCurrentLevelItems(items);
         return asciiMap;
     }
 

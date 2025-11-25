@@ -52,9 +52,9 @@ public class GameInitializer {
 
     // Упрощенный конструктор для основного использования
     public GameInitializer() {
-        this.levelGenerator = new LevelGenerator();
-        this.fogOfWarService = new FogOfWarService(levelGenerator);
         this.session = new GameSession();
+        this.levelGenerator = new LevelGenerator(session);
+        this.fogOfWarService = new FogOfWarService(levelGenerator);
         this.renderer = new JCursesRenderer();
         this.enemyAIService = new EnemyAIService();
         this.combatService = new CombatService();
@@ -73,8 +73,16 @@ public class GameInitializer {
         session.setRooms(levelGenerator.getRooms());
 
         // Создание игрока
+
         Position playerPos = createPlayerPosition();
         Player player = new Player(playerPos, new Inventory());
+
+        int playerX = startRoom.getX1() + 1 + levelGenerator.getRand().nextInt(startRoom.getWidth() - 2);
+        int playerY = startRoom.getY1() + 1 + levelGenerator.getRand().nextInt(startRoom.getHeight() - 2);
+
+//        int playerX = startRoom.getX1() + 2; // Центр комнаты
+//        int playerY = startRoom.getY1() + 2;
+        Player player = new Player(new Position(playerX, playerY));
         session.setPlayer(player);
 
         // Создание врагов
