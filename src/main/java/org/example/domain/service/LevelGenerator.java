@@ -77,6 +77,7 @@ public class LevelGenerator {
     private Room generateRandomRoom(int index) {
         int width = MIN_WIDTH_ROOM_SIZE + (int)(Math.random() * (MAX_WIDTH_ROOM_SIZE - MIN_WIDTH_ROOM_SIZE));
         int height = MIN_HEIGHT_ROOM_SIZE + (int)(Math.random() * (MAX_HEIGHT_ROOM_SIZE - MIN_HEIGHT_ROOM_SIZE));
+
         // Позиция в "сетке" 3x3
         int gridX = (index % 3) * (MAX_WIDTH_ROOM_SIZE +3);
         int gridY = (index / 3) * (MAX_HEIGHT_ROOM_SIZE+3);

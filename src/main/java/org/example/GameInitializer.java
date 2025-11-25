@@ -65,6 +65,9 @@ public class GameInitializer {
         // Создание игрока
         int playerX = startRoom.getX1() + 1 + levelGenerator.getRand().nextInt(startRoom.getWidth() - 2);
         int playerY = startRoom.getY1() + 1 + levelGenerator.getRand().nextInt(startRoom.getHeight() - 2);
+
+//        int playerX = startRoom.getX1() + 2; // Центр комнаты
+//        int playerY = startRoom.getY1() + 2;
         Player player = new Player(new Position(playerX, playerY), new Inventory());
         session.setPlayer(player);
 
@@ -107,6 +110,7 @@ public class GameInitializer {
         // Очистка экрана
         Toolkit.clearScreen(new CharColor(CharColor.BLACK, CharColor.BLACK));
 
+        fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
 
         // Отрисовка карты с туманом
         ((JCursesRenderer) renderer).drawMapWithFog(

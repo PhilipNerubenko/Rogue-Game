@@ -78,9 +78,16 @@ public class JCursesRenderer implements Renderer {
                     // ВИДИМАЯ КЛЕТКА — рисуем всё ярко
                     short color = getTileColorVisible(tile);
                     drawChar(x, y, tile, color);
-                } else if (explored && (tile == '|' || tile == '~')) {
+               // } else if (explored && (tile == '|' || tile == '~')) {
+                } else if (explored ) {
                     // ИССЛЕДОВАННАЯ СТЕНА — тусклый синий (как тёмно-серый)
-                    drawChar(x, y, tile, CharColor.BLUE); // ✓ РАБОЧИЙ ЦВЕТ
+//                    drawChar(x, y, tile, CharColor.BLUE); // ✓ РАБОЧИЙ ЦВЕТ
+                    short color = getTileColorExplored(tile);
+                    if (color != CharColor.BLACK) {
+                        drawChar(x, y, tile, color);
+                    } else {
+                        drawChar(x, y, ' ', color);
+                    }
                 } else {
                     // Неизведанная или исследованный пол — чёрная
                     drawChar(x, y, ' ', CharColor.BLACK);
@@ -103,6 +110,14 @@ public class JCursesRenderer implements Renderer {
         };
     }
 
+    private short getTileColorExplored(char tile) {
+        return switch (tile) {
+            case '#', '+' -> CharColor.YELLOW;   // Коридоры и двери — тускло-жёлтые
+            case '|', '~' -> CharColor.BLUE;     // Стены — тускло-синие
+            case '$' -> CharColor.GREEN;         // Сокровища — тускло-зелёные
+            default -> CharColor.BLACK;          // Пол и всё остальное — скрыто
+        };
+    }
 
     @Override
     public void drawStatusBar(int playerHealth, int maxHealth, int level, int treasures) {

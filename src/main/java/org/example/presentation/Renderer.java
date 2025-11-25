@@ -1,6 +1,9 @@
 package org.example.presentation;
 
 import org.example.domain.entity.Inventory;
+import org.example.domain.entity.Player;
+import org.example.domain.service.FogOfWarService;
+import org.example.domain.service.LevelGenerator;
 
 /**
  * Интерфейс (контракт). НЕ знает про JCurses, Toolkit и прочее.
@@ -21,6 +24,8 @@ public interface Renderer {
 
     //вывести строку текста.
     void drawString(int x, int y, String text, int color);
+
+    void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, LevelGenerator levelGen);
 
     // Очистить весь экран (залить фоном).
     void clearScreen();

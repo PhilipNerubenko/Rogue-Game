@@ -43,13 +43,13 @@ public class FogOfWarService {
 
         // 2. ЕСЛИ ИГРОК В КОМНАТЕ
         if (currentRoom != null) {
-            // Вся комната становится видимой
             for (int x = currentRoom.getX1(); x <= currentRoom.getX2(); x++) {
                 for (int y = currentRoom.getY1(); y <= currentRoom.getY2(); y++) {
                     visibleCells.add(new Position(x, y));
+                    // ✅ ВАЖНО: сразу добавляем в exploredCells
+                    exploredCells.add(new Position(x, y));
                 }
             }
-            // Помечаем комнату как исследованную
             exploredRooms.add(currentRoom);
         }
 
@@ -67,34 +67,62 @@ public class FogOfWarService {
      * Бросить один луч и добавить видимые клетки
      */
     private void castRay(int startX, int startY, double dx, double dy, char[][] map) {
-        int x = startX;
-        int y = startY;
+        // Правильный алгоритм Брезенхэма для ray casting
+        double x = startX;
+        double y = startY;
+
+        // Нормализуем вектор
+        double length = Math.sqrt(dx * dx + dy * dy);
+        if (length == 0) return;
+
+        double stepX = dx / length;
+        double stepY = dy / length;
+
+        boolean hitWall = false;
 
         for (int i = 0; i < VISION_RADIUS; i++) {
-            x += (int) Math.round(dx);
-            y += (int) Math.round(dy);
+            x += stepX;
+            y += stepY;
+
+            int intX = (int) Math.round(x);
+            int intY = (int) Math.round(y);
 
             // Проверяем границы
-            if (x < 0 || x >= map[0].length || y < 0 || y >= map.length) break;
+            if (intX < 0 || intX >= map[0].length || intY < 0 || intY >= map.length) break;
 
-            Position currentPos = new Position(x, y);
-            visibleCells.add(currentPos);
+            // Если уже встретили стену — больше не идём
+            if (hitWall) break;
 
-            char cell = map[y][x];
+            Position pos = new Position(intX, intY);
+            char cell = map[intY][intX];
 
-            // Останавливаемся на стене
+            // Добавляем клетку в видимые
+            visibleCells.add(pos);
+
+            // Если это стена — запоминаем, чтобы остановиться
             if (cell == '|' || cell == '~') {
-                break;
+                visibleCells.add(pos); // Добавляем саму стену
+                break;                 // И сразу останавливаем луч
             }
 
-            // ОСОБАЯ ЛОГИКА: если видим дверь, заглядываем в комнату
+            // Если дверь — заглядываем в комнату и останавливаемся
             if (cell == '+') {
-                // Смотрим, какая комната за дверью
-                Room adjacentRoom = findAdjacentRoom(x, y);
+                visibleCells.add(pos); // ✅ Добавляем саму дверь
+                Room adjacentRoom = findAdjacentRoom(intX, intY);
                 if (adjacentRoom != null && adjacentRoom != currentRoom) {
-                    // Добавляем несколько клеток в глубь комнаты
-                    addVisibleRoomInterior(x, y, dx, dy, adjacentRoom);
+                    addVisibleRoomInterior(intX, intY, stepX, stepY, adjacentRoom);
+
+//                    // 🔥 ДОБАВЛЯЕМ СТЕНЫ призрачной комнаты
+//                    for (int wx = adjacentRoom.getX1(); wx <= adjacentRoom.getX2(); wx++) {
+//                        exploredCells.add(new Position(wx, adjacentRoom.getY1())); // верх
+//                        exploredCells.add(new Position(wx, adjacentRoom.getY2())); // низ
+//                    }
+//                    for (int wy = adjacentRoom.getY1(); wy <= adjacentRoom.getY2(); wy++) {
+//                        exploredCells.add(new Position(adjacentRoom.getX1(), wy)); // лево
+//                        exploredCells.add(new Position(adjacentRoom.getX2(), wy)); // право
+//                    }
                 }
+                break;
             }
         }
     }
@@ -104,7 +132,7 @@ public class FogOfWarService {
      */
     private void addVisibleRoomInterior(int doorX, int doorY, double dx, double dy, Room room) {
         // Добавляем 2-3 клетки в глубь комнаты в направлении взгляда
-        for (int depth = 1; depth <= 3; depth++) {
+        for (int depth = 1; depth <= 8; depth++) {
             int viewX = doorX + (int)(dx * depth);
             int viewY = doorY + (int)(dy * depth);
 
@@ -118,7 +146,7 @@ public class FogOfWarService {
     }
 
     /**
-     * Найти комнату, смежную с дверью
+     * По двери определяет комнату
      */
     private Room findAdjacentRoom(int doorX, int doorY) {
         // Проверяем соседние клетки
@@ -147,5 +175,9 @@ public class FogOfWarService {
 
     public Room getCurrentRoom() {
         return currentRoom;
+    }
+
+    public void markCellAsExplored(int x, int y) {
+        exploredCells.add(new Position(x, y));
     }
 }

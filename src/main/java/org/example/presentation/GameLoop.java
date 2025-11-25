@@ -76,21 +76,20 @@ public class GameLoop {
         renderer.clearScreen();
         System.out.print("\033[?25l");
 
+        // 🔥 КРИТИЧЕСКО: первичное обновление тумана перед стартом
+        fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
+
         boolean running = true;
 
         while (running) {
-            // 1. Очищаем и перерисовываем ВСЁ
+            // 1. РЕНДЕР: рисуем текущее состояние
             renderer.clearScreen();
-
-            // 2. ОБНОВЛЯЕМ ТУМАН (после перемещения игрока)
-            fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
-
-            drawMap(); // Рисуем карту
-            drawEnemies(); // Рисуем врагов
-            // 2. Рендер игрока
+            drawMap(); // Рисуем карту с учетом тумана
+            drawEnemies(); // Рисуем видимых врагов
             renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
+            renderer.refresh();
 
-            // 3. Ввод
+            // 2. ВВОД: читаем команду игрока
             InputCommand command = inputHandler.readCommand();
 
             if (command.getType() == InputCommand.Type.QUIT) {
@@ -98,22 +97,49 @@ public class GameLoop {
                 continue;
             }
 
-            // 3. Затираем игрока
-            renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
-
-            // 4. Обработка
+            // 3. ОБРАБОТКА: применяем команду
             if (command.getType() == InputCommand.Type.MOVE) {
                 Direction dir = command.getDirection();
-                movePlayer(dir); // Передаем Direction, а не dx/dy
+
+                // Вычисляем новую позицию
+                int newX = playerX + dir.getDx();
+                int newY = playerY + dir.getDy();
+
+                // Проверяем, есть ли враг
+                Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
+                if (enemyAtPosition != null) {
+                    // Атакуем врага
+                    combatService.attackEnemy(session, enemyAtPosition);
+                    if (enemyAtPosition.getHealth() <= 0) {
+                        combatService.removeEnemy(session, enemyAtPosition, asciiMap);
+                    }
+                    continue; // Ход завершен, переходим к следующей итерации
+                }
+
+                // Если можно двигаться - перемещаем
+                if (canMoveTo(newX, newY)) {
+                    // Затираем старую позицию (возвращаем символ под игроком)
+                    renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
+                    //Помечаем клетку как исследованную
+                    fogOfWarService.markCellAsExplored(newX, newY);
+                    // Обновляем локальные координаты
+                    playerX = newX;
+                    playerY = newY;
+                    symbolUnderPlayer = asciiMap[playerY][playerX];
+
+                    // 🔥 СИНХРОНИЗИРУЕМ с Player entity
+                    session.getPlayer().move(dir);
+                }
             }
 
-            // 5. Обновление врагов
+            // 4. ОБНОВЛЕНИЕ МИРА: туман и враги
+            // 🔥 ОБНОВЛЯЕМ ТУМАН ПОСЛЕ перемещения игрока (с актуальной позицией)
+            fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
+
+            // Обновляем врагов (теперь с актуальными координатами)
             enemyAIService.moveEnemies(session, playerX, playerY, asciiMap);
             enemyAIService.updateEnemyEffects(session, playerX, playerY);
-            drawEnemies();
-
-            // 6. Обновить экран
-            renderer.refresh();
+            drawEnemies(); // Перерисовываем врагов после их перемещения
         }
 
         renderer.shutdown();
@@ -133,6 +159,8 @@ public class GameLoop {
         }
 
         if (canMoveTo(newX, newY)) {
+            // Запоминаем, что мы исследовали клетку, на которую встаём
+            fogOfWarService.markCellAsExplored(newX, newY);
             // Обновляем локальные переменные
             playerX = newX;
             playerY = newY;
@@ -182,7 +210,7 @@ public class GameLoop {
 //            renderer.drawString(0, i, element, CharColor.WHITE); // X=3 — ваше смещение
 //        }
 
-        ((JCursesRenderer) renderer).drawMapWithFog(
+        renderer.drawMapWithFog(
                 asciiMap,
                 session.getPlayer(),
                 fogOfWarService,
@@ -191,5 +219,11 @@ public class GameLoop {
 
         // Подсказка
         renderer.drawString(0, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
+    }
+
+    private void syncPlayerPositionWithEntity() {
+        Position pos = session.getPlayer().getPosition();
+        this.playerX = pos.getX();
+        this.playerY = pos.getY();
     }
 }
