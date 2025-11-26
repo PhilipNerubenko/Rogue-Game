@@ -8,7 +8,8 @@ public final class GameConstants {
         public static final int ROOMS  = 9;     //комнат на уровне
         public static final int WIDTH = 80;     //ширина игрового поля
         public static final int HEIGHT = 30;    //высота игрового поля
-        public static final int MAP_OFFSET_X = 3; // смещение карты от левого края
+        public static final int MAP_OFFSET_X = 8; // смещение карты от левого края
+        public static final int MAP_OFFSET_Y = 8; // смещение карты от левого края
         public static final int VISION_RADIUS = 8; // радиус видимости игрока
         private Map() {
         }

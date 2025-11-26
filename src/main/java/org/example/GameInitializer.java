@@ -25,6 +25,8 @@ public class GameInitializer {
     private InventoryService inventoryService;
     private FogOfWarService fogOfWarService;
     private LevelGenerator levelGenerator;
+    int ofsetX = GameConstants.Map.MAP_OFFSET_X;
+    int ofsetY = GameConstants.Map.MAP_OFFSET_Y;
 
     public GameInitializer(GameSession session, Renderer renderer, LevelGenerator levelGenerator,
                            EnemyAIService enemyAIService, CombatService combatService,
@@ -63,11 +65,11 @@ public class GameInitializer {
         Room startRoom = levelGenerator.getRooms().getFirst();
 
         // Создание игрока
-        int playerX = startRoom.getX1() + 1 + levelGenerator.getRand().nextInt(startRoom.getWidth() - 2);
-        int playerY = startRoom.getY1() + 1 + levelGenerator.getRand().nextInt(startRoom.getHeight() - 2);
+//        int playerX = startRoom.getX1() + 1 + levelGenerator.getRand().nextInt(startRoom.getWidth() - 2);
+//        int playerY = startRoom.getY1() + 1 + levelGenerator.getRand().nextInt(startRoom.getHeight() - 2);
 
-//        int playerX = startRoom.getX1() + 2; // Центр комнаты
-//        int playerY = startRoom.getY1() + 2;
+        int playerX = startRoom.getX1() + 2; // отступ от угда
+        int playerY = startRoom.getY1() + 2;
         Player player = new Player(new Position(playerX, playerY), new Inventory());
         session.setPlayer(player);
 
@@ -113,7 +115,7 @@ public class GameInitializer {
         fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
 
         // Отрисовка карты с туманом
-        ((JCursesRenderer) renderer).drawMapWithFog(
+        renderer.drawMapWithFog(
                 asciiMap,
                 session.getPlayer(),
                 fogOfWarService,

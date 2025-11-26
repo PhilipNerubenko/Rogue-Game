@@ -90,17 +90,28 @@ public class FogOfWarService {
             // Проверяем границы
             if (intX < 0 || intX >= map[0].length || intY < 0 || intY >= map.length) break;
 
-            // Если уже встретили стену — больше не идём
-            if (hitWall) break;
 
-            Position pos = new Position(intX, intY);
+            // Если луч встретил стену — больше не идём
+           // if (hitWall) break;
+            // Если мы вне комнаты луч идет только по '#'
             char cell = map[intY][intX];
+            Position pos = new Position(intX, intY);
+
+            if (cell == '#' )visibleCells.add(pos);
+            // если луч натыкается на стену, или на землю
+            if (cell == ' ' || cell == '|' || cell == '~' || levelGenerator.getRoomAt(intX, intY) == null)break;
+
+
+
+
 
             // Добавляем клетку в видимые
             visibleCells.add(pos);
 
-            // Если это стена — запоминаем, чтобы остановиться
-            if (cell == '|' || cell == '~') {
+            // Если это стена  из нутри— запоминаем, чтобы остановить луч
+
+
+            if (cell == '|' || cell == '~'  ) {
                 visibleCells.add(pos); // Добавляем саму стену
                 break;                 // И сразу останавливаем луч
             }
