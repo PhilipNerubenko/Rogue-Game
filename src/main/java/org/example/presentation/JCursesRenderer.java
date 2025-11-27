@@ -20,6 +20,7 @@ public class JCursesRenderer implements Renderer {
     private final int height;
     private final CharColor defaultColor;
     private static final int MAP_OFFSET_X = GameConstants.Map.MAP_OFFSET_X;
+    private static final int MAP_OFFSET_Y = GameConstants.Map.MAP_OFFSET_Y;
 
     public JCursesRenderer() {
         this.width = GameConstants.Map.WIDTH;
@@ -39,7 +40,7 @@ public class JCursesRenderer implements Renderer {
         Toolkit.printString(
                 String.valueOf(symbol),
                 x + MAP_OFFSET_X,
-                y,
+                y + MAP_OFFSET_Y ,
                 new CharColor(CharColor.BLACK, (short) color)
         );
     }
@@ -49,7 +50,7 @@ public class JCursesRenderer implements Renderer {
         Toolkit.printString(
                 text,
                 x + MAP_OFFSET_X,
-                y,
+                y + MAP_OFFSET_Y,
                 new CharColor(CharColor.BLACK, (short) color)
         );
     }

@@ -41,6 +41,7 @@ public class FogOfWarService {
         // 1. Определяем текущую комнату
         currentRoom = levelGenerator.getRoomAt(playerX, playerY);
 
+
         // 2. ЕСЛИ ИГРОК В КОМНАТЕ
         if (currentRoom != null) {
             for (int x = currentRoom.getX1(); x <= currentRoom.getX2(); x++) {
@@ -51,6 +52,7 @@ public class FogOfWarService {
                 }
             }
             exploredRooms.add(currentRoom);
+
         }
 
         // 3. RAY CASTING из позиции игрока (для коридоров и дверей)
@@ -75,8 +77,8 @@ public class FogOfWarService {
         double length = Math.sqrt(dx * dx + dy * dy);
         if (length == 0) return;
 
-        double stepX = dx / length;
-        double stepY = dy / length;
+        double stepX = dx / length ;
+        double stepY = dy / length ;
 
         boolean hitWall = false;
 
@@ -90,31 +92,41 @@ public class FogOfWarService {
             // Проверяем границы
             if (intX < 0 || intX >= map[0].length || intY < 0 || intY >= map.length) break;
 
-
-            // Если луч встретил стену — больше не идём
-           // if (hitWall) break;
             // Если мы вне комнаты луч идет только по '#'
             char cell = map[intY][intX];
             Position pos = new Position(intX, intY);
 
-            if (cell == '#' )visibleCells.add(pos);
-            // если луч натыкается на стену, или на землю
-            if (cell == ' ' || cell == '|' || cell == '~' || levelGenerator.getRoomAt(intX, intY) == null)break;
+            // Если игрок в комнате и Дверь не
+
+            // Игрок в комнате
+            if (levelGenerator.getRoomAt(startX, startY) != null) {
+                if ( cell == '|' || cell == '~' || cell == ' ' ){
+                    break;
+                } else{
+                    exploredCells.add(pos);
+                    visibleCells.add(pos);
+                }
 
 
+            } else {
 
+                if (cell == '#' ) {
+                    exploredCells.add(pos);
+                    visibleCells.add(pos);
 
-
-            // Добавляем клетку в видимые
-            visibleCells.add(pos);
-
-            // Если это стена  из нутри— запоминаем, чтобы остановить луч
-
-
-            if (cell == '|' || cell == '~'  ) {
-                visibleCells.add(pos); // Добавляем саму стену
-                break;                 // И сразу останавливаем луч
+                    continue;
+                }
+                if (cell == ' ' || cell == '|' || cell == '~' )break;
             }
+
+
+
+
+
+
+
+
+
 
             // Если дверь — заглядываем в комнату и останавливаемся
             if (cell == '+') {
@@ -123,15 +135,6 @@ public class FogOfWarService {
                 if (adjacentRoom != null && adjacentRoom != currentRoom) {
                     addVisibleRoomInterior(intX, intY, stepX, stepY, adjacentRoom);
 
-//                    // 🔥 ДОБАВЛЯЕМ СТЕНЫ призрачной комнаты
-//                    for (int wx = adjacentRoom.getX1(); wx <= adjacentRoom.getX2(); wx++) {
-//                        exploredCells.add(new Position(wx, adjacentRoom.getY1())); // верх
-//                        exploredCells.add(new Position(wx, adjacentRoom.getY2())); // низ
-//                    }
-//                    for (int wy = adjacentRoom.getY1(); wy <= adjacentRoom.getY2(); wy++) {
-//                        exploredCells.add(new Position(adjacentRoom.getX1(), wy)); // лево
-//                        exploredCells.add(new Position(adjacentRoom.getX2(), wy)); // право
-//                    }
                 }
                 break;
             }
