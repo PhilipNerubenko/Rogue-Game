@@ -34,6 +34,8 @@ public class App {
         CharColor bg = new CharColor(CharColor.BLACK, CharColor.BLACK);
         CharColor playerColor = new CharColor(CharColor.BLACK, CharColor.YELLOW);
         CharColor hintColor = new CharColor(CharColor.CYAN, CharColor.BLACK);
+        CharColor attackColor = new CharColor(CharColor.RED, CharColor.BLACK);
+        CharColor statusColor = new CharColor(CharColor.YELLOW, CharColor.BLACK);
 
         // Базовый игрок
         org.example.domain.entity.Character player =
@@ -68,7 +70,9 @@ public class App {
 
         char symbolUnderPlayer = asciiMap[playerY][playerX];
 
-        Toolkit.printString("Use arrows to move, ESC to exit", 3, 29, hintColor);
+        printLine(3, 29, "WASD | . rest | ESC | h/j/k/e use | 1-9 choose (wep 0-9, 0 off)", hintColor, 80);
+
+        printLine(3, 30, "HP: " + player.getHealth() + "/" + player.getMaximumHealth(), statusColor, 30);
 
         while (running) {
             // Рисуем игрока
@@ -82,7 +86,7 @@ public class App {
                 character = ch.getCharacter();
             } catch (RuntimeException e) {
                 // Это стрелка или другая спец-клавиша — просто игнорируем
-                continue;
+                character = 0;
             }
 
             // Затираем старое положение игрока (возвращаем '.')
@@ -90,61 +94,103 @@ public class App {
 
             int newX = playerX, newY = playerY;
             // Обработка движения
-            // 1. Проверяем ESC по коду (до всего остального)
+            boolean playerActed = false; // Флаг: сделал ли игрок действие (тратит время)
+
+            // 1. Проверяем ESC
             if (ch.getCode() == 27) {
                 running = false;
                 continue;
             }
 
-            // 2. Игнорируем спец-клавиши (стрелки, F1-F12 и т.д.)
-            if (character == 0) {
-                continue; // Это не буква, игнорируем
-            }
+            // 2. Обрабатываем все валидные действия
             switch (Character.toLowerCase(character)) {
-                case GameConstants.control.KEY_W:
-                    newY--;
-                    break;
-                case GameConstants.control.KEY_S:
-                    newY++;
-                    break;
-                case GameConstants.control.KEY_A:
+                case 'a': // left
                     newX--;
+                    playerActed = true;
                     break;
-                case GameConstants.control.KEY_D:
+
+                case 'd': // right
                     newX++;
+                    playerActed = true;
+                    break;
+
+                case 'w': // up
+                    newY--;
+                    playerActed = true;
+                    break;
+
+                case 's': // down
+                    newY++;
+                    playerActed = true;
+                    break;
+                case '.': // rest (пропустить ход)
+                case ' ':
+                    playerActed = true;
                     break;
                 default:
-                    continue;
+                    // Невалидная клавиша — не тратим время
+                    break;
             }
 
-            if (!isValidMove(newX, newY, asciiMap)) continue;
-
-            Enemy enemyAtPosition = getEnemyAt(newX, newY);
-            if (enemyAtPosition != null) {
-                // Атакуем врага
-                attackEnemy(enemyAtPosition, player);
-                if (enemyAtPosition.getHealth() <= 0) {
-                    removeEnemy(enemyAtPosition, asciiMap);
+            // 3. Если игрок сделал действие — обрабатываем
+            if (playerActed) {
+                // Проверяем валидность перемещения
+                if (newX != playerX || newY != playerY) {
+                    if (!isValidMove(newX, newY, asciiMap)) {
+                        // Невалидный ход — отменяем
+                        newX = playerX;
+                        newY = playerY;
+                    }
                 }
-                continue; // Ход завершен
-            } else {
-                // Двигаем игрока
-                playerX = newX;
-                playerY = newY;
-                symbolUnderPlayer = asciiMap[playerY][playerX];
-            }
 
-//                moveEnemies(playerX, playerY, asciiMap);
-            moveEnemiesOriginal(playerX, playerY, asciiMap, levelGenerator.getRooms());
-            updateEnemyEffects(playerX, playerY);
+                // Проверяем атаку
+                Enemy enemyAtPosition = getEnemyAt(newX, newY);
+                if (enemyAtPosition != null) {
+                    attackEnemy(enemyAtPosition, player);
+                    if (enemyAtPosition.getHealth() <= 0) {
+                        removeEnemy(enemyAtPosition, asciiMap);
+                    }
+                } else if (newX != playerX || newY != playerY) {
+                    // Перемещаемся только если не атаковали
+                    playerX = newX;
+                    playerY = newY;
+                    symbolUnderPlayer = asciiMap[playerY][playerX];
+                }
+
+                // 4. Ход врагов (всегда после действия игрока)
+                moveEnemiesOriginal(playerX, playerY, player, asciiMap, levelGenerator.getRooms());
+                updateEnemyEffects(playerX, playerY);
                 clearEnemyPositions(asciiMap);
                 drawEnemies();
+
+                // Обновляем HP
+                Toolkit.printString("HP: " + player.getHealth() + "/" + player.getMaximumHealth() + "    ", 3, 30, statusColor);
+            }
+
+            // 5. Проверка смерти игрока
+            if (player.getHealth() <= 0) {
+                printLine(3, 31, "YOU DIED! Press ESC to exit", attackColor, 80);
+                // Ждем ESC
+                while (true) {
+                    InputChar exitCh = Toolkit.readCharacter();
+                    if (exitCh.getCode() == 27) {
+                        running = false;
+                        break;
+                    }
+                }
+            }
         }
 
         Toolkit.shutdown();
         System.out.println("\nProgram finished normally.");
         System.out.print("\033[?25h");
+    }
 
+    private static void printLine(int x, int y, String text, CharColor color, int maxLength) {
+        // Очистка строки пробелами
+        Toolkit.printString(" ".repeat(maxLength), x, y, color);
+        // Печать нового текста
+        Toolkit.printString(text, x, y, color);
     }
 
     private static void clearEnemyPositions(char[][] asciiMap) {
@@ -153,16 +199,6 @@ public class App {
                     enemy.getX() + 3, enemy.getY(),
                     new CharColor(CharColor.BLACK, CharColor.WHITE));
         }
-    }
-
-    private static Room getRoomByPosition(int x, int y, List<Room> rooms) {
-        for (Room room : rooms) {
-            if (x >= room.getX1() && x <= room.getX2() &&
-                    y >= room.getY1() && y <= room.getY2()) {
-                return room;
-            }
-        }
-        return null;
     }
 
     private static boolean canSeePlayer(int startX, int startY, int targetX, int targetY, char[][] map) {
@@ -236,27 +272,29 @@ public class App {
     }
 
     private static void attackEnemy(Enemy enemy, org.example.domain.entity.Character player) {
+        CharColor attackColor = new CharColor(CharColor.YELLOW, CharColor.BLACK); // Цвет можно вынести глобально, если уже есть
+
+        // Проверка промаха
         if (!isHit(player.getAgility(), enemy.getAgility())) {
-            Toolkit.printString("You missed!                ", 3, 28,
-                    new CharColor(CharColor.YELLOW, CharColor.BLACK));
+            printLine(3, 27, "You missed!", attackColor, 80);
             return;
         }
 
         // Способность: первый удар промах
         if (enemy.hasAbility(Enemy.ABILITY_FIRST_MISS)) {
-            Toolkit.printString("First attack on vampire misses!                ", 3, 28,
-                    new CharColor(CharColor.YELLOW, CharColor.BLACK));
+            printLine(3, 27, "First attack on vampire misses!", attackColor, 80);
             enemy.removeAbility(Enemy.ABILITY_FIRST_MISS);
             return;
         }
 
+        // Наносим урон
         int damage = Math.max(1, player.getStrength());
         enemy.setHealth(enemy.getHealth() - damage);
 
         String msg = "You dealt " + damage + " dmg to " + enemy.getType();
         if (enemy.getHealth() <= 0) msg += " - KILLED!";
-        Toolkit.printString(msg + "                ", 3, 28,
-                new CharColor(CharColor.YELLOW, CharColor.BLACK));
+
+        printLine(3, 27, msg, attackColor, 80);
     }
 
     private static void removeEnemy(Enemy enemy, char[][] asciiMap) {
@@ -316,9 +354,20 @@ public class App {
         }
     }
 
-    private static void moveEnemiesOriginal(int playerX, int playerY, char[][] asciiMap, List<Room> rooms) {
+    private static void moveEnemiesOriginal(int playerX, int playerY,  org.example.domain.entity.Character player, char[][] asciiMap, List<Room> rooms) {
         for (Enemy enemy : enemies) {
             if (enemy.getHealth() <= 0) continue;
+
+            boolean canAttack =
+                    (enemy.getX() == playerX && enemy.getY() == playerY - 1) ||
+                            (enemy.getX() == playerX && enemy.getY() == playerY + 1) ||
+                            (enemy.getX() == playerX - 1 && enemy.getY() == playerY) ||
+                            (enemy.getX() == playerX + 1 && enemy.getY() == playerY);
+
+            if (canAttack) {
+                attackPlayer(enemy, player);
+                continue;
+            }
 
             int dx = playerX - enemy.getX();
             int dy = playerY - enemy.getY();
@@ -330,7 +379,30 @@ public class App {
             } else {
                 moveEnemyWander(enemy, asciiMap);
             }
+
+            if (enemy.getX() == playerX && enemy.getY() == playerY) {
+                attackPlayer(enemy, player);
+            }
         }
+    }
+
+    private static void attackPlayer(Enemy enemy, org.example.domain.entity.Character player) {
+        CharColor attackColor = new CharColor(CharColor.YELLOW, CharColor.BLACK); // можно вынести глобально
+
+        // Проверка промаха
+        if (!isHit(enemy.getAgility(), player.getAgility())) {
+            printLine(3, 28, enemy.getType() + " missed!", attackColor, 80);
+            return;
+        }
+
+        // Наносим урон
+        int damage = Math.max(1, enemy.getStrength());
+        player.setHealth(player.getHealth() - damage);
+
+        String msg = enemy.getType() + " dealt " + damage + " dmg to you!";
+        if (player.getHealth() <= 0) msg += " - YOU DIED!";
+
+        printLine(3, 28, msg, attackColor, 80);
     }
 
     private static void moveEnemyWander(Enemy enemy, char[][] asciiMap) {
@@ -467,9 +539,7 @@ public class App {
         if (path != null && path.size() > 1) {
             // Первый шаг на пути к игроку
             int[] step = path.get(1);
-            Toolkit.printString(String.valueOf(asciiMap[enemy.getY()][enemy.getX()]),
-                    enemy.getX() + 3, enemy.getY(),
-                    new CharColor(CharColor.BLACK, CharColor.WHITE));
+            clearEnemyPosition(enemy, asciiMap);
             enemy.setX(step[0]);
             enemy.setY(step[1]);
         } else {
