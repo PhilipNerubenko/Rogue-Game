@@ -33,7 +33,7 @@ public class App {
             initializer.initialize();
 
             GameLoop gameLoop = new GameLoop(initializer);
-            gameLoop.start();
+           gameLoop.start();
 
         } catch (Exception e) {
             System.err.println("Критическая ошибка: " + e.getMessage());

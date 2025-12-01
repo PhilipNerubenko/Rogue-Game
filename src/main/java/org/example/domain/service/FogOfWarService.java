@@ -81,6 +81,7 @@ public class FogOfWarService {
         double stepY = dy / length ;
 
         boolean hitWall = false;
+        Room playerInRoom = levelGenerator.getRoomAt(startX, startY);
 
         for (int i = 0; i < VISION_RADIUS; i++) {
             x += stepX;
@@ -92,52 +93,52 @@ public class FogOfWarService {
             // Проверяем границы
             if (intX < 0 || intX >= map[0].length || intY < 0 || intY >= map.length) break;
 
-            // Если мы вне комнаты луч идет только по '#'
+
             char cell = map[intY][intX];
-            Position pos = new Position(intX, intY);
+            Position pos = new Position(intX, intY);    //текущая позиция луча бегущего по направлению
 
-            // Если игрок в комнате и Дверь не
+            // Если игрок в комнате Она видна всегда и луч останавливается  на стенах
 
-            // Игрок в комнате
-            if (levelGenerator.getRoomAt(startX, startY) != null) {
-                if ( cell == '|' || cell == '~' || cell == ' ' ){
+            if (playerInRoom != null) {
+                if ( cell == '|' || cell == '~' || cell == ' '){
                     break;
-                } else{
-                    exploredCells.add(pos);
-                    visibleCells.add(pos);
                 }
-
-
-            } else {
-
-                if (cell == '#' ) {
-                    exploredCells.add(pos);
+                if ( cell == '+' || cell == '#' ){
                     visibleCells.add(pos);
-
                     continue;
                 }
-                if (cell == ' ' || cell == '|' || cell == '~' )break;
+
             }
 
 
+            // Если игрок в коридоре  луч останавливается на стенах и земле
 
-
-
-
-
-
-
-
-            // Если дверь — заглядываем в комнату и останавливаемся
-            if (cell == '+') {
-                visibleCells.add(pos); // ✅ Добавляем саму дверь
-                Room adjacentRoom = findAdjacentRoom(intX, intY);
-                if (adjacentRoom != null && adjacentRoom != currentRoom) {
-                    addVisibleRoomInterior(intX, intY, stepX, stepY, adjacentRoom);
-
+            if (playerInRoom == null) {
+                if ( cell == '|' || cell == '~' || cell == ' ' ){
+                    break;
                 }
-                break;
+                if ( cell == '+' || cell == '#' ){
+                    visibleCells.add(pos);
+                }
+
+
+                // Если дверь — заглядываем в комнату и останавливаемся
+                if (cell == '+') {
+                    visibleCells.add(pos); // ✅ Добавляем саму дверь
+                    Room adjacentRoom = findAdjacentRoom(intX, intY);
+                    if (adjacentRoom != null && adjacentRoom != currentRoom) {
+                        addVisibleRoomInterior(intX, intY, stepX, stepY, adjacentRoom);
+
+                    }
+                    break;
+                }
+
+
             }
+
+
+
+
         }
     }
 

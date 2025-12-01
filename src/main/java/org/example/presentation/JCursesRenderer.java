@@ -104,7 +104,8 @@ public class JCursesRenderer implements Renderer {
         return switch (tile) {
             case '.' -> CharColor.CYAN;           // Пол — голубой
             case '|', '~' -> CharColor.WHITE;    // Стены — ЯРКО-БЕЛЫЕ
-            case '#' -> CharColor.YELLOW;        // Коридор — жёлтый
+            case '#' -> CharColor.WHITE;        // Коридор — белый для проверки
+           // case '#' -> CharColor.YELLOW;        // Коридор — жёлтый
             case '+' -> CharColor.MAGENTA;       // Дверь — пурпурная
             case '$' -> CharColor.GREEN;         // Сокровище — зелёное
             default -> CharColor.WHITE;

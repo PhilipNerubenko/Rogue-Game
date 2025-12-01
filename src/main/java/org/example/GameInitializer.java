@@ -112,7 +112,7 @@ public class GameInitializer {
         // Очистка экрана
         Toolkit.clearScreen(new CharColor(CharColor.BLACK, CharColor.BLACK));
 
-        fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
+       // fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
 
         // Отрисовка карты с туманом
         renderer.drawMapWithFog(

@@ -77,7 +77,7 @@ public class GameLoop {
         System.out.print("\033[?25l");
 
         // 🔥 КРИТИЧЕСКО: первичное обновление тумана перед стартом
-        fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
+       // fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
 
         boolean running = true;
 
