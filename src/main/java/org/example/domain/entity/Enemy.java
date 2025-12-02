@@ -19,6 +19,7 @@ public class Enemy {
     private int specialAbility;
     private boolean isInvisible;
     private int restTurns; // Для огра
+//    private boolean willCounterAttack = false; // для огра
 
     // Битовые маски способностей
     public static final int ABILITY_VAMPIRE_DRAIN = 1;    // Вампир: поглощает макс. HP
@@ -163,4 +164,9 @@ public class Enemy {
     public void removeAbility(int abilityMask) {
         specialAbility &= ~abilityMask;
     }
+
+//    public boolean isWillCounterAttack() { return willCounterAttack; }
+//    public void setWillCounterAttack(boolean willCounterAttack) {
+//        this.willCounterAttack = willCounterAttack;
+//    }
 }

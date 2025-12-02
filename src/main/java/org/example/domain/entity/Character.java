@@ -7,6 +7,7 @@ public class Character {
     private int health;
     private int agility;
     private int strength;
+    private boolean sleepTurns;
     List<Item> backpack;
 
     public Character(int maximumHealth, int health, int agility, int strength, List<Item> backpack) {
@@ -15,6 +16,7 @@ public class Character {
         this.agility = agility;
         this.strength = strength;
         this.backpack = backpack;
+        this.sleepTurns = false;
     }
 
     public int getMaximumHealth() {
@@ -55,5 +57,13 @@ public class Character {
 
     public void setBackpack(List<Item> backpack) {
         this.backpack = backpack;
+    }
+
+    public boolean isSleepTurns() {
+        return sleepTurns;
+    }
+
+    public void setSleepTurns(boolean sleepTurns) {
+        this.sleepTurns = sleepTurns;
     }
 }
