@@ -3,7 +3,7 @@ package org.example.domain.entity;
 import java.awt.*;
 
 public class Enemy {
-    private String type;
+    private char type;
     private int health;
     private int agility;
     private int speed;
@@ -19,7 +19,6 @@ public class Enemy {
     private int specialAbility;
     private boolean isInvisible;
     private int restTurns; // Для огра
-//    private boolean willCounterAttack = false; // для огра
 
     // Битовые маски способностей
     public static final int ABILITY_VAMPIRE_DRAIN = 1;    // Вампир: поглощает макс. HP
@@ -31,7 +30,7 @@ public class Enemy {
     public static final int ABILITY_SNAKE_SLEEP = 64;     // Змеиный маг: сон игрока
     public static final int ABILITY_DIAGONAL_MOVE = 128;  // Змеиный маг: диагональное движение
 
-    public Enemy(String type, int health, int agility, int speed, int strength, int hostility, Color color, int specialAbility) {
+    public Enemy(char type, int health, int agility, int speed, int strength, int hostility, Color color, int specialAbility) {
         this.type = type;
         this.health = health;
         this.agility = agility;
@@ -44,11 +43,11 @@ public class Enemy {
         this.restTurns = 0;
     }
 
-    public String getType() {
+    public char getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(char type) {
         this.type = type;
     }
 

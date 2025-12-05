@@ -13,19 +13,26 @@ import sun.misc.Signal;
 
 import java.util.*;
 
+import static org.example.config.GameConstants.Icons.*;
+import static org.example.config.GameConstants.Map.MAP_LEVEL;
+import static org.example.config.GameConstants.ProbabilitiesAndBalance.*;
+import static org.example.config.GameConstants.ScreenConfig.*;
+import static org.example.config.GameConstants.TextMessages.*;
+import static org.example.config.GameConstants.control.*;
+
 public class App {
     private static final List<Enemy> enemies = new ArrayList<>();
     private static List<Item> items = new ArrayList<>();
 
     public static void main(String[] args) {
         // Безопасное завершение при Ctrl+C
-        Signal.handle(new Signal("INT"), signal -> {
+        Signal.handle(new Signal(SIGINT_STRING), signal -> {
             Toolkit.shutdown();
-            System.out.println("\nTerminated via Ctrl+C");
+            System.out.println(TERMINATE);
             System.exit(0);
         });
 
-        System.out.print("\033[?25l");
+        System.out.print(HIDE_CURSOR);
         Toolkit.init();
 
         boolean running = true;
@@ -48,11 +55,11 @@ public class App {
         Toolkit.clearScreen(bg);
 
         LevelGenerator levelGenerator = new LevelGenerator();
-        char[][] asciiMap = levelGenerator.createAsciiMap(1);
+        char[][] asciiMap = levelGenerator.createAsciiMap(MAP_LEVEL);
         // Нарисуем карту — MokMap
         for (int i = 0; i < GameConstants.Map.HEIGHT; i++) {
             String element = new String(asciiMap[i]);
-            Toolkit.printString(element, 3, i, new CharColor(CharColor.BLACK, CharColor.WHITE));
+            Toolkit.printString(element, MAP_OFFSET_X, i, new CharColor(CharColor.BLACK, CharColor.WHITE));
         }
 
         Room startRoom = levelGenerator.getRooms().getFirst();
@@ -61,52 +68,52 @@ public class App {
         int playerY = startRoom.getY1() + 1 + levelGenerator.getRand().nextInt(startRoom.getHeight() - 2);
 
         createEnemies(levelGenerator, player);
-        updateEnemyEffects(playerX, playerY);
+        updateAllGhostEffects(playerX, playerY);
         for (Enemy enemy : enemies) {
             Toolkit.printString(String.valueOf(asciiMap[enemy.getY()][enemy.getX()]),
-                    enemy.getX() + 3, enemy.getY(),
+                    enemy.getX() + MAP_OFFSET_X, enemy.getY(),
                     new CharColor(CharColor.BLACK, CharColor.WHITE));
         }
         drawEnemies();
 
         char symbolUnderPlayer = asciiMap[playerY][playerX];
 
-        printLine(3, 29, "WASD | . rest | ESC | h/j/k/e use | 1-9 choose (wep 0-9, 0 off)", hintColor, 80);
+        printLine(MESSAGE_LINE_3, CONTROL, hintColor, MAP_WIDTH);
 
-        printLine(3, 30, "HP: " + player.getHealth() + "/" + player.getMaximumHealth(), statusColor, 30);
+        printLine(STATUS_LINE_Y, "HP: " + player.getHealth() + "/" + player.getMaximumHealth(), statusColor, 30);
 
         while (running) {
             // Рисуем игрока
-            Toolkit.printString(String.valueOf(GameConstants.Icons.PLAYER), playerX + 3, playerY, playerColor);
+            Toolkit.printString(String.valueOf(GameConstants.Icons.PLAYER), playerX + MAP_OFFSET_X, playerY, playerColor);
 
             // Проверяем, спит ли игрок
             if (player.isSleepTurns()) {
                 // Пропускаем ход спящего игрока
                 String sleepMsg = "You are asleep! (" + player.isSleepTurns() + " turns left)";
                 player.setSleepTurns(false);
-                printLine(3, 26, sleepMsg, sleepColor, 80);
+                printLine(UI_START_Y, sleepMsg, sleepColor, MAP_WIDTH);
 
                 // Ждем подтверждения (любую клавишу)
                 Toolkit.readCharacter();
 
                 // Затираем старое положение игрока
-                Toolkit.printString(String.valueOf(symbolUnderPlayer), playerX + 3, playerY,
+                Toolkit.printString(String.valueOf(symbolUnderPlayer), playerX + MAP_OFFSET_X, playerY,
                         new CharColor(CharColor.BLACK, CharColor.WHITE));
 
                 // Ход врагов (игрок пропускает ход)
-                moveEnemiesOriginal(playerX, playerY, player, asciiMap, levelGenerator.getRooms());
-                clearEnemyPositions(asciiMap);
+                switchMoveEnemiesPattern(playerX, playerY, player, asciiMap, levelGenerator.getRooms());
+                clearAllEnemyPositions(asciiMap);
                 drawEnemies();
 
                 // Обновляем HP
                 Toolkit.printString("HP: " + player.getHealth() + "/" + player.getMaximumHealth() + "    ",
-                        3, 30, statusColor);
+                        MAP_OFFSET_X, STATUS_LINE_Y, statusColor);
                 if (player.getHealth() <= 0) {
-                    printLine(3, 31, "YOU DIED! Press ESC to exit", attackColor, 80);
+                    printLine(DEATH_MESSAGE_Y, DIED, attackColor, MAP_WIDTH);
                     // Ждем ESC
                     while (true) {
                         InputChar exitCh = Toolkit.readCharacter();
-                        if (exitCh.getCode() == 27) {
+                        if (exitCh.getCode() == ESC_KEY_CODE) {
                             running = false;
                             break;
                         }
@@ -118,9 +125,9 @@ public class App {
             // Читаем клавишу
             InputChar ch = Toolkit.readCharacter();
             // очищение 26-28 строки терминала
-            printLine(3, 26, "", bg, 80);
-            printLine(3, 27, "", bg, 80);
-            printLine(3, 28, "", bg, 80);
+            printLine(UI_START_Y, "", bg, MAP_WIDTH);
+            printLine(MESSAGE_LINE_1, "", bg, MAP_WIDTH);
+            printLine(MESSAGE_LINE_2, "", bg, MAP_WIDTH);
             // Пробуем получить символ, игнорируя спец-клавиши
             char character;
             try {
@@ -131,41 +138,41 @@ public class App {
             }
 
             // Затираем старое положение игрока (возвращаем '.')
-            Toolkit.printString(String.valueOf(symbolUnderPlayer), playerX + 3, playerY, new CharColor(CharColor.BLACK, CharColor.WHITE));
+            Toolkit.printString(String.valueOf(symbolUnderPlayer), playerX + MAP_OFFSET_X, playerY, new CharColor(CharColor.BLACK, CharColor.WHITE));
 
             int newX = playerX, newY = playerY;
             // Обработка движения
             boolean playerActed = false; // Флаг: сделал ли игрок действие (тратит время)
 
             // 1. Проверяем ESC
-            if (ch.getCode() == 27) {
+            if (ch.getCode() == ESC_KEY_CODE) {
                 running = false;
                 continue;
             }
 
             // 2. Обрабатываем все валидные действия
             switch (Character.toLowerCase(character)) {
-                case 'a': // left
+                case KEY_A: // left
                     newX--;
                     playerActed = true;
                     break;
 
-                case 'd': // right
+                case KEY_D: // right
                     newX++;
                     playerActed = true;
                     break;
 
-                case 'w': // up
+                case KEY_W: // up
                     newY--;
                     playerActed = true;
                     break;
 
-                case 's': // down
+                case KEY_S: // down
                     newY++;
                     playerActed = true;
                     break;
-                case '.': // rest (пропустить ход)
-                case ' ':
+                case REST1: // rest (пропустить ход)
+                case REST2:
                     playerActed = true;
                     break;
                 default:
@@ -199,21 +206,21 @@ public class App {
                 }
 
                 // 4. Ход врагов (всегда после действия игрока)
-                moveEnemiesOriginal(playerX, playerY, player, asciiMap, levelGenerator.getRooms());
-                clearEnemyPositions(asciiMap);
+                switchMoveEnemiesPattern(playerX, playerY, player, asciiMap, levelGenerator.getRooms());
+                clearAllEnemyPositions(asciiMap);
                 drawEnemies();
 
                 // Обновляем HP
-                Toolkit.printString("HP: " + player.getHealth() + "/" + player.getMaximumHealth() + "    ", 3, 30, statusColor);
+                Toolkit.printString("HP: " + player.getHealth() + "/" + player.getMaximumHealth() + "    ", MAP_OFFSET_X, STATUS_LINE_Y, statusColor);
             }
 
             // 5. Проверка смерти игрока
             if (player.getHealth() <= 0) {
-                printLine(3, 31, "YOU DIED! Press ESC to exit", attackColor, 80);
+                printLine(DEATH_MESSAGE_Y, DIED, attackColor, MAP_WIDTH);
                 // Ждем ESC
                 while (true) {
                     InputChar exitCh = Toolkit.readCharacter();
-                    if (exitCh.getCode() == 27) {
+                    if (exitCh.getCode() == ESC_KEY_CODE) {
                         running = false;
                         break;
                     }
@@ -223,27 +230,27 @@ public class App {
 
         Toolkit.shutdown();
         System.out.println("\nProgram finished normally.");
-        System.out.print("\033[?25h");
+        System.out.print(SHOW_CURSOR);
     }
 
-    private static void printLine(int x, int y, String text, CharColor color, int maxLength) {
+    private static void printLine(int y, String text, CharColor color, int maxLength) {
         // Очистка строки пробелами
-        Toolkit.printString(" ".repeat(maxLength), x, y, color);
+        Toolkit.printString(" ".repeat(maxLength), GameConstants.ScreenConfig.MAP_OFFSET_X, y, color);
         // Печать нового текста
-        Toolkit.printString(text, x, y, color);
+        Toolkit.printString(text, GameConstants.ScreenConfig.MAP_OFFSET_X, y, color);
     }
 
-    private static void clearEnemyPositions(char[][] asciiMap) {
+    private static void clearAllEnemyPositions(char[][] asciiMap) {
         for (Enemy enemy : enemies) {
             Toolkit.printString(String.valueOf(asciiMap[enemy.getY()][enemy.getX()]),
-                    enemy.getX() + 3, enemy.getY(),
+                    enemy.getX() + MAP_OFFSET_X, enemy.getY(),
                     new CharColor(CharColor.BLACK, CharColor.WHITE));
         }
     }
 
     private static void clearEnemyPosition(Enemy enemy, char[][] map) {
         Toolkit.printString(String.valueOf(map[enemy.getY()][enemy.getX()]),
-                enemy.getX() + 3, enemy.getY(),
+                enemy.getX() + MAP_OFFSET_X, enemy.getY(),
                 new CharColor(CharColor.BLACK, CharColor.WHITE));
     }
 
@@ -270,26 +277,25 @@ public class App {
     private static boolean isValidMove(int x, int y, char[][] map) {
         return x >= 0 && x < GameConstants.Map.WIDTH &&
                 y >= 0 && y < GameConstants.Map.HEIGHT &&
-                map[y][x] != '|' && map[y][x] != '~' && map[y][x] != ' ';
+                map[y][x] != W_WALL && map[y][x] != H_WALL && map[y][x] != EMPTINESS;
     }
 
     private static void drawEnemies() {
         for (Enemy enemy : enemies) {
             if (!enemy.isInvisible()) {
                 CharColor color = new CharColor(CharColor.BLACK, (short) getEnemyColor(enemy));
-                Toolkit.printString(enemy.getType(),
-                        enemy.getX() + 3, enemy.getY(), color);
+                Toolkit.printString(String.valueOf(enemy.getType()), enemy.getX() + MAP_OFFSET_X, enemy.getY(), color);
             }
         }
     }
 
     private static int getEnemyColor(Enemy enemy) {
         return switch (enemy.getType()) {
-            case "z" -> CharColor.GREEN;
-            case "v" -> CharColor.RED;
-            case "g" -> CharColor.WHITE;
-            case "O" -> CharColor.YELLOW;
-            case "s" -> CharColor.CYAN;
+            case ZOMBIE -> CharColor.GREEN;
+            case VAMPIRE -> CharColor.RED;
+            case GHOST -> CharColor.WHITE;
+            case OGRE -> CharColor.YELLOW;
+            case SNAKE_MAGE -> CharColor.CYAN;
             default -> CharColor.WHITE;
         };
     }
@@ -306,7 +312,7 @@ public class App {
     private static boolean isHit(int attackerAgility, int defenderAgility) {
         int baseChance = 50;
         int agilityDelta = attackerAgility - defenderAgility;
-        int finalChance = Math.max(10, Math.min(90, baseChance + agilityDelta * 5));
+        int finalChance = Math.max(MIN_HIT_CHANCE, Math.min(MAX_HIT_CHANCE, baseChance + agilityDelta * AGILITY_MULTIPLIER));
         Random rand = new Random();
         return rand.nextInt(100) < finalChance;
     }
@@ -316,13 +322,13 @@ public class App {
 
         // Проверка промаха
         if (!isHit(player.getAgility(), enemy.getAgility())) {
-            printLine(3, 27, "You missed!", attackColor, 80);
+            printLine(MESSAGE_LINE_1, MISSED, attackColor, MAP_WIDTH);
             return;
         }
 
         // Способность: первый удар промах
         if (enemy.hasAbility(Enemy.ABILITY_FIRST_MISS)) {
-            printLine(3, 27, "First attack on vampire misses!", attackColor, 80);
+            printLine(MESSAGE_LINE_1, MISSED_VAMPIRE, attackColor, MAP_WIDTH);
             enemy.removeAbility(Enemy.ABILITY_FIRST_MISS);
             return;
         }
@@ -334,18 +340,18 @@ public class App {
         String msg = "You dealt " + damage + " dmg to " + enemy.getType();
         if (enemy.getHealth() <= 0) msg += " - KILLED!";
 
-        printLine(3, 27, msg, attackColor, 80);
+        printLine(MESSAGE_LINE_1, msg, attackColor, MAP_WIDTH);
     }
 
     private static void removeEnemy(Enemy enemy, char[][] asciiMap) {
         // Затираем врага символом пола
         Toolkit.printString(String.valueOf(asciiMap[enemy.getY()][enemy.getX()]),
-                enemy.getX() + 3, enemy.getY(),
+                enemy.getX() + MAP_OFFSET_X, enemy.getY(),
                 new CharColor(CharColor.BLACK, CharColor.WHITE));
         enemies.remove(enemy);
     }
 
-    private static void updateEnemyEffects(int playerX, int playerY) {
+    private static void updateAllGhostEffects(int playerX, int playerY) {
         Random rand = new Random();
 
         for (Enemy enemy : enemies) {
@@ -356,16 +362,16 @@ public class App {
 
                 // Если далеко от игрока, высокая вероятность невидимости
                 if (distance > enemy.getHostility()) {
-                    enemy.setInvisible(rand.nextInt(100) < 80); // 80% шанс
+                    enemy.setInvisible(rand.nextInt(100) < GHOST_INVISIBILITY_FAR_CHANCE); // 80% шанс
                 } else {
                     // Близко к игроку - реже невидимость
-                    enemy.setInvisible(rand.nextInt(100) < 20); // 20% шанс
+                    enemy.setInvisible(rand.nextInt(100) < GHOST_INVISIBILITY_NEAR_CHANCE); // 20% шанс
                 }
             }
         }
     }
 
-    private static void updateEnemyEffect(Enemy enemy, int playerX, int playerY) {
+    private static void updateGhostEffect(Enemy enemy, int playerX, int playerY) {
         Random rand = new Random();
 
             // Призрак: периодически становится невидимым
@@ -375,10 +381,10 @@ public class App {
 
                 // Если далеко от игрока, высокая вероятность невидимости
                 if (distance > enemy.getHostility()) {
-                    enemy.setInvisible(rand.nextInt(100) < 80); // 80% шанс
+                    enemy.setInvisible(rand.nextInt(100) < GHOST_INVISIBILITY_FAR_CHANCE); // 80% шанс
                 } else {
                     // Близко к игроку - реже невидимость
-                    enemy.setInvisible(rand.nextInt(100) < 20); // 20% шанс
+                    enemy.setInvisible(rand.nextInt(100) < GHOST_INVISIBILITY_NEAR_CHANCE); // 20% шанс
                 }
         }
     }
@@ -388,73 +394,52 @@ public class App {
         Random rand = levelGenerator.getRand();
 
         // Случайная плотность: 40-60% комнат с врагами
-        int roomsWithEnemies = (int)(rooms.size() * (0.4 + rand.nextDouble() * 0.2));
+        int totalRoomsWithEnemies = (int) Math.round(rooms.size() * (MIN_ENEMY_DENSITY + rand.nextDouble() * DENSITY_RANGE));
+        totalRoomsWithEnemies = Math.max(MIN_ROOMS_WITH_ENEMIES, totalRoomsWithEnemies); // минимум 1
 
         // Перемешиваем комнаты, чтобы выбрать случайные
         List<Room> shuffledRooms = new ArrayList<>(rooms);
         Collections.shuffle(shuffledRooms, rand);
 
-        for (int i = 0; i < roomsWithEnemies; i++) {
-            Room room = shuffledRooms.get(i);
+        int enemiesPlaced = 0;
 
-            // Пропускаем стартовую
-            if (room.isStartRoom()) {
-                continue;
-            }
+        for (Room room : shuffledRooms) {
+            if (enemiesPlaced >= totalRoomsWithEnemies) break;
 
-            // Случайная позиция внутри комнаты
-            int enemyX = room.getX1() + 1 + rand.nextInt(room.getWidth() - 2);
-            int enemyY = room.getY1() + 1 + rand.nextInt(room.getHeight() - 2);
+            // Пропускаем стартовую комнату
+            if (room.isStartRoom()) continue;
 
-            // Случайный тип врага (а не по порядку)
-            EnemyType randomType = EnemyType.values()[
-                    rand.nextInt(EnemyType.values().length)
-                    ];
-// TODO: Продумать уровень врага в зависимости от глубины
+            // Случайное количество врагов в комнате: 1–2 (можно изменить)
+//            int enemiesInRoom = 1 + rand.nextInt(2);
+            // временно выставляем по одному
+            int enemiesInRoom = 1;
+
+            for (int j = 0; j < enemiesInRoom && enemiesPlaced < totalRoomsWithEnemies; j++) {
+                int enemyX = room.getX1() + 1 + rand.nextInt(room.getWidth() - 2);
+                int enemyY = room.getY1() + 1 + rand.nextInt(room.getHeight() - 2);
+
+                EnemyType randomType = EnemyType.values()[rand.nextInt(EnemyType.values().length)];
+                // TODO: Продумать уровень врага в зависимости от глубины
 //            // Уровень врага зависит от глубины (roguelike прогрессия)
 //            int enemyLevel = 1 + rand.nextInt(levelDepth); // levelDepth — глобальная переменная
+                Enemy enemy = randomType.create(1);
+                enemy.setX(enemyX);
+                enemy.setY(enemyY);
 
-            Enemy enemy = randomType.create(1);
-            enemy.setX(enemyX);
-            enemy.setY(enemyY);
-            enemies.add(enemy);
+                enemies.add(enemy);
+                enemiesPlaced++;
+            }
         }
     }
 
-    private static void moveEnemiesOriginal(int playerX, int playerY, org.example.domain.entity.Character player,
+    private static void switchMoveEnemiesPattern(int playerX, int playerY, org.example.domain.entity.Character player,
                                             char[][] asciiMap, List<Room> rooms) {
         for (Enemy enemy : enemies) {
             if (enemy.getHealth() <= 0) continue;
 
-            // Огр отдыхает после атаки
-//            if (enemy.hasAbility(Enemy.ABILITY_OGRE_REST)) {
-//                if (enemy.getRestTurns() > 0) {
-//                    enemy.setRestTurns(enemy.getRestTurns() - 1);
-//                    printLine(3, 27, "Ogre is resting...", new CharColor(CharColor.YELLOW, CharColor.BLACK), 80);
-//
-//                    // Если отдых закончился, проверяем контратаку
-//                    if (enemy.getRestTurns() == 0 && enemy.isWillCounterAttack()) {
-//                        // Проверяем, рядом ли игрок для контратаки
-//                        boolean isAdjacent = Math.abs(playerX - enemy.getX()) <= 1 &&
-//                                Math.abs(playerY - enemy.getY()) <= 1;
-//                        if (isAdjacent) {
-//                            attackPlayer(enemy, player);
-//                        }
-//                    }
-//                    continue; // Огр не двигается во время отдыха
-//                }
-//            }
+            if (handleOgreRestTurn(playerX, playerY, player, enemy)) continue; // Огр не двигается в этот ход
 
-            boolean canAttack =
-                    (enemy.getX() == playerX && enemy.getY() == playerY - 1) ||
-                            (enemy.getX() == playerX && enemy.getY() == playerY + 1) ||
-                            (enemy.getX() == playerX - 1 && enemy.getY() == playerY) ||
-                            (enemy.getX() == playerX + 1 && enemy.getY() == playerY);
-
-            if (canAttack) {
-                attackPlayer(enemy, player);
-                continue;
-            }
+            if (tryAttackAdjacentPlayer(playerX, playerY, player, enemy)) continue;
 
             int dx = playerX - enemy.getX();
             int dy = playerY - enemy.getY();
@@ -468,83 +453,105 @@ public class App {
                 moveEnemyChase(enemy, playerX, playerY, asciiMap);
             } else {
                 if (enemy.hasAbility(Enemy.ABILITY_INVISIBLE)) {
-                    updateEnemyEffect(enemy, playerX, playerY);
+                    updateGhostEffect(enemy, playerX, playerY);
                 }
                 moveEnemyWander(enemy, asciiMap);
             }
         }
     }
 
-    private static void attackPlayer(Enemy enemy, org.example.domain.entity.Character player) {
+    private static boolean tryAttackAdjacentPlayer(int playerX, int playerY, org.example.domain.entity.Character player, Enemy enemy) {
+        boolean canAttack =
+                (enemy.getX() == playerX && enemy.getY() == playerY - 1) ||
+                        (enemy.getX() == playerX && enemy.getY() == playerY + 1) ||
+                        (enemy.getX() == playerX - 1 && enemy.getY() == playerY) ||
+                        (enemy.getX() == playerX + 1 && enemy.getY() == playerY);
+
+        if (canAttack) {
+            attackPlayer(enemy, player, false);
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean handleOgreRestTurn(int playerX, int playerY, org.example.domain.entity.Character player, Enemy enemy) {
+        if (enemy.hasAbility(Enemy.ABILITY_OGRE_REST) && enemy.getRestTurns() > 0) {
+            enemy.setRestTurns(enemy.getRestTurns() - 1);
+
+            // Проверяем: игрок рядом — контратака
+            boolean isAdjacent = (playerX == enemy.getX() && Math.abs(playerY - enemy.getY()) == 1) ||
+                    (playerY == enemy.getY() && Math.abs(playerX - enemy.getX()) == 1);
+
+            if (isAdjacent) {
+                attackPlayer(enemy, player, true); // true = гарантированная контратака
+            } else {
+                // Можно вывести сообщение, что огр отдыхает
+                printLine(MESSAGE_LINE_1, enemy.getType() + " is resting...", new CharColor(CharColor.YELLOW, CharColor.BLACK), MAP_WIDTH);
+            }
+
+            return true;
+        }
+        return false;
+    }
+
+    private static void attackPlayer(Enemy enemy, org.example.domain.entity.Character player, boolean guaranteed) {
         CharColor attackColor = new CharColor(CharColor.YELLOW, CharColor.BLACK);
 
-//        // Огр может контратаковать после отдыха (гарантированный удар)
-//        if (enemy.hasAbility(Enemy.ABILITY_OGRE_REST) && enemy.isWillCounterAttack()) {
-//            enemy.setWillCounterAttack(false);
-//            // Гарантированная контратака
-//            int damage = Math.max(1, enemy.getStrength());
-//            player.setHealth(player.getHealth() - damage);
-//
-//            printLine(3, 28, "Ogre counterattacks for " + damage + " dmg!", attackColor, 80);
-//            return;
-//        }
+        int damage = Math.max(1, enemy.getStrength());
 
-        // Проверка промаха
-        if (!isHit(enemy.getAgility(), player.getAgility())) {
-            printLine(3, 28, enemy.getType() + " missed!", attackColor, 80);
+        if (guaranteed) {
+            player.setHealth(player.getHealth() - damage);
+            printLine(MESSAGE_LINE_2, enemy.getType() + " COUNTERATTACKS for " + damage + " dmg!", attackColor, MAP_WIDTH);
             return;
         }
 
-        // Наносим урон
-        int damage = Math.max(1, enemy.getStrength());
-        player.setHealth(player.getHealth() - damage);
+        // Обычная атака с шансом промаха
+        if (!isHit(enemy.getAgility(), player.getAgility())) {
+            printLine(MESSAGE_LINE_2, enemy.getType() + " missed!", attackColor, MAP_WIDTH);
+            return;
+        }
 
-        // Особые способности врагов
+        player.setHealth(player.getHealth() - damage);
         StringBuilder message = new StringBuilder(enemy.getType() + " dealt " + damage + " dmg");
 
-        // Вампир: отнимает максимальное здоровье
+        // Ваши спец. способности...
         if (enemy.hasAbility(Enemy.ABILITY_VAMPIRE_DRAIN)) {
             int currentMaxHealth = player.getMaximumHealth();
             player.setMaximumHealth(currentMaxHealth - 1);
             message.append(", reduced your max HP to ").append(player.getMaximumHealth());
         }
 
-        // Змей-маг: шанс усыпить
-        if (enemy.hasAbility(Enemy.ABILITY_SNAKE_SLEEP) && new Random().nextInt(100) < 30) {
+        if (enemy.hasAbility(Enemy.ABILITY_SNAKE_SLEEP) && new Random().nextInt(100) < SNAKE_SLEEP_CHANCE) {
             player.setSleepTurns(true);
             message.append(", put you to sleep!");
         } else {
             message.append("!");
         }
 
-        // Огр: после атаки отдыхает один ход, затем гарантированно контратакует
-//        if (enemy.hasAbility(Enemy.ABILITY_OGRE_REST)) {
-//            enemy.setRestTurns(1); // Отдыхает один ход
-//            enemy.setWillCounterAttack(true); // Будет контратаковать после отдыха
-//            message.append(" (Ogre will rest and then counterattack!)");
-//        }
-
-        // Призрак: снимает невидимость после атаки
         if (enemy.hasAbility(Enemy.ABILITY_INVISIBLE)) {
             enemy.setInvisible(false);
         }
 
         if (player.getHealth() <= 0) message.append(" - YOU DIED!");
-        printLine(3, 28, message.toString(), attackColor, 80);
-    }
+        printLine(MESSAGE_LINE_2, message.toString(), attackColor, MAP_WIDTH);
 
-    private static void moveEnemyWander(Enemy enemy, char[][] asciiMap) {
-        String type = enemy.getType();
-
-        switch (type) {
-            case "z": moveZombie(enemy, asciiMap); break;
-            case "v": moveVampire(enemy, asciiMap); break;
-            case "g": moveGhost(enemy, asciiMap); break;
-            case "O": moveOgre(enemy, asciiMap); break;
-            case "s": moveSnakeMage(enemy, asciiMap); break;
+        // После удара огра — выставляем отдых
+        if (enemy.hasAbility(Enemy.ABILITY_OGRE_REST)) {
+            enemy.setRestTurns(OGRE_REST_DURATION); // отдых 1 ход
         }
     }
 
+    private static void moveEnemyWander(Enemy enemy, char[][] asciiMap) {
+        char type = enemy.getType();
+
+        switch (type) {
+            case ZOMBIE: moveZombie(enemy, asciiMap); break;
+            case VAMPIRE: moveVampire(enemy, asciiMap); break;
+            case GHOST: moveGhost(enemy, asciiMap); break;
+            case OGRE: moveOgre(enemy, asciiMap); break;
+            case SNAKE_MAGE: moveSnakeMage(enemy, asciiMap); break;
+        }
+    }
 
     private static boolean isWalkable(int x, int y, char[][] map) {
         if (x < 0 || y < 0 || y >= map.length || x >= map[0].length)
@@ -561,7 +568,7 @@ public class App {
         int[] dx = {0, 0, -1, 1};
         int[] dy = {-1, 1, 0, 0};
 
-        int dir = rand.nextInt(4);
+        int dir = rand.nextInt(FOUR_DIRECTIONS);
         int nx = enemy.getX() + dx[dir];
         int ny = enemy.getY() + dy[dir];
 
@@ -581,7 +588,7 @@ public class App {
         int[] dx = {-1,-1,-1, 0,0, 1,1,1};
         int[] dy = {-1, 0, 1,-1,1,-1,0,1};
 
-        int dir = rand.nextInt(8);
+        int dir = rand.nextInt(EIGHT_DIRECTIONS);
         int nx = enemy.getX() + dx[dir];
         int ny = enemy.getY() + dy[dir];
 
@@ -597,9 +604,9 @@ public class App {
     private static void moveGhost(Enemy enemy, char[][] asciiMap) {
         Random rand = new Random();
 
-        for (int i = 0; i < 20; i++) { // 20 попыток найти свободную клетку
-            int nx = enemy.getX() + rand.nextInt(7) - 3; // -3..3
-            int ny = enemy.getY() + rand.nextInt(7) - 3;
+        for (int i = 0; i < 10; i++) { // 10 попыток найти свободную клетку
+            int nx = enemy.getX() + rand.nextInt(7) - GHOST_TELEPORT_RANGE; // -3..3
+            int ny = enemy.getY() + rand.nextInt(7) - GHOST_TELEPORT_RANGE;
 
             if (!isWalkable(nx, ny, asciiMap)) continue;
             if (getEnemyAt(nx, ny) != null) continue;
@@ -617,13 +624,13 @@ public class App {
         int[] dx = {0, 0, -1, 1};
         int[] dy = {-1, 1, 0, 0};
 
-        int dir = rand.nextInt(4);
+        int dir = rand.nextInt(FOUR_DIRECTIONS);
 
         // Огр ходит на 2 клетки за раз
         int step1X = enemy.getX() + dx[dir];
         int step1Y = enemy.getY() + dy[dir];
-        int step2X = enemy.getX() + dx[dir] * 2;
-        int step2Y = enemy.getY() + dy[dir] * 2;
+        int step2X = enemy.getX() + dx[dir] * OGRE_DOUBLE_STEP;
+        int step2Y = enemy.getY() + dy[dir] * OGRE_DOUBLE_STEP;
 
         // Проверяем обе клетки на проходимость
         if (isWalkable(step1X, step1Y, asciiMap) &&
@@ -724,7 +731,7 @@ public class App {
                 if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
                 if (visited[ny][nx]) continue;
                 char tile = asciiMap[ny][nx];
-                if (tile == '|' || tile == '~' || tile == ' ') continue;
+                if (tile == W_WALL || tile == H_WALL || tile == EMPTINESS) continue;
                 if (App.getEnemyAt(nx, ny) != null && !(nx == ex && ny == ey)) continue;
 
                 visited[ny][nx] = true;
