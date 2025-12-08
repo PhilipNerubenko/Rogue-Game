@@ -18,7 +18,6 @@ public final class GameConstants {
     }
 
     public static final class ScreenConfig {
-        public static final int MAP_OFFSET_X = 3;
         public static final int MAP_WIDTH = 80;
         public static final int MAP_HEIGHT = 25;
         public static final int UI_START_Y = 26;
@@ -55,6 +54,7 @@ public final class GameConstants {
         public static final String DIED = "YOU DIED! Press ESC to exit";
         public static final String MISSED = "You missed!";
         public static final String MISSED_VAMPIRE = "First attack on vampire misses!";
+        public static final String CONTROL_HINT = "Use WASD to move, ESC to exit";
     }
 
     public static final class Colors {

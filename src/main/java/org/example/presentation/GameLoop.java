@@ -18,6 +18,13 @@ import org.example.domain.service.InventoryService;
 import org.example.domain.service.LevelGenerator;
 import org.example.domain.service.MovementService;
 
+import static org.example.config.GameConstants.Icons.*;
+import static org.example.config.GameConstants.Icons.OGRE;
+import static org.example.config.GameConstants.Icons.SNAKE_MAGE;
+import static org.example.config.GameConstants.ScreenConfig.HIDE_CURSOR;
+import static org.example.config.GameConstants.ScreenConfig.SIGINT_STRING;
+import static org.example.config.GameConstants.TextMessages.TERMINATE;
+
 /**
 *    GameLoop — это оркестратор игрового процесса, который:
 *    Читает ввод от игрока (InputHandler)
@@ -67,17 +74,16 @@ public class GameLoop {
 
     public void start() {
         // Инициализация JCurses
-        sun.misc.Signal.handle(new sun.misc.Signal("INT"), signal -> {
+        sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
             renderer.shutdown();
-            System.out.println("\nTerminated via Ctrl+C");
+            System.out.println(TERMINATE);
             System.exit(0);
         });
 
         renderer.clearScreen();
-        System.out.print("\033[?25l");
 
-        // 🔥 КРИТИЧЕСКО: первичное обновление тумана перед стартом
-       // fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
+        enemyAIService.updateAllGhostEffects(session, playerX, playerY);
+        System.out.print(HIDE_CURSOR);
 
         boolean running = true;
 
@@ -87,6 +93,8 @@ public class GameLoop {
             drawMap(); // Рисуем карту с учетом тумана
             drawEnemies(); // Рисуем видимых врагов
             renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
+            // TODO: сделать корректное отображение hp, атаки врагов/игрока и т.д.
+            renderer.drawStatusBar(session.getPlayer().getHealth(), session.getPlayer().getMaxHealth(), 1, 0); // This need fix
             renderer.refresh();
 
             // 2. ВВОД: читаем команду игрока
@@ -137,38 +145,11 @@ public class GameLoop {
             fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
 
             // Обновляем врагов (теперь с актуальными координатами)
-            enemyAIService.moveEnemies(session, playerX, playerY, asciiMap);
-            enemyAIService.updateEnemyEffects(session, playerX, playerY);
+            enemyAIService.witchMoveEnemiesPattern(session, combatService, playerX, playerY, asciiMap);
             drawEnemies(); // Перерисовываем врагов после их перемещения
         }
 
         renderer.shutdown();
-    }
-
-    private void movePlayer(Direction direction) {
-        int newX = playerX + direction.getDx();
-        int newY = playerY + direction.getDy();
-
-        Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
-        if (enemyAtPosition != null) {
-            combatService.attackEnemy(session, enemyAtPosition);
-            if (enemyAtPosition.getHealth() <= 0) {
-                combatService.removeEnemy(session, enemyAtPosition, asciiMap);
-            }
-            return;
-        }
-
-        if (canMoveTo(newX, newY)) {
-            // Запоминаем, что мы исследовали клетку, на которую встаём
-            fogOfWarService.markCellAsExplored(newX, newY);
-            // Обновляем локальные переменные
-            playerX = newX;
-            playerY = newY;
-            symbolUnderPlayer = asciiMap[playerY][playerX];
-
-            // ✅ Обновляем позицию в сущности через Direction
-            session.getPlayer().move(direction);
-        }
     }
 
     // Вспомогательный метод для читаемости
@@ -180,12 +161,6 @@ public class GameLoop {
     }
 
     private void drawEnemies() {
-//        for (Enemy enemy : session.getEnemies()) {
-//            if (!enemy.isInvisible()) {
-//                short color = (short) getEnemyColor(enemy);
-//                renderer.drawChar(enemy.getX(), enemy.getY(), enemy.getType().charAt(0), color);
-//            }
-//        }
         for (Enemy enemy : session.getEnemies()) {
             if (!enemy.isInvisible() && fogOfWarService.isVisible(enemy.getX(), enemy.getY())) {
                 short color = (short) getEnemyColor(enemy);
@@ -194,21 +169,18 @@ public class GameLoop {
         }
     }
 
-    private int getEnemyColor(Enemy enemy) {
+    private static int getEnemyColor(Enemy enemy) {
         return switch (enemy.getType()) {
-            case "z" -> CharColor.GREEN;
-            case "v" -> CharColor.RED;
-            case "g" -> CharColor.WHITE;
-            case "O" -> CharColor.YELLOW;
-            case "s" -> CharColor.CYAN;
+            case ZOMBIE -> CharColor.GREEN;
+            case VAMPIRE -> CharColor.RED;
+            case GHOST -> CharColor.WHITE;
+            case OGRE -> CharColor.YELLOW;
+            case SNAKE_MAGE -> CharColor.CYAN;
             default -> CharColor.WHITE;
         };
     }
+
     private void drawMap() {
-//        for (int i = 0; i < GameConstants.Map.HEIGHT; i++) {
-//            String element = new String(asciiMap[i]);
-//            renderer.drawString(0, i, element, CharColor.WHITE); // X=3 — ваше смещение
-//        }
 
         renderer.drawMapWithFog(
                 asciiMap,
