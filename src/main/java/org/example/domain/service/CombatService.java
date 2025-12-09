@@ -5,15 +5,14 @@ import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
+import org.example.presentation.Renderer;
 
 import java.util.Random;
 
-import static org.example.App.printLine;
 import static org.example.config.GameConstants.Map.MAP_OFFSET_X;
 import static org.example.config.GameConstants.ProbabilitiesAndBalance.*;
 import static org.example.config.GameConstants.ScreenConfig.*;
-import static org.example.config.GameConstants.TextMessages.MISSED;
-import static org.example.config.GameConstants.TextMessages.MISSED_VAMPIRE;
+import static org.example.config.GameConstants.TextMessages.*;
 
 /**
  * Сервис обслуживающий сражение
@@ -21,20 +20,17 @@ import static org.example.config.GameConstants.TextMessages.MISSED_VAMPIRE;
 
 public class CombatService {
 
-    public void attackEnemy(GameSession session, Enemy enemy) {
-        CharColor attackColor = new CharColor(CharColor.YELLOW, CharColor.BLACK); // Цвет можно вынести глобально, если уже есть
+    public String attackEnemy(GameSession session, Enemy enemy) {
 
         // Проверка промаха
         if (!isHit(session.getPlayer().getAgility(), enemy.getAgility())) {
-            printLine(MESSAGE_LINE_1, MISSED, attackColor, MAP_WIDTH);
-            return;
+            return MISSED;
         }
 
         // Способность: первый удар промах
         if (enemy.hasAbility(Enemy.ABILITY_FIRST_MISS)) {
-            printLine(MESSAGE_LINE_1, MISSED_VAMPIRE, attackColor, MAP_WIDTH);
             enemy.removeAbility(Enemy.ABILITY_FIRST_MISS);
-            return;
+            return MISSED_VAMPIRE;
         }
 
         // Наносим урон
@@ -44,7 +40,7 @@ public class CombatService {
         String msg = "You dealt " + damage + " dmg to " + enemy.getType();
         if (enemy.getHealth() <= 0) msg += " - KILLED!";
 
-        printLine(MESSAGE_LINE_1, msg, attackColor, MAP_WIDTH);
+        return msg;
     }
 
     public void removeEnemy(GameSession session, Enemy enemy, char[][] asciiMap) {
@@ -54,21 +50,20 @@ public class CombatService {
         session.getEnemies().remove(enemy);
     }
 
-    public void attackPlayer(GameSession session, Enemy enemy, boolean guaranteed) {
-        CharColor attackColor = new CharColor(CharColor.YELLOW, CharColor.BLACK);
+    public String attackPlayer(GameSession session, Enemy enemy, boolean guaranteed) {
 
         int damage = Math.max(1, enemy.getStrength());
 
         if (guaranteed) {
             session.getPlayer().setHealth(session.getPlayer().getHealth() - damage);
-            printLine(MESSAGE_LINE_2, enemy.getType() + " COUNTERATTACKS for " + damage + " dmg!", attackColor, MAP_WIDTH);
-            return;
+            //renderer.drawMessage(MESSAGE_LINE_2, enemy.getType() + " COUNTERATTACKS for " + damage + " dmg!", CharColor.YELLOW);
+            return enemy.getType() + " COUNTERATTACKS for " + damage + " dmg!";
         }
 
         // Обычная атака с шансом промаха
         if (!isHit(enemy.getAgility(), session.getPlayer().getAgility())) {
-            printLine(MESSAGE_LINE_2, enemy.getType() + " missed!", attackColor, MAP_WIDTH);
-            return;
+            //renderer.drawMessage(MESSAGE_LINE_2, enemy.getType() + " missed!", CharColor.YELLOW);
+            return enemy.getType() + " missed!";
         }
 
         session.getPlayer().setHealth(session.getPlayer().getHealth() - damage);
@@ -93,12 +88,14 @@ public class CombatService {
         }
 
         if (session.getPlayer().getHealth() <= 0) message.append(" - YOU DIED!");
-        printLine(MESSAGE_LINE_2, message.toString(), attackColor, MAP_WIDTH);
+        //renderer.drawMessage(MESSAGE_LINE_2, message.toString(), CharColor.YELLOW);
 
         // После удара огра — выставляем отдых
         if (enemy.hasAbility(Enemy.ABILITY_OGRE_REST)) {
             enemy.setRestTurns(OGRE_REST_DURATION); // отдых 1 ход
         }
+
+        return message.toString();
     }
 
     private static boolean isHit(int attackerAgility, int defenderAgility) {

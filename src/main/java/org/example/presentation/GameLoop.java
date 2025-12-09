@@ -18,11 +18,15 @@ import org.example.domain.service.InventoryService;
 import org.example.domain.service.LevelGenerator;
 import org.example.domain.service.MovementService;
 
+import java.util.List;
+
+import static org.example.App.printLine;
 import static org.example.config.GameConstants.Icons.*;
 import static org.example.config.GameConstants.Icons.OGRE;
 import static org.example.config.GameConstants.Icons.SNAKE_MAGE;
-import static org.example.config.GameConstants.ScreenConfig.HIDE_CURSOR;
-import static org.example.config.GameConstants.ScreenConfig.SIGINT_STRING;
+import static org.example.config.GameConstants.Map.MAP_OFFSET_X;
+import static org.example.config.GameConstants.ScreenConfig.*;
+import static org.example.config.GameConstants.TextMessages.DIED;
 import static org.example.config.GameConstants.TextMessages.TERMINATE;
 
 /**
@@ -51,6 +55,12 @@ public class GameLoop {
     private int playerX;
     private int playerY;
     private char symbolUnderPlayer;
+
+    // задержка
+    private String activeMessageLine1;
+    private String activeMessageLine2;
+    private int messageTimer = 0;
+    private static final int MESSAGE_DURATION = 5; // Кадры (~1.5с при 60 FPS)
 
     public GameLoop(GameInitializer initializer) {
         // Извлекаем зависимости из инициализатора
@@ -88,14 +98,73 @@ public class GameLoop {
         boolean running = true;
 
         while (running) {
+            // Уменьшаеми таймер сообщений
+            if (messageTimer > 0) {
+                messageTimer--;
+            } else {
+                activeMessageLine1 = null;
+                activeMessageLine2 = null;
+            }
+
+            if (session.getPlayer().isSleepTurns()) {
+                // Пропускаем ход спящего игрока
+                String sleepMsg = "You are sleep! Zzz...";
+                session.getPlayer().setSleepTurns(false);
+                renderer.drawMessage(UI_START_Y, sleepMsg, CharColor.CYAN);
+
+                // Ждем подтверждения (любую клавишу)
+                Toolkit.readCharacter();
+
+                // Затираем старое положение игрока
+                renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
+
+                // Ход врагов (игрок пропускает ход)
+                List<String> enemyMessages = enemyAIService.witchMoveEnemiesPattern(session, combatService, playerX, playerY, asciiMap);
+                if (!enemyMessages.isEmpty()) {
+                    activeMessageLine2 = String.join(", ", enemyMessages);
+                    messageTimer = MESSAGE_DURATION;
+                }
+
+                // Перерисовываем
+                renderer.clearScreen();
+                drawMap();
+                drawEnemies();
+                renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
+
+                // Обновляем HP
+                drawUI();
+                if (activeMessageLine2 != null) {
+                    renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, CharColor.YELLOW);
+                }
+                //renderer.refresh();
+                if (session.getPlayer().getHealth() <= 0) {
+                    renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
+                    // Ждем ESC
+                    while (true) {
+                        InputCommand command = inputHandler.readCommand();
+                        if (command.getType() == InputCommand.Type.QUIT) {
+                            running = false;
+                            break;
+                        }
+                    }
+                }
+                continue; // Пропускаем остальную обработку ввода
+            }
             // 1. РЕНДЕР: рисуем текущее состояние
             renderer.clearScreen();
             drawMap(); // Рисуем карту с учетом тумана
             drawEnemies(); // Рисуем видимых врагов
             renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
-            // TODO: сделать корректное отображение hp, атаки врагов/игрока и т.д.
-            renderer.drawStatusBar(session.getPlayer().getHealth(), session.getPlayer().getMaxHealth(), 1, 0); // This need fix
-            renderer.refresh();
+            drawUI(); // Рисует подсказку и панель со здоровьем
+            if (messageTimer > 0) {
+                if (activeMessageLine1 != null) {
+                    renderer.drawMessage(MESSAGE_LINE_1, activeMessageLine1, CharColor.YELLOW);
+                }
+                if (activeMessageLine2 != null) {
+                    renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, CharColor.YELLOW);
+                }
+            }
+            //renderer.refresh();
 
             // 2. ВВОД: читаем команду игрока
             InputCommand command = inputHandler.readCommand();
@@ -116,16 +185,14 @@ public class GameLoop {
                 // Проверяем, есть ли враг
                 Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
                 if (enemyAtPosition != null) {
-                    // Атакуем врага
-                    combatService.attackEnemy(session, enemyAtPosition);
+                    String message = combatService.attackEnemy(session, enemyAtPosition);
+                    activeMessageLine1 = message;
+                    messageTimer = MESSAGE_DURATION;
+
                     if (enemyAtPosition.getHealth() <= 0) {
                         combatService.removeEnemy(session, enemyAtPosition, asciiMap);
                     }
-                    continue; // Ход завершен, переходим к следующей итерации
-                }
-
-                // Если можно двигаться - перемещаем
-                if (canMoveTo(newX, newY)) {
+                } else if (canMoveTo(newX, newY)) { // Если можно двигаться - перемещаем
                     // Затираем старую позицию (возвращаем символ под игроком)
                     renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
                     //Помечаем клетку как исследованную
@@ -145,8 +212,23 @@ public class GameLoop {
             fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
 
             // Обновляем врагов (теперь с актуальными координатами)
-            enemyAIService.witchMoveEnemiesPattern(session, combatService, playerX, playerY, asciiMap);
+            List<String> enemyMessages = enemyAIService.witchMoveEnemiesPattern(session, combatService, playerX, playerY, asciiMap);
+            if (!enemyMessages.isEmpty()) {
+                activeMessageLine2 = String.join(", ", enemyMessages);
+                messageTimer = MESSAGE_DURATION;
+            }
             drawEnemies(); // Перерисовываем врагов после их перемещения
+            if (session.getPlayer().getHealth() <= 0) {
+                renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
+                // Ждем ESC
+                while (true) {
+                    command = inputHandler.readCommand();
+                    if (command.getType() == InputCommand.Type.QUIT) {
+                        running = false;
+                        break;
+                    }
+                }
+            }
         }
 
         renderer.shutdown();
@@ -189,8 +271,14 @@ public class GameLoop {
                 levelGenerator
         );
 
+    }
+
+    private void drawUI() {
         // Подсказка
         renderer.drawString(0, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
+        // Статус Бар
+        renderer.drawStatusBar(session.getPlayer().getHealth(),
+                session.getPlayer().getMaxHealth(), 1, 0);
     }
 
     private void syncPlayerPositionWithEntity() {

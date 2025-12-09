@@ -7,6 +7,7 @@ import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
 import org.example.domain.entity.Player;
 import org.example.domain.model.Room;
+import org.example.presentation.Renderer;
 
 import java.util.*;
 
@@ -22,14 +23,24 @@ import static org.example.config.GameConstants.ScreenConfig.MESSAGE_LINE_1;
  */
 public class EnemyAIService {
     
-    public void witchMoveEnemiesPattern(GameSession session, CombatService combatService, int playerX, int playerY,
-                                                 char[][] asciiMap) {
+    public List<String> witchMoveEnemiesPattern(GameSession session, CombatService combatService, int playerX, int playerY,
+                                        char[][] asciiMap) {
+        List<String> messages = new ArrayList<>();
         for (Enemy enemy : session.getEnemies()) {
             if (enemy.getHealth() <= 0) continue;
 
-            if (handleOgreRestTurn(session, combatService, playerX, playerY, enemy)) continue; // Огр не двигается в этот ход
+            // Обработка отдыха огра
+            String restMessage = handleOgreRestTurn(session, combatService, playerX, playerY, enemy);
+            if (restMessage != null) {
+                messages.add(restMessage);
+                continue; // Огр не двигается в этот ход
+            }
 
-            if (tryAttackAdjacentPlayer(session, combatService, playerX, playerY, enemy)) continue;
+            String attackMessage = tryAttackAdjacentPlayer(session, combatService, playerX, playerY, enemy);
+            if (attackMessage != null) {
+                messages.add(attackMessage);
+                continue; // Атака завершила ход
+            }
 
             int dx = playerX - enemy.getX();
             int dy = playerY - enemy.getY();
@@ -48,9 +59,10 @@ public class EnemyAIService {
                 moveEnemyWander(session, enemy, asciiMap);
             }
         }
+        return messages;
     }
 
-    public boolean tryAttackAdjacentPlayer(GameSession session, CombatService combatService, int playerX, int playerY, Enemy enemy) {
+    public String tryAttackAdjacentPlayer(GameSession session, CombatService combatService,  int playerX, int playerY, Enemy enemy) {
         boolean canAttack =
                 (enemy.getX() == playerX && enemy.getY() == playerY - 1) ||
                         (enemy.getX() == playerX && enemy.getY() == playerY + 1) ||
@@ -58,13 +70,12 @@ public class EnemyAIService {
                         (enemy.getX() == playerX + 1 && enemy.getY() == playerY);
 
         if (canAttack) {
-            combatService.attackPlayer(session, enemy, false);
-            return true;
+            return combatService.attackPlayer(session, enemy, false);
         }
-        return false;
+        return null;
     }
 
-    public boolean handleOgreRestTurn(GameSession session, CombatService combatService, int playerX, int playerY, Enemy enemy) {
+    public String handleOgreRestTurn(GameSession session, CombatService combatService, int playerX, int playerY, Enemy enemy) {
         if (enemy.hasAbility(Enemy.ABILITY_OGRE_REST) && enemy.getRestTurns() > 0) {
             enemy.setRestTurns(enemy.getRestTurns() - 1);
 
@@ -73,15 +84,13 @@ public class EnemyAIService {
                     (playerY == enemy.getY() && Math.abs(playerX - enemy.getX()) == 1);
 
             if (isAdjacent) {
-                combatService.attackPlayer(session, enemy, true); // true = гарантированная контратака
+                return combatService.attackPlayer(session, enemy, true); // true = гарантированная контратака
             } else {
                 // Можно вывести сообщение, что огр отдыхает
-                App.printLine(MESSAGE_LINE_1, enemy.getType() + " is resting...", new CharColor(CharColor.YELLOW, CharColor.BLACK), MAP_WIDTH);
+                return enemy.getType() + " is resting...";
             }
-
-            return true;
         }
-        return false;
+        return null;
     }
 
     public void moveEnemyWander(GameSession session, Enemy enemy, char[][] asciiMap) {
