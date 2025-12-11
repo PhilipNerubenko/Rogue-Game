@@ -67,13 +67,8 @@ public class Character {
 
     public void setHealth(int health) {
         // Здоровье не может быть меньше 0 и больше максимума
-        if (health < 0) {
-            this.health = 0;
-        } else if (health > maxHealth) {
-            this.health = maxHealth;
-        } else {
-            this.health = health;
-        }
+        if (health < 0) this.health = 0;
+        else this.health = Math.min(health, maxHealth);
     }
 
     public int getAgility() {

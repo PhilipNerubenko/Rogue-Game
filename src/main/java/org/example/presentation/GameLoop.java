@@ -56,11 +56,11 @@ public class GameLoop {
     private int playerY;
     private char symbolUnderPlayer;
 
-    // задержка
+    // сообщения и задержка сообщений
     private String activeMessageLine1;
     private String activeMessageLine2;
-    private int messageTimer = 0;
-    private static final int MESSAGE_DURATION = 5; // Кадры (~1.5с при 60 FPS)
+    private int messageTimer = 0; // начальный таймер
+    private static final int MESSAGE_DURATION = 2; // время жизни сообщения
 
     public GameLoop(GameInitializer initializer) {
         // Извлекаем зависимости из инициализатора
