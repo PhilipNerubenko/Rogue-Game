@@ -21,6 +21,7 @@ public class Player extends Character  {
                 GameConstants.Player.START_AGILITY,
                 GameConstants.Player.START_STRENGTH);
         this.position = position;
+
     }
 
     public Player(Position position, Inventory inventory) {
@@ -33,6 +34,11 @@ public class Player extends Character  {
     // ВОТ ЭТОГО МЕТОДА НЕ ХВАТАЕТ:
     public Position getPosition() {
         return position;
+    }
+
+    // Или метод для установки координат
+    public void setPosition(int x, int y) {
+        this.position = new Position(x, y);
     }
 
 
@@ -51,4 +57,8 @@ public class Player extends Character  {
     }
 
     public void equip(Item weapon) { /* TODO */ }
+
+    public void setPosition(Position newPosition) {
+        this.position = newPosition;
+    }
 }

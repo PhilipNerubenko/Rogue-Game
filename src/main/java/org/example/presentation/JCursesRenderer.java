@@ -125,7 +125,7 @@ public class JCursesRenderer implements Renderer {
     @Override
     public void drawStatusBar(int playerHealth, int maxHealth, int level, int treasures) {
         String status = String.format(
-                "HP: %d/%d | Уровень: %d | Сокровища: %d",
+                "HP: %d/%d | Level: %d | Сокровища: %d",
                 playerHealth, maxHealth, level, treasures
         );
         drawString(3, GameConstants.Map.HEIGHT + 1, status, CharColor.CYAN);

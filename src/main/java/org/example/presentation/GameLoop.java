@@ -8,10 +8,7 @@ import org.example.config.GameConstants;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
 import org.example.domain.entity.Player;
-import org.example.domain.model.Direction;
-import org.example.domain.model.InputCommand;
-import org.example.domain.model.Level;
-import org.example.domain.model.Position;
+import org.example.domain.model.*;
 import org.example.domain.service.CombatService;
 import org.example.domain.service.EnemyAIService;
 import org.example.domain.service.EnemyType;
@@ -20,6 +17,11 @@ import org.example.domain.service.InventoryService;
 import org.example.domain.service.LevelGenerator;
 import org.example.domain.service.MovementService;
 import org.example.App.GameResult;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 /**
 *    GameLoop — это оркестратор игрового процесса, который:
 *    Читает ввод от игрока (InputHandler)
@@ -38,15 +40,21 @@ public class GameLoop {
     private final EnemyAIService enemyAIService;
     private final InventoryService inventoryService;
     private final MovementService movementService;
-    private final FogOfWarService fogOfWarService;
+    private  FogOfWarService fogOfWarService;
     private  Level level;
-    private final char[][] asciiMap;
+    private  char[][] asciiMap;
 
     // Игрок  и его позиция (временно, пока не полностью перейдем на Player entity)
     private Player player;
     private int playerX;
     private int playerY;
     private char symbolUnderPlayer;
+
+    // Дополнительные переменные для управления уровнями
+    private int currentLevelNumber;
+    private int collectedTreasures;
+    private LevelGenerator levelGenerator;
+    private boolean levelComplete = false; // Добавлена переменная
 
     public GameLoop(GameInitializer initializer) {
         // Извлекаем зависимости из инициализатора
@@ -58,8 +66,11 @@ public class GameLoop {
         this.inventoryService = initializer.getInventoryService();
         this.movementService = initializer.getMovementService();
         this.fogOfWarService = initializer.getFogOfWarService();
+        this.levelGenerator = initializer.getLevelGenerator();
+
         this.level = session.getLevel();
         this.asciiMap = level.getAsciiMap();
+        this.currentLevelNumber = level.getLevelNumber();
 
         // Инициализация игрока из сессии
         this.player = session.getPlayer();
@@ -67,6 +78,9 @@ public class GameLoop {
         this.playerX = playerPos.getX();
         this.playerY = playerPos.getY();
         this.symbolUnderPlayer = asciiMap[playerY][playerX];
+
+        this.collectedTreasures = 0; // Инициализируем счетчик сокровищ
+        levelComplete = false;
     }
 
     public GameResult start() {
@@ -84,13 +98,19 @@ public class GameLoop {
        // fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
 
         boolean running = true;
+        boolean levelComplete = false;
 
-        while (running) {
+        while (running && !levelComplete) {
             // 1. РЕНДЕР: рисуем текущее состояние
 //            renderer.clearScreen();
             drawMap(); // Рисуем карту с учетом тумана
             drawEnemies(); // Рисуем видимых врагов
             renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
+
+            // Отрисовка статус-бара
+            renderer.drawStatusBar(player.getHealth(), player.getMaxHealth(),
+                    currentLevelNumber, collectedTreasures);
+
             renderer.refresh();
 
             // 2. ВВОД: читаем команду игрока
@@ -108,6 +128,24 @@ public class GameLoop {
                 // Вычисляем новую позицию
                 int newX = playerX + dir.getDx();
                 int newY = playerY + dir.getDy();
+
+                // Проверяем выход ('E')
+                if (asciiMap[newY][newX] == 'E') {
+                    levelComplete = true;
+                    currentLevelNumber++;
+                    if (currentLevelNumber > 21) { // Уровень 22 = победа
+                        return new GameResult(currentLevelNumber - 1, collectedTreasures, true, false);
+                    }
+                    generateNewLevel(currentLevelNumber);
+                    continue;
+                }
+
+                // Проверяем сокровища ('$')
+                if (asciiMap[newY][newX] == '$') {
+                    collectedTreasures++;
+                    asciiMap[newY][newX] = '.'; // Убираем сокровище с карты
+                    renderer.drawMessage(28, "Treasure found! Total: " + collectedTreasures, CharColor.YELLOW);
+                }
 
                 // Проверяем, есть ли враг
                 Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
@@ -152,27 +190,20 @@ public class GameLoop {
                 session.setPlayer(player);
             }
 
-            // TODO Проверка завершения уровня
-//            if (Позиция игрока совпадает с "E") {
-//                 currentLevel  = currentLevel++;
-//                if (currentLevel > 21) { // Уровень 22 = победа
-//                    return new GameResult(22, collectedTreasures, true, false);
-//                }
-//                generateNewLevel( с новым уровнем);
-//            }
 
         }
 
         renderer.shutdown();
 
-        // TODO Игрок умер
-//        if (!player.isAlive()) {
-//            return new GameResult(session.getLevel(), session.getTerasures,false, false);
-//        }
+        // Если игрок дошел до выхода, но не достиг 22 уровня
+        if (levelComplete && currentLevelNumber <= 21) {
+            // Рекурсивно запускаем следующий уровень
+            GameInitializer nextInitializer = new GameInitializer(currentLevelNumber);
+            nextInitializer.initialize();
+            GameLoop nextGameLoop = new GameLoop(nextInitializer);
+            return nextGameLoop.start();
+        }
 
-        // Не должно сюда попадать
-        //return new GameResult(currentLevel, collectedTreasures, false, false);
-        //TODO Заглушка
         return new GameResult(1,1,true,true);
     }
 
@@ -201,6 +232,54 @@ public class GameLoop {
 //            session.getPlayer().move(direction);
 //        }
 //    }
+
+    private void generateNewLevel(int levelNumber) {
+        // Генерация нового уровня
+        this.level = levelGenerator.createLevel(levelNumber);
+        this.session.setLevel(level);
+        this.asciiMap = level.getAsciiMap();
+
+        // Сброс тумана войны
+        this.fogOfWarService = new FogOfWarService(level);
+
+        // Создание новых врагов
+        Room startRoom = level.getRooms().getFirst();
+        int playerX = startRoom.getX1() + 2;
+        int playerY = startRoom.getY1() + 2;
+
+        // Создание врагов
+        List<Room> rooms = level.getRooms();
+        Random rand = new Random();
+        List<Enemy> newEnemies = new ArrayList<>();
+
+        for (int i = 0; i < Math.min(EnemyType.values().length, rooms.size()); i++) {
+            Room room = rooms.get(i);
+            if (room.isStartRoom()) continue;
+
+            int enemyX = room.getX1() + 1 + rand.nextInt(room.getWidth() - 2);
+            int enemyY = room.getY1() + 1 + rand.nextInt(room.getHeight() - 2);
+
+            Enemy enemy = EnemyType.values()[i].create(levelNumber, player.getAgility());
+            enemy.setX(enemyX);
+            enemy.setY(enemyY);
+            newEnemies.add(enemy);
+        }
+
+        session.setEnemies(newEnemies);
+
+        // Обновление позиции игрока
+        this.playerX = playerX;
+        this.playerY = playerY;
+        player.setPosition(playerX, playerY);
+        symbolUnderPlayer = asciiMap[playerY][playerX];
+
+        // Сброс флага завершения уровня
+        levelComplete = false;
+
+        // Очистка экрана и отрисовка нового уровня
+        renderer.clearScreen();
+        fogOfWarService.updateVisibility(player.getPosition(), asciiMap);
+    }
 
     // Вспомогательный метод для читаемости
     private boolean canMoveTo(int x, int y) {

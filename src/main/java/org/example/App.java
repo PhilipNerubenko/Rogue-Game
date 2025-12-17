@@ -20,7 +20,7 @@ public class App {
             Toolkit.shutdown();
             System.out.print("\033[8;45;130t");
             System.out.flush();
-            System.out.println("\nЗавершение через Ctrl+C");
+            System.out.println("\nUse WASD to move, ESC to exit");
             System.exit(0);
         });
 
@@ -63,12 +63,12 @@ public class App {
             }
 
         } catch (Exception e) {
-            System.err.println("Критическая ошибка: " + e.getMessage());
+            System.err.println("Critical error: " + e.getMessage());
             e.printStackTrace();
         } finally {
             Toolkit.shutdown();
             System.out.print("\033[?25h"); // Показать курсор
-            System.out.println("\nИгра завершена.");
+            System.out.println("\nGame over.");
         }
     }
 
@@ -96,16 +96,16 @@ public class App {
             }
 
         } catch (Exception e) {
-            System.err.println("Ошибка при запуске игры: " + e.getMessage());
-            showErrorMessage("Ошибка запуска игры: " + e.getMessage());
+            System.err.println("Error starting the game: " + e.getMessage());
+            showErrorMessage("Error starting the game: " + e.getMessage());
         }
     }
 
     private static void saveToScoreboard(GameResult result) {
         // TODO: Реализовать сохранение в таблицу рекордов (Задание 5)
-        System.out.println("Сохранение результата: Уровень " + result.getLevel() +
-                ", Сокровища: " + result.getTreasures() +
-                ", Победа: " + result.isVictory());
+        System.out.println("Saving the result: Level " + result.getLevel() +
+                ", Treasures: " + result.getTreasures() +
+                ", Victory: " + result.isVictory());
     }
 
     private static void loadGame() {
@@ -126,9 +126,9 @@ public class App {
 
     private static void showErrorMessage(String message) {
         Toolkit.clearScreen(new CharColor(CharColor.BLACK, CharColor.BLACK));
-        Toolkit.printString("ОШИБКА:", 40, 10, new CharColor(CharColor.RED, CharColor.BLACK));
+        Toolkit.printString("ERROR:", 40, 10, new CharColor(CharColor.RED, CharColor.BLACK));
         Toolkit.printString(message, 40, 12, new CharColor(CharColor.RED, CharColor.BLACK));
-        Toolkit.printString("Нажмите любую клавишу...", 35, 14,
+        Toolkit.printString("Press any key...", 35, 14,
                 new CharColor(CharColor.GREEN, CharColor.BLACK));
         Toolkit.readCharacter();
     }
