@@ -4,6 +4,7 @@ import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
 import org.example.domain.entity.*;
+import org.example.domain.model.Level;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
 import org.example.domain.service.*;
@@ -25,27 +26,17 @@ public class GameInitializer {
     private InventoryService inventoryService;
     private FogOfWarService fogOfWarService;
     private LevelGenerator levelGenerator;
+    private Level level;
     int ofsetX = GameConstants.Map.MAP_OFFSET_X;
     int ofsetY = GameConstants.Map.MAP_OFFSET_Y;
 
-    public GameInitializer(GameSession session, Renderer renderer, LevelGenerator levelGenerator,
-                           EnemyAIService enemyAIService, CombatService combatService,
-                           InputHandler inputHandler, InventoryService inventoryService,
-                           FogOfWarService fogOfWarService, MovementService movementService) {
-        this.session = session;
-        this.renderer = renderer;
-        this.levelGenerator = levelGenerator;
-        this.enemyAIService = enemyAIService;
-        this.combatService = combatService;
-        this.inputHandler = inputHandler;
-        this.inventoryService = inventoryService;
-        this.fogOfWarService = fogOfWarService;
-        this.movementService = movementService;
-    }
-    public GameInitializer() {
+    public GameInitializer(int levelNumber) {
+
         this.levelGenerator = new LevelGenerator();
-        this.fogOfWarService = new FogOfWarService(levelGenerator);
+        this.level = levelGenerator.createLevel(levelNumber);
+        this.fogOfWarService = new FogOfWarService(level);
         this.session = new GameSession();
+        this.session.setLevel(level);
         this.renderer = new JCursesRenderer();
         this.enemyAIService = new EnemyAIService();
         this.combatService = new CombatService();
@@ -61,8 +52,8 @@ public class GameInitializer {
         session.setEnemies(new ArrayList<>());
 
         // Создание уровня
-        char[][] asciiMap = levelGenerator.createAsciiMap(1);
-        Room startRoom = levelGenerator.getRooms().getFirst();
+        char[][] asciiMap = level.getAsciiMap();
+        Room startRoom = level.getRooms().getFirst();
 
         // Создание игрока
 //        int playerX = startRoom.getX1() + 1 + levelGenerator.getRand().nextInt(startRoom.getWidth() - 2);
@@ -119,7 +110,7 @@ public class GameInitializer {
                 asciiMap,
                 session.getPlayer(),
                 fogOfWarService,
-                levelGenerator
+                level
         );
 
         // Отрисовка врагов
@@ -151,7 +142,7 @@ public class GameInitializer {
     }
 
     private void createEnemies(LevelGenerator levelGenerator, int playerX, int playerY) {
-        List<Room> rooms = levelGenerator.getRooms();
+        List<Room> rooms = level.getRooms();
         Random rand = levelGenerator.getRand();
         int playerAgility = 5; // Базовая ловкость игрока
 
@@ -167,7 +158,7 @@ public class GameInitializer {
             int enemyX = room.getX1() + 1 + rand.nextInt(room.getWidth() - 2);
             int enemyY = room.getY1() + 1 + rand.nextInt(room.getHeight() - 2);
 
-            // Создаем врага на уровне 1
+            // TODO оздаем врага на уровне 1
             Enemy enemy = EnemyType.values()[i].create(1, playerAgility);
 
             // Устанавливаем позицию
@@ -188,7 +179,7 @@ public class GameInitializer {
     public InventoryService getInventoryService() { return inventoryService; }
     public FogOfWarService getFogOfWarService() { return fogOfWarService; }
     public LevelGenerator getLevelGenerator() { return levelGenerator; }
-    public char[][] getAsciiMap() { return levelGenerator.createAsciiMap(1);
+    public char[][] getAsciiMap() { return level.getAsciiMap() ;
     }
 
 }

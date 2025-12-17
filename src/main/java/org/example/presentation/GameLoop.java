@@ -7,8 +7,10 @@ import org.example.GameInitializer;
 import org.example.config.GameConstants;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
+import org.example.domain.entity.Player;
 import org.example.domain.model.Direction;
 import org.example.domain.model.InputCommand;
+import org.example.domain.model.Level;
 import org.example.domain.model.Position;
 import org.example.domain.service.CombatService;
 import org.example.domain.service.EnemyAIService;
@@ -17,7 +19,7 @@ import org.example.domain.service.FogOfWarService;
 import org.example.domain.service.InventoryService;
 import org.example.domain.service.LevelGenerator;
 import org.example.domain.service.MovementService;
-
+import org.example.App.GameResult;
 /**
 *    GameLoop — это оркестратор игрового процесса, который:
 *    Читает ввод от игрока (InputHandler)
@@ -37,10 +39,11 @@ public class GameLoop {
     private final InventoryService inventoryService;
     private final MovementService movementService;
     private final FogOfWarService fogOfWarService;
-    private final LevelGenerator levelGenerator;
+    private  Level level;
     private final char[][] asciiMap;
 
-    // Позиция игрока (временно, пока не полностью перейдем на Player entity)
+    // Игрок  и его позиция (временно, пока не полностью перейдем на Player entity)
+    private Player player;
     private int playerX;
     private int playerY;
     private char symbolUnderPlayer;
@@ -55,17 +58,18 @@ public class GameLoop {
         this.inventoryService = initializer.getInventoryService();
         this.movementService = initializer.getMovementService();
         this.fogOfWarService = initializer.getFogOfWarService();
-        this.levelGenerator = initializer.getLevelGenerator();
-        this.asciiMap = initializer.getAsciiMap();
+        this.level = session.getLevel();
+        this.asciiMap = level.getAsciiMap();
 
-        // Инициализация позиции игрока из сессии
-        Position playerPos = session.getPlayer().getPosition();
+        // Инициализация игрока из сессии
+        this.player = session.getPlayer();
+        Position playerPos = player.getPosition();
         this.playerX = playerPos.getX();
         this.playerY = playerPos.getY();
         this.symbolUnderPlayer = asciiMap[playerY][playerX];
     }
 
-    public void start() {
+    public GameResult start() {
         // Инициализация JCurses
         sun.misc.Signal.handle(new sun.misc.Signal("INT"), signal -> {
             renderer.shutdown();
@@ -83,7 +87,7 @@ public class GameLoop {
 
         while (running) {
             // 1. РЕНДЕР: рисуем текущее состояние
-            renderer.clearScreen();
+//            renderer.clearScreen();
             drawMap(); // Рисуем карту с учетом тумана
             drawEnemies(); // Рисуем видимых врагов
             renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
@@ -130,6 +134,7 @@ public class GameLoop {
                     // 🔥 СИНХРОНИЗИРУЕМ с Player entity
                     session.getPlayer().move(dir);
                 }
+
             }
 
             // 4. ОБНОВЛЕНИЕ МИРА: туман и враги
@@ -140,36 +145,62 @@ public class GameLoop {
             enemyAIService.moveEnemies(session, playerX, playerY, asciiMap);
             enemyAIService.updateEnemyEffects(session, playerX, playerY);
             drawEnemies(); // Перерисовываем врагов после их перемещения
+
+            // Проверка смерти игрока
+            if (player.getHealth() <= 0) {
+                player.setAlive(false) ;
+                session.setPlayer(player);
+            }
+
+            // TODO Проверка завершения уровня
+//            if (Позиция игрока совпадает с "E") {
+//                 currentLevel  = currentLevel++;
+//                if (currentLevel > 21) { // Уровень 22 = победа
+//                    return new GameResult(22, collectedTreasures, true, false);
+//                }
+//                generateNewLevel( с новым уровнем);
+//            }
+
         }
 
         renderer.shutdown();
+
+        // TODO Игрок умер
+//        if (!player.isAlive()) {
+//            return new GameResult(session.getLevel(), session.getTerasures,false, false);
+//        }
+
+        // Не должно сюда попадать
+        //return new GameResult(currentLevel, collectedTreasures, false, false);
+        //TODO Заглушка
+        return new GameResult(1,1,true,true);
     }
 
-    private void movePlayer(Direction direction) {
-        int newX = playerX + direction.getDx();
-        int newY = playerY + direction.getDy();
-
-        Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
-        if (enemyAtPosition != null) {
-            combatService.attackEnemy(session, enemyAtPosition);
-            if (enemyAtPosition.getHealth() <= 0) {
-                combatService.removeEnemy(session, enemyAtPosition, asciiMap);
-            }
-            return;
-        }
-
-        if (canMoveTo(newX, newY)) {
-            // Запоминаем, что мы исследовали клетку, на которую встаём
-            fogOfWarService.markCellAsExplored(newX, newY);
-            // Обновляем локальные переменные
-            playerX = newX;
-            playerY = newY;
-            symbolUnderPlayer = asciiMap[playerY][playerX];
-
-            // ✅ Обновляем позицию в сущности через Direction
-            session.getPlayer().move(direction);
-        }
-    }
+//    private void movePlayer(Direction direction) {
+//        int newX = playerX + direction.getDx();
+//        int newY = playerY + direction.getDy();
+//
+//        Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
+//        if (enemyAtPosition != null) {
+//            combatService.attackEnemy(session, enemyAtPosition);
+//            if (enemyAtPosition.getHealth() <= 0) {
+//                combatService.removeEnemy(session, enemyAtPosition, asciiMap);
+//            }
+//            return;
+//        }
+//
+//        if (canMoveTo(newX, newY)) {
+//            // Запоминаем, что мы исследовали клетку, на которую встаём
+//            fogOfWarService.markCellAsExplored(newX, newY);
+//            // Обновляем локальные переменные
+//            playerX = newX;
+//            playerY = newY;
+//            symbolUnderPlayer = asciiMap[playerY][playerX];
+//
+//            // ✅ Обновляем позицию в сущности через Direction
+//            session.getPlayer().move(direction);
+//        }
+//    }
 
     // Вспомогательный метод для читаемости
     private boolean canMoveTo(int x, int y) {
@@ -214,7 +245,7 @@ public class GameLoop {
                 asciiMap,
                 session.getPlayer(),
                 fogOfWarService,
-                levelGenerator
+                level
         );
 
         // Подсказка

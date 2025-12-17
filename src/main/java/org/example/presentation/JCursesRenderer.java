@@ -6,6 +6,7 @@ import org.example.config.GameConstants;
 import org.example.domain.entity.Inventory;
 import org.example.domain.entity.ItemType;
 import org.example.domain.entity.Player;
+import org.example.domain.model.Level;
 import org.example.domain.model.Room;
 import org.example.domain.service.FogOfWarService;
 import org.example.domain.service.LevelGenerator;
@@ -65,13 +66,13 @@ public class JCursesRenderer implements Renderer {
         // JCurses не требует explicit refresh, но оставим для совместимости
     }
 
-    public void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, LevelGenerator levelGen) {
+    public void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, Level level) {
         fog.updateVisibility(player.getPosition(), map);
 
         for (int y = 0; y < map.length; y++) {
             for (int x = 0; x < map[y].length; x++) {
                 char tile = map[y][x];
-                Room room = levelGen.getRoomAt(x, y); // ← Теперь используем levelGen
+                Room room = level.getRoomAt(x, y); // ← Теперь используем levelGen
                 boolean visible = fog.isVisible(x, y);
                 boolean explored = fog.isExplored(x, y);
 

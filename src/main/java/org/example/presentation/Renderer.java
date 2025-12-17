@@ -2,6 +2,7 @@ package org.example.presentation;
 
 import org.example.domain.entity.Inventory;
 import org.example.domain.entity.Player;
+import org.example.domain.model.Level;
 import org.example.domain.service.FogOfWarService;
 import org.example.domain.service.LevelGenerator;
 
@@ -25,7 +26,7 @@ public interface Renderer {
     //вывести строку текста.
     void drawString(int x, int y, String text, int color);
 
-    void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, LevelGenerator levelGen);
+    void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, Level level);
 
     // Очистить весь экран (залить фоном).
     void clearScreen();

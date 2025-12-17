@@ -23,6 +23,10 @@ $(JAR_FILE): build
 wrapper:
 	gradle wrapper --gradle-version 8.5
 
+debugger: clean build
+	#java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 - jar $(JAR_FILE)
+	java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -jar $(JAR_FILE)
+
 install-java:
 	sudo apt update
 	sudo apt install -y default-jdk

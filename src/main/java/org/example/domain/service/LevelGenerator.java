@@ -2,7 +2,7 @@ package org.example.domain.service;
 
 
 import org.example.config.GameConstants;
-import org.example.domain.model.Corridor;
+
 import org.example.domain.model.Level;
 import org.example.domain.model.Room;
 import org.example.domain.model.Position;
@@ -10,27 +10,46 @@ import org.example.domain.model.Position;
 import java.util.*;
 
 public class LevelGenerator {
+
     private static final int ROOMS_AT_LEVEL = GameConstants.Map.ROOMS;              //комнат на уровне
     private static final int MAX_WIDTH_ROOM_SIZE = GameConstants.Map.WIDTH/3-4;     //максимальная ширина комнаты
     private static final int MIN_WIDTH_ROOM_SIZE = MAX_WIDTH_ROOM_SIZE/4;           //минимальная  ширина комнаты
     private static final int MAX_HEIGHT_ROOM_SIZE = GameConstants.Map.HEIGHT/3-4;   //максимальная высота комнаты
     private static final int MIN_HEIGHT_ROOM_SIZE = MAX_HEIGHT_ROOM_SIZE/2+1;         //минимальная  высота комнаты
-//    private char[][] asciiMap;
-    private List<Room> rooms;
-    private List<Corridor> corridors;
+    private char[][] asciiMap;
+    private List<Room> rooms = new ArrayList<>();
+
     private Random rand;
     // НОВЫЕ ПОЛЯ: карта клеток -> комната
-    private final Map<Position, Room> cellToRoomMap = new HashMap<>();
-    // Набор клеток коридоров
-    private final Set<Position> corridorCells = new HashSet<>();
-    // Тип клетки для быстрого доступа
-    private final Map<Position, Character> cellTypeMap = new HashMap<>();
+//    private final Map<Position, Room> cellToRoomMap = new HashMap<>();
+//    // Набор клеток коридоров
+//    private final Set<Position> corridorCells = new HashSet<>();
+//    // Тип клетки для быстрого доступа
+//    private final Map<Position, Character> cellTypeMap = new HashMap<>();
+    private Level level;
 
     public LevelGenerator() {
-        this.rand = new Random();  // Или new Random(seed), если нужен фиксированный seed для воспроизводимости
     }
 
-    public char[][] createAsciiMap(int levelNumber){
+    public Level createLevel (int levelNumber) {
+        this.rand = new Random();  // Или new Random(seed), если нужен фиксированный seed для воспроизводимости
+        this.level = new Level(levelNumber);
+        rooms = createRooms();              //генерируем комнаты
+        level.setRooms(rooms);
+        level.setStartRoom(rooms.getFirst());
+        level.setExitRoom(rooms.getLast());
+        asciiMap = createAsciiMap(); //генерируем карту
+        Room exitRoom = rooms.getLast();
+        int exitX = exitRoom.getX2()-2;
+        int exitY = exitRoom.getY2()-2;
+        asciiMap[exitY][exitX] = 'E';  // добавляем на карту выход
+        level.setAsciiMap(asciiMap); //сохраняем карту в Level;
+        return this.level;
+    }
+
+
+
+    public char[][] createAsciiMap(){
 
         char[][] asciiMap = new char[GameConstants.Map.HEIGHT][GameConstants.Map.WIDTH];
         //заполняем пробелами
@@ -40,13 +59,14 @@ public class LevelGenerator {
             }
         }
 
-        rooms = new ArrayList<>();
-        rooms = createRooms(levelNumber);
+
         addRoomsOnAsciiMap(asciiMap);
-        corridors = new ArrayList<>();
+
         Random rand = new Random();
 //        corridors = createCorridor();
         addCorridorsOnAsciiMap(asciiMap);
+
+        // добавляем выход
         return asciiMap;
     }
 
@@ -55,15 +75,13 @@ public class LevelGenerator {
         return rooms;
     }
 
-    public List<Corridor> getCorridors() {
-        return corridors;
-    }
+
 
     public Random getRand() {
         return rand;
     }
 
-    private List<Room> createRooms(int levelNumber){
+    private List<Room> createRooms(){
         // Генерируем 9 комнат в 3x3 сетке
         for (int i = 0; i < ROOMS_AT_LEVEL; i++) {
             Room room = generateRandomRoom(i);
@@ -86,7 +104,7 @@ public class LevelGenerator {
 
 
     private void addRoomsOnAsciiMap(char[][] asciiMap) {
-        cellToRoomMap.clear(); // Очистка перед генерацией
+        level.getCellToRoomMap().clear(); // Очистка перед генерацией
         for (int i = 0; i < 9; i++) {
             Room room = rooms.get(i);
             // Заполняем границы
@@ -143,8 +161,8 @@ public class LevelGenerator {
         // После генерации corridor cells:
         for (int x = Math.min(xStart, xEnd); x <= Math.max(xStart, xEnd); x++) {
             for (int y = Math.min(yStart, yEnd); y <= Math.max(yStart, yEnd); y++) {
-                corridorCells.add(new Position(x, y));
-                cellTypeMap.put(new Position(x, y), '#');
+                level.getCorridorCells().add(new Position(x, y));
+                level.getCellTypeMap().put(new Position(x, y), '#');
             }
         }
     }
@@ -153,9 +171,10 @@ public class LevelGenerator {
     private void setCell(char[][] asciiMap, int x, int y, char symbol, Room room) {
         asciiMap[y][x] = symbol;
         Position pos = new Position(x, y);
-        cellTypeMap.put(pos, symbol);
+
+        level.getCellTypeMap().put(pos, symbol);
         if (room != null) {
-            cellToRoomMap.put(pos, room);
+            level.getCellToRoomMap().put(pos, room);
         }
     }
 
@@ -194,16 +213,5 @@ public class LevelGenerator {
 
 
 
-    // Методы доступа:
-    public Room getRoomAt(int x, int y) {
-        return cellToRoomMap.get(new Position(x, y));
-    }
 
-    public boolean isCorridor(int x, int y) {
-        return corridorCells.contains(new Position(x, y));
-    }
-
-    public Character getCellType(int x, int y) {
-        return cellTypeMap.get(new Position(x, y));
-    }
 }
