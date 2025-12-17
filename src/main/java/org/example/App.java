@@ -109,17 +109,17 @@ public class App {
     }
 
     private static void loadGame() {
-        showMessage("Функция загрузки игры в разработке");
+        showMessage("Game download feature is in development");
     }
 
     private static void showScoreboard() {
-        showMessage("Таблица рекордов в разработке");
+        showMessage("The leaderboard is in development.");
     }
 
     private static void showMessage(String message) {
         Toolkit.clearScreen(new CharColor(CharColor.BLACK, CharColor.BLACK));
         Toolkit.printString(message, 40, 10, new CharColor(CharColor.YELLOW, CharColor.BLACK));
-        Toolkit.printString("Нажмите любую клавишу...", 35, 12,
+        Toolkit.printString("Press any key...", 35, 12,
                 new CharColor(CharColor.GREEN, CharColor.BLACK));
         Toolkit.readCharacter();
     }

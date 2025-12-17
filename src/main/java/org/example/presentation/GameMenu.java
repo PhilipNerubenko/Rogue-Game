@@ -166,9 +166,9 @@ public class GameMenu {
         CharColor hintColor = new CharColor(CharColor.GREEN, CharColor.BLACK);
         String hintText;
         if (isGameOver) {
-            hintText = "W/S: Навигация, ENTER: Выбор, ESC: Главное меню";
+            hintText = "W/S: Navigation, ENTER: Choice, ESC: Main menu";
         } else {
-            hintText = "W/S: Навигация, ENTER: Выбор, ESC: Выход из игры";
+            hintText = "W/S: Navigation, ENTER: Choice, ESC: Exiting the game";
         }
 
         Toolkit.printString(hintText, 30, menuStartY + MENU_ITEMS.size() * 2 + 2, hintColor);

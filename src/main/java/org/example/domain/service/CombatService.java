@@ -18,7 +18,7 @@ public class CombatService {
         int actualDamage = Math.max(1, playerDamage - enemy.getAgility());
         enemy.setHealth(enemy.getHealth() - actualDamage);
 
-        Toolkit.printString("Вы нанесли " + actualDamage + " урона " + enemy.getType() + "!",
+        Toolkit.printString("You have applied" + actualDamage + " damage " + enemy.getType() + "!",
                 3, 28, new CharColor(CharColor.YELLOW, CharColor.BLACK));
     }
 
@@ -33,7 +33,7 @@ public class CombatService {
     public void attackPlayer(Enemy enemy) {
         // СКОПИРУЙТЕ СЮДА весь код из App.attackPlayer():
         int damage = enemy.getStrength();
-        Toolkit.printString("Враг нанес " + damage + " урона!",
+        Toolkit.printString("The enemy inflicted " + damage + " damage!",
                 3, 27, new CharColor(CharColor.RED, CharColor.BLACK));
     }
 }
