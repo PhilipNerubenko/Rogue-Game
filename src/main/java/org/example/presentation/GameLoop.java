@@ -7,6 +7,7 @@ import org.example.GameInitializer;
 import org.example.config.GameConstants;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
+import org.example.domain.entity.Item;
 import org.example.domain.model.Direction;
 import org.example.domain.model.InputCommand;
 import org.example.domain.model.Position;
@@ -233,6 +234,57 @@ public class GameLoop {
         renderer.shutdown();
     }
 
+
+    private void movePlayer(Direction direction) {
+        int newX = playerX + direction.getDx();
+        int newY = playerY + direction.getDy();
+
+        Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
+        if (enemyAtPosition != null) {
+            combatService.attackEnemy(session, enemyAtPosition);
+            if (enemyAtPosition.getHealth() <= 0) {
+                combatService.removeEnemy(session, enemyAtPosition, asciiMap);
+            }
+            return;
+        }
+
+        // === АВТОПОДБОР ПРЕДМЕТА ===
+        Item picked = null;
+        for (Item item : session.getCurrentLevelItems()) {
+            if (item.getX() == newX && item.getY() == newY) {
+                picked = item;
+                break;
+            }
+        }
+
+        if (picked != null) {
+            if (session.getPlayer().getInventoryService().isFull()) {
+                renderer.drawMessage(28, "Инвентарь полон!", CharColor.RED);
+                return; // не идём, если нет места
+            }
+
+            session.getPlayer().getInventoryService().add(picked);
+            session.getCurrentLevelItems().remove(picked);
+            asciiMap[newY][newX] = '.'; // убираем с карты
+            renderer.drawMessage(28, "Подобрано: " + picked.getSubType(), CharColor.YELLOW);
+        }
+
+
+        if (canMoveTo(newX, newY)) {
+            // Запоминаем, что мы исследовали клетку, на которую встаём
+            fogOfWarService.markCellAsExplored(newX, newY);
+            // Обновляем локальные переменные
+            playerX = newX;
+            playerY = newY;
+            symbolUnderPlayer = asciiMap[playerY][playerX];
+
+            // ✅ Обновляем позицию в сущности через Direction
+            session.getPlayer().move(direction);
+        }
+    }
+
+
+
     // Вспомогательный метод для читаемости
     private boolean canMoveTo(int x, int y) {
         return x >= 0 && x < GameConstants.Map.WIDTH &&
@@ -270,9 +322,29 @@ public class GameLoop {
                 levelGenerator
         );
 
+
     }
 
     private void drawUI() {
+
+        // === Отрисовка предметов ===
+        for (Item item : session.getCurrentLevelItems()) {
+            if (item.getX() >= 0 && item.getY() >= 0) {
+                if (fogOfWarService.isVisible(item.getX(), item.getY())) {  // ТОЛЬКО В СВЕТЕ!
+                    char symbol = switch (item.getType()) {
+                        case "food"     -> ',';
+                        case "elixir"   -> '!';
+                        case "scroll"   -> '?';
+                        case "weapon"   -> ')';
+                        case "treasure" -> '$';
+                        default         -> '*';
+                    };
+                    renderer.drawChar(item.getX(), item.getY(), symbol, CharColor.YELLOW);
+                }
+            }
+        }
+
+
         // Подсказка
         renderer.drawString(3, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
         // Статус Бар

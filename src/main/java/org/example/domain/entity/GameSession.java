@@ -14,7 +14,10 @@ public class GameSession {
     private char[][] currentMap;
     private List<Room> rooms;
 
+
     // Геттеры и сеттеры
+
+    private List<Item> currentLevelItems = new ArrayList<>();
     public List<Enemy> getEnemies() { return enemies; }
     public void setEnemies(List<Enemy> enemies) { this.enemies = enemies; }
 
@@ -27,8 +30,20 @@ public class GameSession {
     public int getPlayerX() { return playerX; }
     public void setPlayerX(int playerX) { this.playerX = playerX; }
 
+
     public int getPlayerY() { return playerY; }
     public void setPlayerY(int playerY) { this.playerY = playerY; }
+
+    //
+    public List<Item> getCurrentLevelItems() {
+        return currentLevelItems;
+    }
+
+    public void setCurrentLevelItems(List<Item> items) {
+        this.currentLevelItems = items;
+    }
+
+
 
     public char[][] getCurrentMap() { return currentMap; }
     public void setCurrentMap(char[][] currentMap) { this.currentMap = currentMap; }
