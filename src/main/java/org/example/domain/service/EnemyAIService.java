@@ -118,8 +118,6 @@ public class EnemyAIService {
         if (!isWalkable(nx, ny, asciiMap)) return;
         if (getEnemyAt(session, nx, ny) != null) return;
 
-        clearEnemyPosition(enemy,asciiMap);
-
         enemy.setX(nx);
         enemy.setY(ny);
     }
@@ -138,8 +136,6 @@ public class EnemyAIService {
         if (!isWalkable(nx, ny, asciiMap)) return;
         if (getEnemyAt(session, nx, ny) != null) return;
 
-        clearEnemyPosition(enemy,asciiMap);
-
         enemy.setX(nx);
         enemy.setY(ny);
     }
@@ -153,8 +149,6 @@ public class EnemyAIService {
 
             if (!isWalkable(nx, ny, asciiMap)) continue;
             if (getEnemyAt(session, nx, ny) != null) continue;
-
-            clearEnemyPosition(enemy,asciiMap);
 
             enemy.setX(nx);
             enemy.setY(ny);
@@ -181,7 +175,6 @@ public class EnemyAIService {
                 getEnemyAt(session, step1X, step1Y) == null &&
                 getEnemyAt(session, step2X, step2Y) == null) {
 
-            clearEnemyPosition(enemy, asciiMap);
             enemy.setX(step2X);
             enemy.setY(step2Y);
         }
@@ -209,8 +202,6 @@ public class EnemyAIService {
             }
         }
 
-        clearEnemyPosition(enemy,asciiMap);
-
         enemy.setX(nx);
         enemy.setY(ny);
     }
@@ -221,7 +212,6 @@ public class EnemyAIService {
         if (path != null && path.size() > 1) {
             // Первый шаг на пути к игроку
             int[] step = path.get(1);
-            clearEnemyPosition(enemy, asciiMap);
             enemy.setX(step[0]);
             enemy.setY(step[1]);
         } else {
@@ -360,10 +350,5 @@ public class EnemyAIService {
             if (e2 > -dy) { err -= dy; x += sx; }
             if (e2 < dx)  { err += dx; y += sy; }
         }
-    }
-    public void clearEnemyPosition(Enemy enemy, char[][] map) {
-        Toolkit.printString(String.valueOf(map[enemy.getY()][enemy.getX()]),
-                enemy.getX() + MAP_OFFSET_X, enemy.getY(),
-                new CharColor(CharColor.BLACK, CharColor.WHITE));
     }
 }

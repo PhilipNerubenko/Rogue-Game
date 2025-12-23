@@ -23,7 +23,8 @@ public class App {
 
         try {
             Toolkit.init();
-
+            System.out.print("\033[8;40;120t");
+            System.out.flush();
             // Создание и инициализация игры
             GameInitializer initializer = new GameInitializer();
             initializer.initialize();

@@ -10,6 +10,8 @@ import org.example.domain.model.Room;
 import org.example.domain.service.FogOfWarService;
 import org.example.domain.service.LevelGenerator;
 
+import static org.example.config.GameConstants.ScreenConfig.SHOW_CURSOR;
+
 /**
  * Реализация интерфейса Renderer на базе JCurses.
  * ЕДИНСТВЕННЫЙ класс, который знает про Toolkit.
@@ -171,6 +173,6 @@ public class JCursesRenderer implements Renderer {
     @Override
     public void shutdown() {
         Toolkit.shutdown();
-        System.out.print("\033[?25h"); // Показать курсор
+        System.out.print(SHOW_CURSOR); // Показать курсор
     }
 }

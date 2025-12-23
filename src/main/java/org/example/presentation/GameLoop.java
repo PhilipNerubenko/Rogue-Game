@@ -113,7 +113,7 @@ public class GameLoop {
                 renderer.drawMessage(UI_START_Y, sleepMsg, CharColor.CYAN);
 
                 // Ждем подтверждения (любую клавишу)
-                Toolkit.readCharacter();
+                //Toolkit.readCharacter();
 
                 // Затираем старое положение игрока
                 renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
@@ -217,7 +217,6 @@ public class GameLoop {
                 activeMessageLine2 = String.join(", ", enemyMessages);
                 messageTimer = MESSAGE_DURATION;
             }
-            drawEnemies(); // Перерисовываем врагов после их перемещения
             if (session.getPlayer().getHealth() <= 0) {
                 renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
                 // Ждем ESC
@@ -238,8 +237,8 @@ public class GameLoop {
     private boolean canMoveTo(int x, int y) {
         return x >= 0 && x < GameConstants.Map.WIDTH &&
                 y >= 0 && y < GameConstants.Map.HEIGHT &&
-                asciiMap[y][x] != '|' && asciiMap[y][x] != '~' &&
-                asciiMap[y][x] != ' ';
+                asciiMap[y][x] != W_WALL && asciiMap[y][x] != H_WALL &&
+                asciiMap[y][x] != EMPTINESS;
     }
 
     private void drawEnemies() {
@@ -275,7 +274,7 @@ public class GameLoop {
 
     private void drawUI() {
         // Подсказка
-        renderer.drawString(0, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
+        renderer.drawString(3, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
         // Статус Бар
         renderer.drawStatusBar(session.getPlayer().getHealth(),
                 session.getPlayer().getMaxHealth(), 1, 0);
