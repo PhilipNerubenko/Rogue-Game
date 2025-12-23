@@ -38,7 +38,7 @@ install-gradle:
 	sudo apt install -y gradle
 
 # Docker цели
-docker-build:
+docker-build: clean build
 	docker build -t $(IMAGE_NAME) .
 
 docker-run:
