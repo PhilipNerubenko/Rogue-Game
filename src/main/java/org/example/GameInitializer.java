@@ -73,16 +73,8 @@ public class GameInitializer {
         session.setRooms(levelGenerator.getRooms());
 
         // Создание игрока
-
         Position playerPos = createPlayerPosition();
         Player player = new Player(playerPos, new Inventory());
-
-        int playerX = startRoom.getX1() + 1 + levelGenerator.getRand().nextInt(startRoom.getWidth() - 2);
-        int playerY = startRoom.getY1() + 1 + levelGenerator.getRand().nextInt(startRoom.getHeight() - 2);
-
-//        int playerX = startRoom.getX1() + 2; // Центр комнаты
-//        int playerY = startRoom.getY1() + 2;
-        Player player = new Player(new Position(playerX, playerY));
         session.setPlayer(player);
 
         // Создание врагов
