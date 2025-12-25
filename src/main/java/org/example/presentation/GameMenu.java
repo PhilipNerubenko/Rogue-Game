@@ -141,9 +141,9 @@ public class GameMenu {
         // Показываем статистику после Game Over (если есть)
         if (isGameOver && lastGameStats != null) {
             CharColor statsColor = new CharColor(CharColor.YELLOW, CharColor.BLACK);
-            Toolkit.printString("Достигнут уровень: " + lastGameStats.getLevel(),
+            Toolkit.printString("Level reached: " + lastGameStats.getLevel(),
                     50, startY + titleArt.length - 5, statsColor);
-            Toolkit.printString("Собрано сокровищ: " + lastGameStats.getTreasures(),
+            Toolkit.printString("Treasures collected: " + lastGameStats.getTreasures(),
                     50, startY + titleArt.length - 3, statsColor);
         }
 
