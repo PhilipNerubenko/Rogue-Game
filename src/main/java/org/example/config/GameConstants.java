@@ -14,9 +14,12 @@ public final class GameConstants {
     }
 
     public static final class PathToFiles {
-        public static final String SAVE_PATH = "./datalayer/data/save.json";
-        public static final String STATISTICS_PATH = "./datalayer/data/statistics.json";
-        public static final String SCOREBOARD_PATH = "./datalayer/data/scoreboard.json";
+
+        public static final String DATA_DIR = "data";
+        public static final String SAVE_PATH = DATA_DIR + "/save.json";
+        public static final String STATISTICS_PATH = DATA_DIR + "/statistics.json";
+        public static final String SCOREBOARD_PATH = DATA_DIR + "/scoreboard.json";
+
     }
 
     public static final class ScreenConfig {
@@ -101,6 +104,7 @@ public final class GameConstants {
         public static final int START_AGILITY = 5;
         public static final int START_STRENGTH = 5;
         public static final int SIZE_BACKPACK = 36; //  9 предметов  х  4 типа(еда, свитки, эликсир, оружие)
+
 
     }
 }

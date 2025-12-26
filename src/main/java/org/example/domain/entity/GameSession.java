@@ -13,7 +13,9 @@ public class GameSession {
     private int playerY;
     private char[][] currentMap;
     private List<Room> rooms;
+
     private int levelNum;
+
 
 
     // Геттеры и сеттеры
@@ -52,6 +54,7 @@ public class GameSession {
     public List<Room> getRooms() { return rooms; }
     public void setRooms(List<Room> rooms) { this.rooms = rooms; }
 
+
     public int getLevelNum() {
         return levelNum;
     }
@@ -59,4 +62,5 @@ public class GameSession {
     public void setLevelNum(int levelNum) {
         this.levelNum = levelNum;
     }
+
 }

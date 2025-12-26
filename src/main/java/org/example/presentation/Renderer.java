@@ -1,5 +1,6 @@
 package org.example.presentation;
 
+import org.example.datalayer.SessionStat;
 import org.example.domain.entity.Inventory;
 import org.example.domain.entity.Player;
 import org.example.domain.service.FogOfWarService;
@@ -46,6 +47,10 @@ public interface Renderer {
 
     // Отрисовка интерфейса меню
     void drawMenuScreen(int currentOption);
+
+
+    void drawScoreboard();
+
 
 
     // ========== ГЕШДЫ ==========

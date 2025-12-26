@@ -14,7 +14,11 @@ RUN mkdir -p /app/native && \
     mv libjcurses64.so libjcurses.so && \
     rm jcurses.tar.gz
 
+<<<<<<< HEAD
 RUN chown -R appuser:appuser /app
+=======
+RUN mkdir -p /app/data && chown -R appuser:appuser /app
+>>>>>>> trangbow
 
 COPY build/libs/Rogue1980-1.0.jar /app/Rogue1980.jar
 

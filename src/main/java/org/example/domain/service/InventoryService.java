@@ -1,6 +1,8 @@
 package org.example.domain.service;
 
+
 import org.example.config.GameConstants;
+
 import org.example.domain.entity.Item;
 
 import java.util.ArrayList;
@@ -9,7 +11,9 @@ import java.util.List;
 public class InventoryService {
 
     private final List<Item> items = new ArrayList<>();
+
     private static final int MAX_SIZE = GameConstants.Player.SIZE_BACKPACK; // a-z
+
 
     // Добавить предмет
     public boolean add(Item item) {

@@ -39,7 +39,9 @@ public class App {
                                 break;
                             case 2: // SCOREBOARD
                                 // TODO: реализовать показ таблицы лидеров
-                                renderer.clearScreen();
+
+                                renderer.drawScoreboard();
+
                                 while (Toolkit.readCharacter().getCharacter() != 27);
                                 break;
                             case 3: // EXIT GAME

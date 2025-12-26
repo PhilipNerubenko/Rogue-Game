@@ -1,14 +1,26 @@
 package org.example.presentation;
 
+import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
+import org.example.datalayer.SessionStat;
 import org.example.domain.entity.Inventory;
 import org.example.domain.entity.ItemType;
 import org.example.domain.entity.Player;
 import org.example.domain.model.Room;
 import org.example.domain.service.FogOfWarService;
 import org.example.domain.service.LevelGenerator;
+
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import static org.example.config.GameConstants.PathToFiles.SCOREBOARD_PATH;
 
 import static org.example.config.GameConstants.ScreenConfig.SHOW_CURSOR;
 
@@ -192,6 +204,108 @@ public class JCursesRenderer implements Renderer {
         Toolkit.printString(">>>", shiftX + 24, optionRow, pointerColor);
 
     }
+
+
+      @Override
+    public void drawScoreboard() {
+        clearScreen();
+
+        // Загружаем статистику из JSON-файла через Jackson
+          java.util.List<SessionStat> stats = new ArrayList<>();
+          ObjectMapper mapper = new ObjectMapper();
+          try {
+              File file = new File(SCOREBOARD_PATH);
+
+              if (!file.exists()) {
+                  drawString(5, 10, "Scoreboard file not found!", CharColor.YELLOW);
+                  drawString(5, 11, "Play a game first to create it.", CharColor.WHITE);
+                  drawString(5, 13, "Press any key...", CharColor.YELLOW);
+                  refresh();
+                  Toolkit.readCharacter();
+                  return;
+              }
+
+              JsonNode root = mapper.readTree(file);
+              JsonNode sessionNode = root.get("sessionStats");
+
+              if (sessionNode != null && sessionNode.isArray()) {
+                  SessionStat[] statArray = mapper.treeToValue(sessionNode, SessionStat[].class);
+                  stats = Arrays.asList(statArray);
+              }
+
+          } catch (IOException e) {
+              System.err.println("Error loading scoreboard from: " + SCOREBOARD_PATH);
+              e.printStackTrace();
+
+              drawString(5, 10, "Error loading scoreboard!", CharColor.RED);
+              drawString(5, 11, "File: " + SCOREBOARD_PATH, CharColor.RED);
+              drawString(5, 13, "Press any key to continue...", CharColor.YELLOW);
+              refresh();
+              Toolkit.readCharacter();
+              return;
+          }
+
+          // --- Отрисовка таблицы ---
+          String[] headers = {"treasures", "level", "enemies", "food", "elixirs", "scrolls", "attacks", "missed", "moves"};
+          int startX = 0; // Смещение слева (как в вашем примере)
+          int startY = 1;
+          int cellWidth = 10; // 1 палка + 9 символов содержимого
+
+          // Граница: 91 символ (10 палок + 9 блоков по 9 символов)
+          String border = "-".repeat(91);
+
+          // Шаблон: палка + 9 пробелов, повторяется 9 раз
+          String separatorTemplate = "|" + "         |".repeat(headers.length);
+
+          int currentY = startY;
+
+          // Верхняя граница
+          drawString(startX, currentY++, border, CharColor.WHITE);
+
+          // Заголовок (левое выравнивание, 9 символов)
+          StringBuilder headerLine = new StringBuilder("|");
+          for (String header : headers) {
+              headerLine.append(String.format("%-9s", header)).append("|");
+          }
+          drawString(startX, currentY++, headerLine.toString(), CharColor.WHITE);
+
+          // Граница под заголовком
+          drawString(startX, currentY++, border, CharColor.WHITE);
+
+          // Данные
+          for (int i = 0; i < Math.min(stats.size(), 10); i++) {
+              SessionStat s = stats.get(i);
+
+              // 1. Белые разделители
+              drawString(startX, currentY, separatorTemplate, CharColor.WHITE);
+
+              // 2. Голубые данные (правое выравнивание, 9 символов)
+              int dataX = startX + 1; // Позиция после первой палки
+
+              drawString(dataX + 0, currentY, String.format("%9d", s.getTreasures()), CharColor.CYAN);
+              drawString(dataX + 10, currentY, String.format("%9d", s.getLevelNum()), CharColor.CYAN);
+              drawString(dataX + 20, currentY, String.format("%9d", s.getEnemies()), CharColor.CYAN);
+              drawString(dataX + 30, currentY, String.format("%9d", s.getFood()), CharColor.CYAN);
+              drawString(dataX + 40, currentY, String.format("%9d", s.getElixirs()), CharColor.CYAN);
+              drawString(dataX + 50, currentY, String.format("%9d", s.getScrolls()), CharColor.CYAN);
+              drawString(dataX + 60, currentY, String.format("%9d", s.getAttacks()), CharColor.CYAN);
+              drawString(dataX + 70, currentY, String.format("%9d", s.getMissed()), CharColor.CYAN);
+              drawString(dataX + 80, currentY, String.format("%9d", s.getMoves()), CharColor.CYAN);
+
+              currentY++;
+
+              // Граница под строкой
+              drawString(startX, currentY++, border, CharColor.WHITE);
+          }
+
+          // Сообщение (центрировано)
+          String message = "Press ESC to return...";
+          int messageX = startX + (border.length() - message.length()) / 2;
+          drawString(messageX, currentY + 1, message, CharColor.YELLOW);
+
+          refresh();
+      }
+
 
     @Override
     public int getWidth() {

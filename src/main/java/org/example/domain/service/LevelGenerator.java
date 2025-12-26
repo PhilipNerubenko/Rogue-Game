@@ -87,6 +87,7 @@ public class LevelGenerator {
 
 
 
+
         //добавляем выход если комната isExitRoom
         for(int i = 0; i < ROOMS_AT_LEVEL; i++){
         Room curentRoom = rooms.get(i);
@@ -97,6 +98,7 @@ public class LevelGenerator {
 
         // Сохраняем предметы в сессию (для автоподбора)
         session.setCurrentLevelItems(items);
+
 
         return asciiMap;
     }

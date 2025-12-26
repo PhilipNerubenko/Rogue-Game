@@ -3,6 +3,7 @@ package org.example;
 import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
+import org.example.datalayer.Statistics;
 import org.example.domain.entity.*;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
@@ -11,6 +12,7 @@ import org.example.presentation.InputHandler;
 import org.example.presentation.JCursesRenderer;
 import org.example.presentation.Renderer;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -62,9 +64,10 @@ public class GameInitializer {
         this.inventoryService = new InventoryService();
         this.movementService = new MovementService();
 
+
     }
 
-    public void initialize() {
+    public void initialize() throws IOException{
         int levelNum = 1;
         // Инициализация сессии
         session.setEnemies(new ArrayList<>());
@@ -85,6 +88,9 @@ public class GameInitializer {
 
         // Отрисовка начального состояния
         drawInitialState();
+
+        Statistics.resetStatistics();
+
     }
 
     private Position createPlayerPosition() {

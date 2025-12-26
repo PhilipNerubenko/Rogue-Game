@@ -58,6 +58,7 @@ public class GameLoop {
     private String activeMessageLine1;
     private String activeMessageLine2;
     private String activeMessageLine3;
+
     private int messageTimer = 0; // начальный таймер
     private static final int MESSAGE_DURATION = 2; // время жизни сообщения
 
@@ -146,7 +147,6 @@ public class GameLoop {
             renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
 
 
-
             drawUI(); // Рисует подсказку и панель со здоровьем
             if (messageTimer > 0) {
                 if (activeMessageLine1 != null) {
@@ -228,7 +228,9 @@ public class GameLoop {
         if (session.getPlayer().getHealth() <= 0) {
             renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
             running = false;
-            Statistics.updateStatistics();
+
+            Statistics.updateScoreBoard();
+
         }
         return running;
     }
@@ -345,6 +347,7 @@ public class GameLoop {
         renderer.drawString(3, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
         // Статус Бар
         renderer.drawStatusBar(session.getPlayer().getHealth(),
+
                 session.getPlayer().getMaxHealth(), session.getLevelNum(), 0);
 
         // Для отладки    начало
@@ -355,6 +358,7 @@ public class GameLoop {
 
 
         // Для отладки    конец
+
     }
 
     private void syncPlayerPositionWithEntity() {
