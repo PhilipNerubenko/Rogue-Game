@@ -214,11 +214,10 @@ public class GameLoop {
         if (session.getPlayer().getHealth() <= 0) {
             renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
             running = false;
-            Statistics.updateStatistics();
+            Statistics.updateScoreBoard();
         }
         return running;
     }
-
 
     private void movePlayer(Direction direction) {
         int newX = playerX + direction.getDx();

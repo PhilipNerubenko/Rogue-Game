@@ -1,6 +1,6 @@
 package org.example.datalayer;
 
-public class SessionStat {
+public class SessionStat  implements Comparable<SessionStat>{
     private int treasures;
     private int level;
     private int enemies;
@@ -10,6 +10,8 @@ public class SessionStat {
     private int attacks;
     private int missed;
     private int moves;
+
+    public SessionStat() {}
 
     public SessionStat(int treasures, int level, int enemies, int food, int elixirs, int scrolls, int attacks, int missed, int moves) {
         this.treasures = treasures;
@@ -93,5 +95,12 @@ public class SessionStat {
 
     public void setMoves(int moves) {
         this.moves = moves;
+    }
+
+    @Override
+    public int compareTo(SessionStat o) {
+        if (this.treasures != o.treasures) return Long.compare(o.treasures, this.treasures);
+        if (this.level != o.level) return Long.compare(o.level, this.level);
+        return Long.compare(this.moves, o.moves); // меньше ходов — лучше
     }
 }
