@@ -1,10 +1,9 @@
 package org.example.presentation;
 
 import jcurses.system.CharColor;
-import jcurses.system.InputChar;
-import jcurses.system.Toolkit;
 import org.example.GameInitializer;
 import org.example.config.GameConstants;
+import org.example.datalayer.Statistics;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
 import org.example.domain.entity.Item;
@@ -13,19 +12,17 @@ import org.example.domain.model.InputCommand;
 import org.example.domain.model.Position;
 import org.example.domain.service.CombatService;
 import org.example.domain.service.EnemyAIService;
-import org.example.domain.service.EnemyType;
 import org.example.domain.service.FogOfWarService;
 import org.example.domain.service.InventoryService;
 import org.example.domain.service.LevelGenerator;
 import org.example.domain.service.MovementService;
 
+import java.io.IOException;
 import java.util.List;
 
-import static org.example.App.printLine;
 import static org.example.config.GameConstants.Icons.*;
 import static org.example.config.GameConstants.Icons.OGRE;
 import static org.example.config.GameConstants.Icons.SNAKE_MAGE;
-import static org.example.config.GameConstants.Map.MAP_OFFSET_X;
 import static org.example.config.GameConstants.ScreenConfig.*;
 import static org.example.config.GameConstants.TextMessages.DIED;
 import static org.example.config.GameConstants.TextMessages.TERMINATE;
@@ -83,7 +80,7 @@ public class GameLoop {
         this.symbolUnderPlayer = asciiMap[playerY][playerX];
     }
 
-    public void start() {
+    public void start() throws IOException {
         // Инициализация JCurses
         sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
             renderer.shutdown();
@@ -137,18 +134,8 @@ public class GameLoop {
                 if (activeMessageLine2 != null) {
                     renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, CharColor.YELLOW);
                 }
-                //renderer.refresh();
-                if (session.getPlayer().getHealth() <= 0) {
-                    renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
-                    // Ждем ESC
-                    while (true) {
-                        InputCommand command = inputHandler.readCommand();
-                        if (command.getType() == InputCommand.Type.QUIT) {
-                            running = false;
-                            break;
-                        }
-                    }
-                }
+
+                running = checkDeath(running);
                 continue; // Пропускаем остальную обработку ввода
             }
             // 1. РЕНДЕР: рисуем текущее состояние
@@ -165,7 +152,6 @@ public class GameLoop {
                     renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, CharColor.YELLOW);
                 }
             }
-            //renderer.refresh();
 
             // 2. ВВОД: читаем команду игрока
             InputCommand command = inputHandler.readCommand();
@@ -218,20 +204,19 @@ public class GameLoop {
                 activeMessageLine2 = String.join(", ", enemyMessages);
                 messageTimer = MESSAGE_DURATION;
             }
-            if (session.getPlayer().getHealth() <= 0) {
-                renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
-                // Ждем ESC
-                while (true) {
-                    command = inputHandler.readCommand();
-                    if (command.getType() == InputCommand.Type.QUIT) {
-                        running = false;
-                        break;
-                    }
-                }
-            }
+            running = checkDeath(running);
         }
 
         renderer.shutdown();
+    }
+
+    private boolean checkDeath(boolean running) throws IOException {
+        if (session.getPlayer().getHealth() <= 0) {
+            renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
+            running = false;
+            Statistics.updateStatistics();
+        }
+        return running;
     }
 
 
@@ -259,14 +244,14 @@ public class GameLoop {
 
         if (picked != null) {
             if (session.getPlayer().getInventoryService().isFull()) {
-                renderer.drawMessage(28, "Инвентарь полон!", CharColor.RED);
+                renderer.drawMessage(28, "Inventory is full!", CharColor.RED);
                 return; // не идём, если нет места
             }
 
             session.getPlayer().getInventoryService().add(picked);
             session.getCurrentLevelItems().remove(picked);
             asciiMap[newY][newX] = '.'; // убираем с карты
-            renderer.drawMessage(28, "Подобрано: " + picked.getSubType(), CharColor.YELLOW);
+            renderer.drawMessage(28, "Picked: " + picked.getSubType(), CharColor.YELLOW);
         }
 
 
@@ -282,8 +267,6 @@ public class GameLoop {
             session.getPlayer().move(direction);
         }
     }
-
-
 
     // Вспомогательный метод для читаемости
     private boolean canMoveTo(int x, int y) {
@@ -343,7 +326,6 @@ public class GameLoop {
                 }
             }
         }
-
 
         // Подсказка
         renderer.drawString(3, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);

@@ -149,25 +149,8 @@ public class GameInitializer {
                 levelGenerator
         );
 
-        // Отображение интерфейса
-        displayInterface();
-
         // Отрисовка врагов
         drawEnemies();
-        CharColor hintColor = new CharColor(CharColor.CYAN, CharColor.BLACK);
-        // Подсказка управления
-        App.printLine(MESSAGE_LINE_3, CONTROL_HINT, hintColor, MAP_WIDTH);
-    }
-
-    private void displayInterface() {
-        CharColor hintColor = new CharColor(CharColor.CYAN, CharColor.BLACK);
-        App.printLine(MESSAGE_LINE_3, CONTROL, hintColor, MAP_WIDTH);
-
-        Player player = session.getPlayer();
-        CharColor statusColor = new CharColor(CharColor.YELLOW, CharColor.BLACK);
-        String healthStatus = String.format("HP: %d/%d",
-                player.getHealth(), player.getMaximumHealth());
-        App.printLine(STATUS_LINE_Y, healthStatus, statusColor, 30);
     }
 
     private void drawEnemies() {

@@ -1,8 +1,6 @@
 package org.example.config;
 
 public final class GameConstants {
-    private GameConstants() {
-    }
 
     public static final class Map {
         public static final int ROOMS  = 9;     //комнат на уровне
@@ -13,8 +11,12 @@ public final class GameConstants {
         public static final int MAP_OFFSET_X = 8; // смещение карты от левого края
         public static final int MAP_OFFSET_Y = 3; // смещение карты от левого края
         public static final int VISION_RADIUS = 8; // радиус видимости игрока
-        private Map() {
-        }
+    }
+
+    public static final class PathToFiles {
+        public static final String SAVE_PATH = "./datalayer/data/save.json";
+        public static final String STATISTICS_PATH = "./datalayer/data/statistics.json";
+        public static final String SCOREBOARD_PATH = "./datalayer/data/scoreboard.json";
     }
 
     public static final class ScreenConfig {
@@ -61,17 +63,6 @@ public final class GameConstants {
         public static final String GREEN = "\033[92m";
         public static final String RED = "\033[91m";
         public static final String RESET = "\033[0m";
-        private Colors() {
-        }
-    }
-
-    public static final class CharacterBase {
-        public static final int STRENGTH = 16;
-        public static final int HEALTH = 50;
-        public static final int AGILITY = 5;
-
-        private CharacterBase() {
-        }
     }
 
     public static final class Icons {
@@ -109,42 +100,6 @@ public final class GameConstants {
         public static final int START_MAX_HEALTH = 30;  // <-- ДОБАВЬТЕ ЭТОТЬ
         public static final int START_AGILITY = 5;
         public static final int START_STRENGTH = 5;
-        private Player() {}
 
     }
-
-//    public static final class MokMap {
-//        public static final String[] myArray = {
-//                "      |~~~~~~~~~~~~|               |~~~~~~~~~|                                  ",
-//                "      |............|              #+.........|        |~~~~~~~~~~~~~~~~~~~~~~~~|",
-//                "      |............+###############|.........| #######+........................|",
-//                "      |............|               |.........| #      |........................|",
-//                "      |............|               |.........+##      |........................|",
-//                "      |............|               |.........|        |~~~~~~+~~~~~~~~~~~~~~~~~|",
-//                "      |~~~~~~~~~~~+|               |~~~+~~~~~|               #                  ",
-//                "                  #                    ###                   ###############    ",
-//                "     ##############                  |~~~+|                                #    ",
-//                "  |~~+~~~~~~~~~~~~~~~~~|             |....+##########     |~~~~~~~~~~~~~~~~+|   ",
-//                "  |....................|      #######+....|         #     |.................|   ",
-//                "  |....................+#######      |....|         #     |.................|   ",
-//                "  |....................|             |....|         ######+.................|   ",
-//                "  |....................|             |....|               |.................|   ",
-//                "  |~~~~~~~~~~~~~~~~+~~~|             |....|               |~~~~~~~~~~~~~~~~+|   ",
-//                "                   #                 |~~~+|                                #    ",
-//                "                   #                     #                    ##############    ",
-//                "                   #                    ##                    #                 ",
-//                "                   #                    #                     #                 ",
-//                "                ####                 |~~+~|                   #                 ",
-//                "                #                    |....|                   #                 ",
-//                "        |~~~~~~~+~|                  |....|            |~~~~~~+~~~~~~~~~~~~~~~| ",
-//                "        |.........|                  |....| ###########+......................| ",
-//                "        |.........|                  |....| #          |......................| ",
-//                "        |.........+#############     |....| #          |......................| ",
-//                "        |.........|            #     |....| #          |......................| ",
-//                "        |~~~~~~~~~|            ######+....+##          |~~~~~~~~~~~~~~~~~~~~~~| ",
-//                "                                     |~~~~|                                     ",
-//                "                                                                                "
-//        };
-//
-//    }
 }

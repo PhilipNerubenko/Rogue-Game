@@ -44,6 +44,9 @@ public interface Renderer {
     // Показать информационное сообщение (внизу экрана: например, "Вы нанесли 5 урона!").
     void drawMessage(int line, String message, int color);
 
+    // Отрисовка интерфейса меню
+    void drawMenuScreen(int currentOption);
+
 
     // ========== ГЕШДЫ ==========
     // Получить ширину экрана.

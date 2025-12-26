@@ -1,7 +1,7 @@
 # src/Makefile
 
 # Переменные
-JAR_FILE = build/libs/Rogue1980-1.0-SNAPSHOT.jar
+JAR_FILE = build/libs/Rogue1980-1.0.jar
 GRADLEW = ./gradlew
 # Docker
 IMAGE_NAME = rogue1980:1.0.0
@@ -11,7 +11,7 @@ CONTAINER_NAME = rogue-container
 all: clean build run
 
 build:
-	$(GRADLEW) jar
+	$(GRADLEW) shadowJar
 
 run: $(JAR_FILE)
 	java -jar $(JAR_FILE)
@@ -72,7 +72,7 @@ dependencies:
 	$(GRADLEW) dependencies
 
 build-release:
-	$(GRADLEW) build
+	$(GRADLEW) clean shadowJar
 
 # Информационные цели
 version:

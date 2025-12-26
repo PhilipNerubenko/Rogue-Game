@@ -156,6 +156,44 @@ public class JCursesRenderer implements Renderer {
     }
 
     @Override
+    public void drawMenuScreen(int currentOption) {
+        clearScreen();
+
+        String[] strings = {
+                "           GAME  MENU           ",
+                "+------------------------------+",
+                "|                              |",
+                "|          NEW   GAME          |",
+                "|          LOAD  GAME          |",
+                "|          SCOREBOARD          |",
+                "|          EXIT  GAME          |",
+                "|                              |",
+                "+------------------------------+",
+        };
+
+        int menuWidth = strings[0].length();
+        int menuHeight = strings.length;
+
+        int screenWidth = Toolkit.getScreenWidth();
+        int screenHeight = Toolkit.getScreenHeight();
+
+        int shiftX = (screenWidth - menuWidth) / 2;
+        int shiftY = (screenHeight - menuHeight) / 2;
+
+        CharColor menuColor = new CharColor(CharColor.BLACK, CharColor.WHITE);
+        for (int i = 0; i < menuHeight; i++) {
+            Toolkit.printString(strings[i], shiftX, shiftY + i, menuColor);
+        }
+
+        int optionRow = shiftY + 3 + currentOption;
+        CharColor pointerColor = new CharColor(CharColor.BLACK, CharColor.YELLOW);
+
+        Toolkit.printString("<<<", shiftX + 5, optionRow, pointerColor);
+        Toolkit.printString(">>>", shiftX + 24, optionRow, pointerColor);
+
+    }
+
+    @Override
     public int getWidth() {
         return width;
     }

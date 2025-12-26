@@ -16,7 +16,7 @@ RUN mkdir -p /app/native && \
 
 RUN chown -R appuser:appuser /app
 
-COPY build/libs/Rogue1980-1.0-SNAPSHOT.jar /app/Rogue1980.jar
+COPY build/libs/Rogue1980-1.0.jar /app/Rogue1980.jar
 
 ENV JAVA_OPTS="--enable-native-access=ALL-UNNAMED -Djava.library.path=/app/native"
 
