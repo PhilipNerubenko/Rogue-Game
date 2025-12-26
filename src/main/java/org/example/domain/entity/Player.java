@@ -3,25 +3,25 @@ package org.example.domain.entity;
 import org.example.config.GameConstants;
 import org.example.domain.model.Direction;
 import org.example.domain.model.Position;
+import org.example.domain.service.InventoryService;
 
 // Персонаж + позиция + инвентарь
 public class Player extends Character  {
     private Position position;
     private Item equippedWeapon; // null = кулаки
-
 //    private Inventory inventory;
 //    private int maxHealth = GameConstants.Player.START_MAX_HEALTH;
 //    private int health = GameConstants.Player.START_HEALTH;
 //    private int agility = GameConstants.Player.START_AGILITY;
 //    private int strength = GameConstants.Player.START_STRENGTH;
-    private boolean alive = true;
+    private InventoryService inventoryService;
 
     public Player(Position position) {
         super(GameConstants.Player.START_MAX_HEALTH,
                 GameConstants.Player.START_AGILITY,
                 GameConstants.Player.START_STRENGTH);
         this.position = position;
-
+        this.inventoryService = new InventoryService();
     }
 
     public Player(Position position, Inventory inventory) {
@@ -29,18 +29,12 @@ public class Player extends Character  {
                 GameConstants.Player.START_AGILITY,
                 GameConstants.Player.START_STRENGTH);
         this.position = position;
-        this.inventory = inventory;
+        this.setInventory(inventory);
     }
     // ВОТ ЭТОГО МЕТОДА НЕ ХВАТАЕТ:
     public Position getPosition() {
         return position;
     }
-
-    // Или метод для установки координат
-    public void setPosition(int x, int y) {
-        this.position = new Position(x, y);
-    }
-
 
     public void move(Direction direction) {
         this.position = new Position(
@@ -48,17 +42,9 @@ public class Player extends Character  {
                 this.position.getY() + direction.getDy()
         );
     }
-    public boolean isAlive() {
-        return alive;
-    }
-
-    public void setAlive(boolean playerAlive) {
-        this.alive = playerAlive;
-    }
-
     public void equip(Item weapon) { /* TODO */ }
 
-    public void setPosition(Position newPosition) {
-        this.position = newPosition;
+    public InventoryService getInventoryService() {
+        return inventoryService;
     }
 }

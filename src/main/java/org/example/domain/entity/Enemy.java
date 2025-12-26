@@ -3,7 +3,7 @@ package org.example.domain.entity;
 import java.awt.*;
 
 public class Enemy {
-    private String type;
+    private char type;
     private int health;
     private int agility;
     private int speed;
@@ -11,6 +11,8 @@ public class Enemy {
     private int hostility;
     private int x;
     private int y;
+    private int diagX = 1;
+    private int diagY = 1;
 
     // Дополнительные свойста из ТЗ
     private Color color;
@@ -28,7 +30,7 @@ public class Enemy {
     public static final int ABILITY_SNAKE_SLEEP = 64;     // Змеиный маг: сон игрока
     public static final int ABILITY_DIAGONAL_MOVE = 128;  // Змеиный маг: диагональное движение
 
-    public Enemy(String type, int health, int agility, int speed, int strength, int hostility, Color color, int specialAbility) {
+    public Enemy(char type, int health, int agility, int speed, int strength, int hostility, Color color, int specialAbility) {
         this.type = type;
         this.health = health;
         this.agility = agility;
@@ -41,11 +43,11 @@ public class Enemy {
         this.restTurns = 0;
     }
 
-    public String getType() {
+    public char getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(char type) {
         this.type = type;
     }
 
@@ -137,8 +139,33 @@ public class Enemy {
         this.y = y;
     }
 
+    public int getDiagX() {
+        return diagX;
+    }
+
+    public void setDiagX(int diagX) {
+        this.diagX = diagX;
+    }
+
+    public int getDiagY() {
+        return diagY;
+    }
+
+    public void setDiagY(int diagY) {
+        this.diagY = diagY;
+    }
+
     // Проверка, есть ли у врага определённая способность
     public boolean hasAbility(int abilityMask) {
         return (specialAbility & abilityMask) == abilityMask;
     }
+
+    public void removeAbility(int abilityMask) {
+        specialAbility &= ~abilityMask;
+    }
+
+//    public boolean isWillCounterAttack() { return willCounterAttack; }
+//    public void setWillCounterAttack(boolean willCounterAttack) {
+//        this.willCounterAttack = willCounterAttack;
+//    }
 }

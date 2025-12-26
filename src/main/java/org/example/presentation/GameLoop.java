@@ -1,26 +1,31 @@
 package org.example.presentation;
 
 import jcurses.system.CharColor;
-import jcurses.system.InputChar;
-import jcurses.system.Toolkit;
 import org.example.GameInitializer;
 import org.example.config.GameConstants;
+import org.example.datalayer.Statistics;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
-import org.example.domain.entity.Player;
-import org.example.domain.model.*;
+import org.example.domain.entity.Item;
+import org.example.domain.model.Direction;
+import org.example.domain.model.InputCommand;
+import org.example.domain.model.Position;
 import org.example.domain.service.CombatService;
 import org.example.domain.service.EnemyAIService;
-import org.example.domain.service.EnemyType;
 import org.example.domain.service.FogOfWarService;
 import org.example.domain.service.InventoryService;
 import org.example.domain.service.LevelGenerator;
 import org.example.domain.service.MovementService;
-import org.example.App.GameResult;
 
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.List;
-import java.util.Random;
+
+import static org.example.config.GameConstants.Icons.*;
+import static org.example.config.GameConstants.Icons.OGRE;
+import static org.example.config.GameConstants.Icons.SNAKE_MAGE;
+import static org.example.config.GameConstants.ScreenConfig.*;
+import static org.example.config.GameConstants.TextMessages.DIED;
+import static org.example.config.GameConstants.TextMessages.TERMINATE;
 
 /**
 *    GameLoop — это оркестратор игрового процесса, который:
@@ -40,21 +45,21 @@ public class GameLoop {
     private final EnemyAIService enemyAIService;
     private final InventoryService inventoryService;
     private final MovementService movementService;
-    private  FogOfWarService fogOfWarService;
-    private  Level level;
-    private  char[][] asciiMap;
+    private final FogOfWarService fogOfWarService;
+    private final LevelGenerator levelGenerator;
+    private final char[][] asciiMap;
 
-    // Игрок  и его позиция (временно, пока не полностью перейдем на Player entity)
-    private Player player;
+    // Позиция игрока (временно, пока не полностью перейдем на Player entity)
     private int playerX;
     private int playerY;
     private char symbolUnderPlayer;
 
-    // Дополнительные переменные для управления уровнями
-    private int currentLevelNumber;
-    private int collectedTreasures;
-    private LevelGenerator levelGenerator;
-    private boolean levelComplete = false; // Добавлена переменная
+    // сообщения и задержка сообщений
+    private String activeMessageLine1;
+    private String activeMessageLine2;
+    private String activeMessageLine3;
+    private int messageTimer = 0; // начальный таймер
+    private static final int MESSAGE_DURATION = 2; // время жизни сообщения
 
     public GameLoop(GameInitializer initializer) {
         // Извлекаем зависимости из инициализатора
@@ -67,51 +72,91 @@ public class GameLoop {
         this.movementService = initializer.getMovementService();
         this.fogOfWarService = initializer.getFogOfWarService();
         this.levelGenerator = initializer.getLevelGenerator();
+        this.asciiMap = initializer.getAsciiMap();
 
-        this.level = session.getLevel();
-        this.asciiMap = level.getAsciiMap();
-        this.currentLevelNumber = level.getLevelNumber();
-
-        // Инициализация игрока из сессии
-        this.player = session.getPlayer();
-        Position playerPos = player.getPosition();
+        // Инициализация позиции игрока из сессии
+        Position playerPos = session.getPlayer().getPosition();
         this.playerX = playerPos.getX();
         this.playerY = playerPos.getY();
         this.symbolUnderPlayer = asciiMap[playerY][playerX];
-
-        this.collectedTreasures = 0; // Инициализируем счетчик сокровищ
-        levelComplete = false;
     }
 
-    public GameResult start() {
+    public void start() throws IOException {
         // Инициализация JCurses
-        sun.misc.Signal.handle(new sun.misc.Signal("INT"), signal -> {
+        sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
             renderer.shutdown();
-            System.out.println("\nTerminated via Ctrl+C");
+            System.out.println(TERMINATE);
             System.exit(0);
         });
 
         renderer.clearScreen();
-        System.out.print("\033[?25l");
 
-        // 🔥 КРИТИЧЕСКО: первичное обновление тумана перед стартом
-       // fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
+        enemyAIService.updateAllGhostEffects(session, playerX, playerY);
+        System.out.print(HIDE_CURSOR);
 
         boolean running = true;
-        boolean levelComplete = false;
 
-        while (running && !levelComplete) {
+        while (running) {
+            // Уменьшаеми таймер сообщений
+            if (messageTimer > 0) {
+                messageTimer--;
+            } else {
+                activeMessageLine1 = null;
+                activeMessageLine2 = null;
+            }
+
+            if (session.getPlayer().isSleepTurns()) {
+                // Пропускаем ход спящего игрока
+                String sleepMsg = "You are sleep! Zzz...";
+                session.getPlayer().setSleepTurns(false);
+                renderer.drawMessage(UI_START_Y, sleepMsg, CharColor.CYAN);
+
+                // Ждем подтверждения (любую клавишу)
+                //Toolkit.readCharacter();
+
+                // Затираем старое положение игрока
+                renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
+
+                // Ход врагов (игрок пропускает ход)
+                List<String> enemyMessages = enemyAIService.witchMoveEnemiesPattern(session, combatService, playerX, playerY, asciiMap);
+                if (!enemyMessages.isEmpty()) {
+                    activeMessageLine2 = String.join(", ", enemyMessages);
+                    messageTimer = MESSAGE_DURATION;
+                }
+
+                // Перерисовываем
+                renderer.clearScreen();
+                drawMap();
+                drawEnemies();
+                renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
+
+                // Обновляем HP
+                drawUI();
+                if (activeMessageLine2 != null) {
+                    renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, CharColor.YELLOW);
+                }
+
+                running = checkDeath(running);
+                continue; // Пропускаем остальную обработку ввода
+            }
             // 1. РЕНДЕР: рисуем текущее состояние
-//            renderer.clearScreen();
+            renderer.clearScreen();
             drawMap(); // Рисуем карту с учетом тумана
             drawEnemies(); // Рисуем видимых врагов
             renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
 
-            // Отрисовка статус-бара
-            renderer.drawStatusBar(player.getHealth(), player.getMaxHealth(),
-                    currentLevelNumber, collectedTreasures);
 
-            renderer.refresh();
+
+            drawUI(); // Рисует подсказку и панель со здоровьем
+            if (messageTimer > 0) {
+                if (activeMessageLine1 != null) {
+                    renderer.drawMessage(MESSAGE_LINE_1, activeMessageLine1, CharColor.YELLOW);
+                }
+                if (activeMessageLine2 != null) {
+                    renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, CharColor.YELLOW);
+                }
+
+            }
 
             // 2. ВВОД: читаем команду игрока
             InputCommand command = inputHandler.readCommand();
@@ -129,37 +174,17 @@ public class GameLoop {
                 int newX = playerX + dir.getDx();
                 int newY = playerY + dir.getDy();
 
-                // Проверяем выход ('E')
-                if (asciiMap[newY][newX] == 'E') {
-                    levelComplete = true;
-                    currentLevelNumber++;
-                    if (currentLevelNumber > 21) { // Уровень 22 = победа
-                        return new GameResult(currentLevelNumber - 1, collectedTreasures, true, false);
-                    }
-                    generateNewLevel(currentLevelNumber);
-                    continue;
-                }
-
-                // Проверяем сокровища ('$')
-                if (asciiMap[newY][newX] == '$') {
-                    collectedTreasures++;
-                    asciiMap[newY][newX] = '.'; // Убираем сокровище с карты
-                    renderer.drawMessage(28, "Treasure found! Total: " + collectedTreasures, CharColor.YELLOW);
-                }
-
                 // Проверяем, есть ли враг
                 Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
                 if (enemyAtPosition != null) {
-                    // Атакуем врага
-                    combatService.attackEnemy(session, enemyAtPosition);
+                    String message = combatService.attackEnemy(session, enemyAtPosition);
+                    activeMessageLine1 = message;
+                    messageTimer = MESSAGE_DURATION;
+
                     if (enemyAtPosition.getHealth() <= 0) {
                         combatService.removeEnemy(session, enemyAtPosition, asciiMap);
                     }
-                    continue; // Ход завершен, переходим к следующей итерации
-                }
-
-                // Если можно двигаться - перемещаем
-                if (canMoveTo(newX, newY)) {
+                } else if (canMoveTo(newX, newY)) { // Если можно двигаться - перемещаем
                     // Затираем старую позицию (возвращаем символ под игроком)
                     renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
                     //Помечаем клетку как исследованную
@@ -169,10 +194,18 @@ public class GameLoop {
                     playerY = newY;
                     symbolUnderPlayer = asciiMap[playerY][playerX];
 
+
+                    if (asciiMap[playerY][playerX] == 'E') { // Если символ  EXIT LEVEL
+                        int currentLevelNumber = session.getLevelNum();
+                        currentLevelNumber ++;
+                        session.setLevelNum(currentLevelNumber);
+
+                        // TODO Генерация нового уровня
+                    }
+
                     // 🔥 СИНХРОНИЗИРУЕМ с Player entity
                     session.getPlayer().move(dir);
                 }
-
             }
 
             // 4. ОБНОВЛЕНИЕ МИРА: туман и враги
@@ -180,155 +213,148 @@ public class GameLoop {
             fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
 
             // Обновляем врагов (теперь с актуальными координатами)
-            enemyAIService.moveEnemies(session, playerX, playerY, asciiMap);
-            enemyAIService.updateEnemyEffects(session, playerX, playerY);
-            drawEnemies(); // Перерисовываем врагов после их перемещения
-
-            // Проверка смерти игрока
-            if (player.getHealth() <= 0) {
-                player.setAlive(false) ;
-                session.setPlayer(player);
+            List<String> enemyMessages = enemyAIService.witchMoveEnemiesPattern(session, combatService, playerX, playerY, asciiMap);
+            if (!enemyMessages.isEmpty()) {
+                activeMessageLine2 = String.join(", ", enemyMessages);
+                messageTimer = MESSAGE_DURATION;
             }
-
-
+            running = checkDeath(running);
         }
 
         renderer.shutdown();
-
-        // Если игрок дошел до выхода, но не достиг 22 уровня
-        if (levelComplete && currentLevelNumber <= 21) {
-            // Рекурсивно запускаем следующий уровень
-            GameInitializer nextInitializer = new GameInitializer(currentLevelNumber);
-            nextInitializer.initialize();
-            GameLoop nextGameLoop = new GameLoop(nextInitializer);
-            return nextGameLoop.start();
-        }
-
-        return new GameResult(1,1,true,true);
     }
 
-//    private void movePlayer(Direction direction) {
-//        int newX = playerX + direction.getDx();
-//        int newY = playerY + direction.getDy();
-//
-//        Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
-//        if (enemyAtPosition != null) {
-//            combatService.attackEnemy(session, enemyAtPosition);
-//            if (enemyAtPosition.getHealth() <= 0) {
-//                combatService.removeEnemy(session, enemyAtPosition, asciiMap);
-//            }
-//            return;
-//        }
-//
-//        if (canMoveTo(newX, newY)) {
-//            // Запоминаем, что мы исследовали клетку, на которую встаём
-//            fogOfWarService.markCellAsExplored(newX, newY);
-//            // Обновляем локальные переменные
-//            playerX = newX;
-//            playerY = newY;
-//            symbolUnderPlayer = asciiMap[playerY][playerX];
-//
-//            // ✅ Обновляем позицию в сущности через Direction
-//            session.getPlayer().move(direction);
-//        }
-//    }
+    private boolean checkDeath(boolean running) throws IOException {
+        if (session.getPlayer().getHealth() <= 0) {
+            renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
+            running = false;
+            Statistics.updateStatistics();
+        }
+        return running;
+    }
 
-    private void generateNewLevel(int levelNumber) {
-        // Генерация нового уровня
-        this.level = levelGenerator.createLevel(levelNumber);
-        this.session.setLevel(level);
-        this.asciiMap = level.getAsciiMap();
 
-        // Сброс тумана войны
-        this.fogOfWarService = new FogOfWarService(level);
+    private void movePlayer(Direction direction) {
+        int newX = playerX + direction.getDx();
+        int newY = playerY + direction.getDy();
 
-        // Создание новых врагов
-        Room startRoom = level.getRooms().getFirst();
-        int playerX = startRoom.getX1() + 2;
-        int playerY = startRoom.getY1() + 2;
-
-        // Создание врагов
-        List<Room> rooms = level.getRooms();
-        Random rand = new Random();
-        List<Enemy> newEnemies = new ArrayList<>();
-
-        for (int i = 0; i < Math.min(EnemyType.values().length, rooms.size()); i++) {
-            Room room = rooms.get(i);
-            if (room.isStartRoom()) continue;
-
-            int enemyX = room.getX1() + 1 + rand.nextInt(room.getWidth() - 2);
-            int enemyY = room.getY1() + 1 + rand.nextInt(room.getHeight() - 2);
-
-            Enemy enemy = EnemyType.values()[i].create(levelNumber, player.getAgility());
-            enemy.setX(enemyX);
-            enemy.setY(enemyY);
-            newEnemies.add(enemy);
+        Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
+        if (enemyAtPosition != null) {
+            combatService.attackEnemy(session, enemyAtPosition);
+            if (enemyAtPosition.getHealth() <= 0) {
+                combatService.removeEnemy(session, enemyAtPosition, asciiMap);
+            }
+            return;
         }
 
-        session.setEnemies(newEnemies);
+        // === АВТОПОДБОР ПРЕДМЕТА ===
+        Item picked = null;
+        for (Item item : session.getCurrentLevelItems()) {
+            if (item.getX() == newX && item.getY() == newY) {
+                picked = item;
+                break;
+            }
+        }
 
-        // Обновление позиции игрока
-        this.playerX = playerX;
-        this.playerY = playerY;
-        player.setPosition(playerX, playerY);
-        symbolUnderPlayer = asciiMap[playerY][playerX];
+        if (picked != null) {
+            if (session.getPlayer().getInventoryService().isFull()) {
+                renderer.drawMessage(28, "Inventory is full!", CharColor.RED);
+                return; // не идём, если нет места
+            }
 
-        // Сброс флага завершения уровня
-        levelComplete = false;
+            session.getPlayer().getInventoryService().add(picked);
+            session.getCurrentLevelItems().remove(picked);
+            asciiMap[newY][newX] = '.'; // убираем с карты
+            renderer.drawMessage(28, "Picked: " + picked.getSubType(), CharColor.YELLOW);
+        }
 
-        // Очистка экрана и отрисовка нового уровня
-        renderer.clearScreen();
-        fogOfWarService.updateVisibility(player.getPosition(), asciiMap);
+
+        if (canMoveTo(newX, newY)) {
+            // Запоминаем, что мы исследовали клетку, на которую встаём
+            fogOfWarService.markCellAsExplored(newX, newY);
+            // Обновляем локальные переменные
+            playerX = newX;
+            playerY = newY;
+            symbolUnderPlayer = asciiMap[playerY][playerX];
+
+            // ✅ Обновляем позицию в сущности через Direction
+            session.getPlayer().move(direction);
+        }
     }
 
     // Вспомогательный метод для читаемости
     private boolean canMoveTo(int x, int y) {
         return x >= 0 && x < GameConstants.Map.WIDTH &&
                 y >= 0 && y < GameConstants.Map.HEIGHT &&
-                asciiMap[y][x] != '|' && asciiMap[y][x] != '~' &&
-                asciiMap[y][x] != ' ';
+                asciiMap[y][x] != W_WALL && asciiMap[y][x] != H_WALL &&
+                asciiMap[y][x] != EMPTINESS;
     }
 
     private void drawEnemies() {
-//        for (Enemy enemy : session.getEnemies()) {
-//            if (!enemy.isInvisible()) {
-//                short color = (short) getEnemyColor(enemy);
-//                renderer.drawChar(enemy.getX(), enemy.getY(), enemy.getType().charAt(0), color);
-//            }
-//        }
         for (Enemy enemy : session.getEnemies()) {
             if (!enemy.isInvisible() && fogOfWarService.isVisible(enemy.getX(), enemy.getY())) {
                 short color = (short) getEnemyColor(enemy);
-                renderer.drawChar(enemy.getX(), enemy.getY(), enemy.getType().charAt(0), color);
+                renderer.drawChar(enemy.getX(), enemy.getY(), enemy.getType(), color);
             }
         }
     }
 
-    private int getEnemyColor(Enemy enemy) {
+    private static int getEnemyColor(Enemy enemy) {
         return switch (enemy.getType()) {
-            case "z" -> CharColor.GREEN;
-            case "v" -> CharColor.RED;
-            case "g" -> CharColor.WHITE;
-            case "O" -> CharColor.YELLOW;
-            case "s" -> CharColor.CYAN;
+            case ZOMBIE -> CharColor.GREEN;
+            case VAMPIRE -> CharColor.RED;
+            case GHOST -> CharColor.WHITE;
+            case OGRE -> CharColor.YELLOW;
+            case SNAKE_MAGE -> CharColor.CYAN;
             default -> CharColor.WHITE;
         };
     }
+
     private void drawMap() {
-//        for (int i = 0; i < GameConstants.Map.HEIGHT; i++) {
-//            String element = new String(asciiMap[i]);
-//            renderer.drawString(0, i, element, CharColor.WHITE); // X=3 — ваше смещение
-//        }
 
         renderer.drawMapWithFog(
                 asciiMap,
                 session.getPlayer(),
                 fogOfWarService,
-                level
+                levelGenerator
         );
 
+
+    }
+
+    private void drawUI() {
+
+        // === Отрисовка предметов ===
+        for (Item item : session.getCurrentLevelItems()) {
+            if (item.getX() >= 0 && item.getY() >= 0) {
+                if (fogOfWarService.isVisible(item.getX(), item.getY())) {  // ТОЛЬКО В СВЕТЕ!
+                    char symbol = switch (item.getType()) {
+                        case "food"     -> ',';
+                        case "elixir"   -> '!';
+                        case "scroll"   -> '?';
+                        case "weapon"   -> ')';
+                        case "treasure" -> '$';
+                        default         -> '*';
+                    };
+                    renderer.drawChar(item.getX(), item.getY(), symbol, CharColor.YELLOW);
+                }
+            }
+        }
+
         // Подсказка
-        renderer.drawString(0, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
+        renderer.drawString(3, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
+        // Статус Бар
+        renderer.drawStatusBar(session.getPlayer().getHealth(),
+                session.getPlayer().getMaxHealth(), session.getLevelNum(), 0);
+
+        // Для отладки    начало
+
+
+        activeMessageLine3 = "Bebag - : " +  session.getCurrentMap()[playerY][playerX] + " !";
+        renderer.drawString(3, 30, activeMessageLine3, CharColor.CYAN);
+
+
+        // Для отладки    конец
     }
 
     private void syncPlayerPositionWithEntity() {

@@ -3,7 +3,6 @@ package org.example.domain.service;
 
 
 import org.example.config.GameConstants;
-import org.example.domain.model.Level;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
 
@@ -22,11 +21,11 @@ public class FogOfWarService {
     private Room currentRoom = null; // ТЕКУЩАЯ КОМНАТА ИГРОКА
 
     private static final int VISION_RADIUS = GameConstants.Map.VISION_RADIUS;
-    private Level level; // ВНЕДРЯЕМ ЗАВИСИМОСТЬ
+    private LevelGenerator levelGenerator; // ВНЕДРЯЕМ ЗАВИСИМОСТЬ
 
     // Добавьте конструктор
-    public FogOfWarService(Level level) {
-        this.level = level;
+    public FogOfWarService(LevelGenerator levelGenerator) {
+        this.levelGenerator = levelGenerator;
     }
 
 
@@ -40,7 +39,7 @@ public class FogOfWarService {
         int playerY = playerPos.getY();
 
         // 1. Определяем текущую комнату
-        currentRoom = level.getRoomAt(playerX, playerY);
+        currentRoom = levelGenerator.getRoomAt(playerX, playerY);
 
 
         // 2. ЕСЛИ ИГРОК В КОМНАТЕ
@@ -82,7 +81,7 @@ public class FogOfWarService {
         double stepY = dy / length ;
 
         boolean hitWall = false;
-        Room playerInRoom = level.getRoomAt(startX, startY);
+        Room playerInRoom = levelGenerator.getRoomAt(startX, startY);
 
         for (int i = 0; i < VISION_RADIUS; i++) {
             x += stepX;
@@ -169,7 +168,7 @@ public class FogOfWarService {
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
                 if (dx == 0 && dy == 0) continue;
-                Room room = level.getRoomAt(doorX + dx, doorY + dy);
+                Room room = levelGenerator.getRoomAt(doorX + dx, doorY + dy);
                 if (room != null) return room;
             }
         }

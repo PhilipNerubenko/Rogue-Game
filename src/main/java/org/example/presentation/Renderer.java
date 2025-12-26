@@ -2,7 +2,6 @@ package org.example.presentation;
 
 import org.example.domain.entity.Inventory;
 import org.example.domain.entity.Player;
-import org.example.domain.model.Level;
 import org.example.domain.service.FogOfWarService;
 import org.example.domain.service.LevelGenerator;
 
@@ -26,7 +25,7 @@ public interface Renderer {
     //вывести строку текста.
     void drawString(int x, int y, String text, int color);
 
-    void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, Level level);
+    void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, LevelGenerator levelGen);
 
     // Очистить весь экран (залить фоном).
     void clearScreen();
@@ -44,6 +43,9 @@ public interface Renderer {
 
     // Показать информационное сообщение (внизу экрана: например, "Вы нанесли 5 урона!").
     void drawMessage(int line, String message, int color);
+
+    // Отрисовка интерфейса меню
+    void drawMenuScreen(int currentOption);
 
 
     // ========== ГЕШДЫ ==========

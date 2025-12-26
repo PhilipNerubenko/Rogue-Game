@@ -55,19 +55,19 @@ public class InputHandler {
         // Движение
         switch (Character.toLowerCase(character)) {
             case 'w': {
-                System.out.println("Motion detected NORTH"); // Отладка
+                System.out.println("Распознано движение NORTH"); // Отладка
                 return InputCommand.move(Direction.NORTH);
             }
             case 's': {
-                System.out.println("Motion detected SOUTH"); // Отладка
+                System.out.println("Распознано движение SOUTH"); // Отладка
                 return InputCommand.move(Direction.SOUTH);
             }
             case 'a': {
-                System.out.println("Motion detected WEST"); // Отладка
+                System.out.println("Распознано движение WEST"); // Отладка
                 return InputCommand.move(Direction.WEST);
             }
             case 'd': {
-                System.out.println("Motion detected EAST"); // Отладка
+                System.out.println("Распознано движение EAST"); // Отладка
                 return InputCommand.move(Direction.EAST);
             }
         }
@@ -101,7 +101,7 @@ public class InputHandler {
         }
 
         if (ch.getCode() == 27) { // ESC отмена
-            System.out.println("Discovered ESC (kod 27)");
+            System.out.println("Обнаружен ESC (код 27)");
             resetAwaitingState();
             return InputCommand.none();
         }

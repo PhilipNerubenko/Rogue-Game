@@ -1,24 +1,19 @@
 plugins {
     id("java")
     id("application")
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 group = "org.example"
-version = "1.0-SNAPSHOT"
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_21  // ✅ Java 21
-    targetCompatibility = JavaVersion.VERSION_21
-}
+version = "1.0"
 
 repositories {
     mavenCentral()
-    //flatDir { dirs("libs") }
 }
 
 dependencies {
-    //implementation(files("libs/jcurses.jar"))
     implementation("com.baulsupp.kolja:jcurses:0.9.5.3")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.20.1")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -28,23 +23,13 @@ application {
     mainClass.set("org.example.App")
 }
 
-tasks.jar {
-    // ВКЛЮЧАЕМ скомпилированные классы в JAR
-    from(sourceSets.main.get().output)
-
-    // ВКЛЮЧАЕМ зависимости (jcurses.jar) в JAR
-    from({
-        configurations.runtimeClasspath.get()
-            .filter { it.name.contains("jcurses") }
-            .map { zipTree(it) }
-    })
-
-    // НАСТРАИВАЕМ манифест
-    manifest {
-        attributes(
-            "Main-Class" to "org.example.App",
-            "Class-Path" to "libs/jcurses.jar"
-        )
-    }
+tasks.test {
+    useJUnitPlatform()
 }
 
+tasks.shadowJar {
+    archiveClassifier.set("") // делает shadow JAR основным
+    manifest {
+        attributes["Main-Class"] = "org.example.App"
+    }
+}

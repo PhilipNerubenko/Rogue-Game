@@ -6,10 +6,11 @@ import org.example.config.GameConstants;
 import org.example.domain.entity.Inventory;
 import org.example.domain.entity.ItemType;
 import org.example.domain.entity.Player;
-import org.example.domain.model.Level;
 import org.example.domain.model.Room;
 import org.example.domain.service.FogOfWarService;
 import org.example.domain.service.LevelGenerator;
+
+import static org.example.config.GameConstants.ScreenConfig.SHOW_CURSOR;
 
 /**
  * Реализация интерфейса Renderer на базе JCurses.
@@ -66,13 +67,13 @@ public class JCursesRenderer implements Renderer {
         // JCurses не требует explicit refresh, но оставим для совместимости
     }
 
-    public void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, Level level) {
+    public void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, LevelGenerator levelGen) {
         fog.updateVisibility(player.getPosition(), map);
 
         for (int y = 0; y < map.length; y++) {
             for (int x = 0; x < map[y].length; x++) {
                 char tile = map[y][x];
-                Room room = level.getRoomAt(x, y); // ← Теперь используем levelGen
+                Room room = levelGen.getRoomAt(x, y); // ← Теперь используем levelGen
                 boolean visible = fog.isVisible(x, y);
                 boolean explored = fog.isExplored(x, y);
 
@@ -136,7 +137,7 @@ public class JCursesRenderer implements Renderer {
         int startY = 5;
         int startX = GameConstants.Map.WIDTH + 10;
 
-        drawString(startX, startY, "=== Inventory ===", CharColor.WHITE);
+        drawString(startX, startY, "=== РЮКЗАК ===", CharColor.WHITE);
 
         int line = startY + 2;
         for (ItemType type : ItemType.values()) {
@@ -152,6 +153,44 @@ public class JCursesRenderer implements Renderer {
     public void drawMessage(int line, String message, int color) {
         clearLine(line); // Стираем старое сообщение
         drawString(3, line, message, color);
+    }
+
+    @Override
+    public void drawMenuScreen(int currentOption) {
+        clearScreen();
+
+        String[] strings = {
+                "           GAME  MENU           ",
+                "+------------------------------+",
+                "|                              |",
+                "|          NEW   GAME          |",
+                "|          LOAD  GAME          |",
+                "|          SCOREBOARD          |",
+                "|          EXIT  GAME          |",
+                "|                              |",
+                "+------------------------------+",
+        };
+
+        int menuWidth = strings[0].length();
+        int menuHeight = strings.length;
+
+        int screenWidth = Toolkit.getScreenWidth();
+        int screenHeight = Toolkit.getScreenHeight();
+
+        int shiftX = (screenWidth - menuWidth) / 2;
+        int shiftY = (screenHeight - menuHeight) / 2;
+
+        CharColor menuColor = new CharColor(CharColor.BLACK, CharColor.WHITE);
+        for (int i = 0; i < menuHeight; i++) {
+            Toolkit.printString(strings[i], shiftX, shiftY + i, menuColor);
+        }
+
+        int optionRow = shiftY + 3 + currentOption;
+        CharColor pointerColor = new CharColor(CharColor.BLACK, CharColor.YELLOW);
+
+        Toolkit.printString("<<<", shiftX + 5, optionRow, pointerColor);
+        Toolkit.printString(">>>", shiftX + 24, optionRow, pointerColor);
+
     }
 
     @Override
@@ -172,6 +211,6 @@ public class JCursesRenderer implements Renderer {
     @Override
     public void shutdown() {
         Toolkit.shutdown();
-        System.out.print("\033[?25h"); // Показать курсор
+        System.out.print(SHOW_CURSOR); // Показать курсор
     }
 }

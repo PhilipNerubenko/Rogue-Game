@@ -9,6 +9,9 @@ public class Item {
     private int strength;
     private int value;
 
+    private int x = -1;
+    private int y = -1;
+
     // КОНСТАНТА для кулаков
     public static final int FISTS_STRENGTH = 3;
 
@@ -87,5 +90,12 @@ public class Item {
 
     public void setValue(int value) {
         this.value = value;
+    }
+
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public void setPosition(int x, int y) {
+        this.x = x;
+        this.y = y;
     }
 }
