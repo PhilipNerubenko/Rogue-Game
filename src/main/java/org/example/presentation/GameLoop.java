@@ -10,22 +10,21 @@ import org.example.domain.entity.Item;
 import org.example.domain.model.Direction;
 import org.example.domain.model.InputCommand;
 import org.example.domain.model.Position;
-import org.example.domain.service.CombatService;
-import org.example.domain.service.EnemyAIService;
-import org.example.domain.service.FogOfWarService;
-import org.example.domain.service.InventoryService;
-import org.example.domain.service.LevelGenerator;
-import org.example.domain.service.MovementService;
+import org.example.domain.model.Room;
+import org.example.domain.service.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 import static org.example.config.GameConstants.Icons.*;
 import static org.example.config.GameConstants.Icons.OGRE;
 import static org.example.config.GameConstants.Icons.SNAKE_MAGE;
+import static org.example.config.GameConstants.ProbabilitiesAndBalance.*;
 import static org.example.config.GameConstants.ScreenConfig.*;
-import static org.example.config.GameConstants.TextMessages.DIED;
-import static org.example.config.GameConstants.TextMessages.TERMINATE;
+import static org.example.config.GameConstants.TextMessages.*;
 
 /**
 *    GameLoop — это оркестратор игрового процесса, который:
@@ -39,6 +38,7 @@ public class GameLoop {
     private final GameSession session;
     private final InputHandler inputHandler;
     private final Renderer renderer;
+    private  boolean running = false;
 
     // Сервисы бизнес-логики (внедряются извне)
     private final CombatService combatService;
@@ -47,7 +47,7 @@ public class GameLoop {
     private final MovementService movementService;
     private final FogOfWarService fogOfWarService;
     private final LevelGenerator levelGenerator;
-    private final char[][] asciiMap;
+    private  char[][] asciiMap;
 
     // Позиция игрока (временно, пока не полностью перейдем на Player entity)
     private int playerX;
@@ -73,16 +73,23 @@ public class GameLoop {
         this.movementService = initializer.getMovementService();
         this.fogOfWarService = initializer.getFogOfWarService();
         this.levelGenerator = initializer.getLevelGenerator();
-        this.asciiMap = initializer.getAsciiMap();
+        this.asciiMap  = new char[GameConstants.Map.HEIGHT][GameConstants.Map.WIDTH];
 
         // Инициализация позиции игрока из сессии
         Position playerPos = session.getPlayer().getPosition();
-        this.playerX = playerPos.getX();
-        this.playerY = playerPos.getY();
-        this.symbolUnderPlayer = asciiMap[playerY][playerX];
+        this.playerX = 0;
+        this.playerY = 0;
+        //this.symbolUnderPlayer = asciiMap[playerY][playerX];
     }
 
     public void start() throws IOException {
+
+        // Генерируем ПЕРВЫЙ уровень
+        generateNewLevel();
+
+        // 2. Синхронизируем позицию игрока после генерации уровня
+        syncPlayerPositionWithEntity();
+
         // Инициализация JCurses
         sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
             renderer.shutdown();
@@ -95,7 +102,7 @@ public class GameLoop {
         enemyAIService.updateAllGhostEffects(session, playerX, playerY);
         System.out.print(HIDE_CURSOR);
 
-        boolean running = true;
+        running = true;
 
         while (running) {
             // Уменьшаеми таймер сообщений
@@ -111,9 +118,6 @@ public class GameLoop {
                 String sleepMsg = "You are sleep! Zzz...";
                 session.getPlayer().setSleepTurns(false);
                 renderer.drawMessage(UI_START_Y, sleepMsg, CharColor.CYAN);
-
-                // Ждем подтверждения (любую клавишу)
-                //Toolkit.readCharacter();
 
                 // Затираем старое положение игрока
                 renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
@@ -194,13 +198,9 @@ public class GameLoop {
                     playerY = newY;
                     symbolUnderPlayer = asciiMap[playerY][playerX];
 
-
                     if (asciiMap[playerY][playerX] == 'E') { // Если символ  EXIT LEVEL
-                        int currentLevelNumber = session.getLevelNum();
-                        currentLevelNumber ++;
-                        session.setLevelNum(currentLevelNumber);
-
-                        // TODO Генерация нового уровня
+                        // Генерация нового уровня
+                        generateNewLevel();
                     }
 
                     // 🔥 СИНХРОНИЗИРУЕМ с Player entity
@@ -227,6 +227,17 @@ public class GameLoop {
     private boolean checkDeath(boolean running) throws IOException {
         if (session.getPlayer().getHealth() <= 0) {
             renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
+            running = false;
+
+            Statistics.updateScoreBoard();
+
+        }
+        return running;
+    }
+
+    private boolean checkVictory(boolean running) throws IOException {
+        if (session.getLevelNum() <= 21) {
+            renderer.drawMessage(DEATH_MESSAGE_Y, VICTORY, CharColor.GREEN);
             running = false;
 
             Statistics.updateScoreBoard();
@@ -320,8 +331,6 @@ public class GameLoop {
                 fogOfWarService,
                 levelGenerator
         );
-
-
     }
 
     private void drawUI() {
@@ -347,23 +356,120 @@ public class GameLoop {
         renderer.drawString(3, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
         // Статус Бар
         renderer.drawStatusBar(session.getPlayer().getHealth(),
-
                 session.getPlayer().getMaxHealth(), session.getLevelNum(), 0);
-
-        // Для отладки    начало
-
-
-        activeMessageLine3 = "Bebag - : " +  session.getCurrentMap()[playerY][playerX] + " !";
+        activeMessageLine3 = "Debag - : " +  session.getCurrentMap()[playerY][playerX] + " " + playerX + " " + playerY + " !" ;
         renderer.drawString(3, 30, activeMessageLine3, CharColor.CYAN);
-
-
-        // Для отладки    конец
-
     }
 
     private void syncPlayerPositionWithEntity() {
         Position pos = session.getPlayer().getPosition();
         this.playerX = pos.getX();
         this.playerY = pos.getY();
+    }
+
+    private void generateNewLevel() throws IOException {
+        // Определяем, какой уровень генерировать
+        int levelToGenerate;
+
+        if (session.getCurrentMap() == null) {
+            // Первый запуск - берем текущий levelNum (должен быть 1)
+            levelToGenerate = session.getLevelNum();
+        } else {
+            // Переход на следующий уровень
+            levelToGenerate = session.getLevelNum() + 1;
+            session.setLevelNum(levelToGenerate); // УВЕЛИЧИВАЕМ!
+        }
+
+        // Проверка на победу (21 уровень по ТЗ)
+        if (levelToGenerate > 21) {
+            running = checkVictory(running);
+            return;
+        }
+
+        // Генерация карты ( вместе с  предметами)
+        char[][] newMap = levelGenerator.createAsciiMap(levelToGenerate);
+        session.setCurrentMap(newMap);
+        asciiMap = newMap;
+
+        // Находим стартовую позицию
+        List<Room> rooms = levelGenerator.getRooms();
+        for(Room room: rooms){
+            if (room.isStartRoom()) {
+                // Обновляем позицию игрока
+                playerX = room.getX1() + 2;
+                playerY = room.getY1() + 2;
+            }
+        }
+        Position newPlaerPosition = new Position(playerX, playerY);
+
+        // Обновляем позицию игрока
+        symbolUnderPlayer = asciiMap[playerY][playerX];
+        session.getPlayer().setPosition(newPlaerPosition);
+
+        // Очищаем и генерируем врагов
+        session.getEnemies().clear();
+        createEnemies();
+
+        // Обновляем туман войны
+        fogOfWarService.reset();
+        fogOfWarService.markCellAsExplored(playerX, playerY);
+        fogOfWarService.updateVisibility(newPlaerPosition, asciiMap);
+
+        // Сообщение Игроку
+        activeMessageLine1 = "Level " + levelToGenerate;
+        if (levelToGenerate > 1) {
+            activeMessageLine2 = "You have gone deeper...";
+        }
+        messageTimer = MESSAGE_DURATION;
+
+        // Для отладки
+        // System.out.println("Сгенерирован уровень " + levelToGenerate + ", игрок в " + newPlaerPosition);
+    }
+
+
+    private void createEnemies() {
+        List<Room> rooms = levelGenerator.getRooms();
+        Random rand = levelGenerator.getRand();
+
+        // Случайная плотность: 40-60% комнат с врагами
+        int totalRoomsWithEnemies = calculateTotalRoomsWithEnemies(rooms.size(), rand);
+
+        // Перемешиваем комнаты, чтобы выбрать случайные
+        List<Room> shuffledRooms = new ArrayList<>(rooms);
+        Collections.shuffle(shuffledRooms, rand);
+
+        int enemiesPlaced = 0;
+
+        for (Room room : shuffledRooms) {
+            if (enemiesPlaced >= totalRoomsWithEnemies) break;
+            if (room.isStartRoom()) continue; // Пропускаем стартовую комнату
+
+            enemiesPlaced += createEnemiesInRoom(room, rand, session);
+        }
+    }
+
+    private int calculateTotalRoomsWithEnemies(int totalRooms, Random rand) {
+        int roomsWithEnemies = (int) Math.round(totalRooms * (MIN_ENEMY_DENSITY + rand.nextDouble() * DENSITY_RANGE));
+        return Math.max(MIN_ROOMS_WITH_ENEMIES, roomsWithEnemies);
+    }
+
+    private int createEnemiesInRoom(Room room, Random rand, GameSession session) {
+        int enemiesCreated = 0;
+        int enemiesInRoom = 1; // Временно по одному врагу в комнате
+
+        for (int j = 0; j < enemiesInRoom; j++) {
+            int enemyX = room.getX1() + 1 + rand.nextInt(room.getWidth() - 2);
+            int enemyY = room.getY1() + 1 + rand.nextInt(room.getHeight() - 2);
+
+            EnemyType randomType = EnemyType.values()[rand.nextInt(EnemyType.values().length)];
+            Enemy enemy = randomType.create(1);
+            enemy.setX(enemyX);
+            enemy.setY(enemyY);
+
+            session.getEnemies().add(enemy);
+            enemiesCreated++;
+        }
+
+        return enemiesCreated;
     }
 }

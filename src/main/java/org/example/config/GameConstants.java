@@ -57,6 +57,7 @@ public final class GameConstants {
         public static final String TERMINATE = "\nTerminated via Ctrl+C";
         public static final String CONTROL = "WASD | . rest | ESC | h/j/k/e use | 1-9 choose (wep 0-9, 0 off)";
         public static final String DIED = "YOU DIED! Press ESC to exit";
+        public static final String VICTORY = "Congratulations! YOU VICTORY!   Press ESC to exit";
         public static final String MISSED = "You missed!";
         public static final String MISSED_VAMPIRE = "First attack on vampire misses!";
         public static final String CONTROL_HINT = "Use WASD to move, ESC to exit";

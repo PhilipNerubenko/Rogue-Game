@@ -2,6 +2,7 @@ package org.example.domain.service;
 
 
 import org.example.config.GameConstants;
+import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
 import org.example.domain.entity.Item;
 import org.example.domain.model.Corridor;
@@ -17,12 +18,10 @@ public class LevelGenerator {
     private static final int MIN_WIDTH_ROOM_SIZE = MAX_WIDTH_ROOM_SIZE/4;           //минимальная  ширина комнаты
     private static final int MAX_HEIGHT_ROOM_SIZE = GameConstants.Map.HEIGHT/3-4;   //максимальная высота комнаты
     private static final int MIN_HEIGHT_ROOM_SIZE = MAX_HEIGHT_ROOM_SIZE/2+1;         //минимальная  высота комнаты
-//    private char[][] asciiMap;
     private List<Room> rooms;
     private List<Corridor> corridors;
     private Random rand;
 
-    private final GameSession session;    // ля сохранения предметов
     // НОВЫЕ ПОЛЯ: карта клеток -> комната
     private final Map<Position, Room> cellToRoomMap = new HashMap<>();
     // Набор клеток коридоров
@@ -30,8 +29,10 @@ public class LevelGenerator {
     // Тип клетки для быстрого доступа
     private final Map<Position, Character> cellTypeMap = new HashMap<>();
 
-    public LevelGenerator(GameSession session) {
-        this.session = session;
+    private  List<Enemy> enemies = new ArrayList<>();
+    private  List<Item> items = new ArrayList<>();
+
+    public LevelGenerator() {
         this.rand = new Random();  // Или new Random(seed), если нужен фиксированный seed для воспроизводимости
     }
 
@@ -54,7 +55,7 @@ public class LevelGenerator {
         addCorridorsOnAsciiMap(asciiMap);
 
         // === ГЕНЕРАЦИЯ И РАЗМЕЩЕНИЕ ПРЕДМЕТОВ ===
-        List<Item> items = ItemGenerator.generateForLevel(levelNumber);
+        items = ItemGenerator.generateForLevel(levelNumber);
         Random randomItem = new Random();
 
         for (Item item : items) {
@@ -85,9 +86,6 @@ public class LevelGenerator {
             }
         }
 
-
-
-
         //добавляем выход если комната isExitRoom
         for(int i = 0; i < ROOMS_AT_LEVEL; i++){
         Room curentRoom = rooms.get(i);
@@ -95,9 +93,6 @@ public class LevelGenerator {
                 asciiMap[curentRoom.getY2() - 2][curentRoom.getX2() -2] = 'E';
             }
         }
-
-        // Сохраняем предметы в сессию (для автоподбора)
-        session.setCurrentLevelItems(items);
 
 
         return asciiMap;

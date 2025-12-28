@@ -195,4 +195,10 @@ public class FogOfWarService {
     public void markCellAsExplored(int x, int y) {
         exploredCells.add(new Position(x, y));
     }
+
+    public void reset() {
+        visibleCells.clear();
+        exploredCells.clear();
+        exploredRooms.clear(); // ИССЛЕДОВАННЫЕ КОМНАТЫ
+    }
 }

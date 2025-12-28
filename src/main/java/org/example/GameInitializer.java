@@ -36,159 +36,39 @@ public class GameInitializer {
     private FogOfWarService fogOfWarService;
     private LevelGenerator levelGenerator;
 
-    // Основной конструктор для dependency injection
-    public GameInitializer(GameSession session, Renderer renderer, LevelGenerator levelGenerator,
-                           EnemyAIService enemyAIService, CombatService combatService,
-                           InputHandler inputHandler, InventoryService inventoryService,
-                           FogOfWarService fogOfWarService, MovementService movementService) {
-        this.session = session;
-        this.renderer = renderer;
-        this.levelGenerator = levelGenerator;
-        this.enemyAIService = enemyAIService;
-        this.combatService = combatService;
-        this.inputHandler = inputHandler;
-        this.inventoryService = inventoryService;
-        this.fogOfWarService = fogOfWarService;
-        this.movementService = movementService;
-    }
-
     // Упрощенный конструктор для основного использования
     public GameInitializer() {
         this.session = new GameSession();
-        this.levelGenerator = new LevelGenerator(session);
-        this.fogOfWarService = new FogOfWarService(levelGenerator);
+        // 2. Создаем сервисы (для GameLoop)
         this.renderer = new JCursesRenderer();
-        this.enemyAIService = new EnemyAIService();
-        this.combatService = new CombatService();
         this.inputHandler = new InputHandler();
-        this.inventoryService = new InventoryService();
+        this.combatService = new CombatService();
+        this.enemyAIService = new EnemyAIService();
         this.movementService = new MovementService();
+        this.inventoryService = new InventoryService();
+        // 3. LevelGenerator создаем без сессии
+        this.levelGenerator = new LevelGenerator();
+        // 4. FogOfWarService
+        this.fogOfWarService = new FogOfWarService(levelGenerator);
 
 
     }
 
-    public void initialize() throws IOException{
-        int levelNum = 1;
-        // Инициализация сессии
-        session.setEnemies(new ArrayList<>());
-        session.setLevelNum(levelNum);
-
-        // Создание уровня
-        char[][] asciiMap = levelGenerator.createAsciiMap(GameConstants.Map.MAP_LEVEL);
-        session.setCurrentMap(asciiMap);
-        session.setRooms(levelGenerator.getRooms());
-
-        // Создание игрока
-        Position playerPos = createPlayerPosition();
-        Player player = new Player(playerPos, new Inventory());
+    public void initializeNewGame() throws IOException{
+        // 1. Создаем игрока (позиция игрока будет записана в в GameLoop)
+        Player player =  new Player();
         session.setPlayer(player);
 
-        // Создание врагов
-        createEnemies();
+        // 2. Устанавливаем начальный уровень = 1
+        session.setLevelNum(1);
 
-        // Отрисовка начального состояния
-        drawInitialState();
+        // 3. Инициализируем пустые списки
+        session.setEnemies(new ArrayList<>());
+        session.setCurrentLevelItems(new ArrayList<>());
 
-        Statistics.resetStatistics();
+        // 4. Карта будет создана позже в GameLoop
+        session.setCurrentMap(null);
 
-    }
-
-    private Position createPlayerPosition() {
-        Room startRoom = levelGenerator.getRooms().getFirst();
-        int playerX = startRoom.getX1() + 2;
-        int playerY = startRoom.getY1() + 2;
-        return new Position(playerX, playerY);
-    }
-
-    private void createEnemies() {
-        List<Room> rooms = levelGenerator.getRooms();
-        Random rand = levelGenerator.getRand();
-
-        // Случайная плотность: 40-60% комнат с врагами
-        int totalRoomsWithEnemies = calculateTotalRoomsWithEnemies(rooms.size(), rand);
-
-        // Перемешиваем комнаты, чтобы выбрать случайные
-        List<Room> shuffledRooms = new ArrayList<>(rooms);
-        Collections.shuffle(shuffledRooms, rand);
-
-        int enemiesPlaced = 0;
-
-        for (Room room : shuffledRooms) {
-            if (enemiesPlaced >= totalRoomsWithEnemies) break;
-            if (room.isStartRoom()) continue; // Пропускаем стартовую комнату
-
-            enemiesPlaced += createEnemiesInRoom(room, rand, session);
-        }
-    }
-
-    private int calculateTotalRoomsWithEnemies(int totalRooms, Random rand) {
-        int roomsWithEnemies = (int) Math.round(totalRooms * (MIN_ENEMY_DENSITY + rand.nextDouble() * DENSITY_RANGE));
-        return Math.max(MIN_ROOMS_WITH_ENEMIES, roomsWithEnemies);
-    }
-
-    private int createEnemiesInRoom(Room room, Random rand, GameSession session) {
-        int enemiesCreated = 0;
-        int enemiesInRoom = 1; // Временно по одному врагу в комнате
-
-        for (int j = 0; j < enemiesInRoom; j++) {
-            int enemyX = room.getX1() + 1 + rand.nextInt(room.getWidth() - 2);
-            int enemyY = room.getY1() + 1 + rand.nextInt(room.getHeight() - 2);
-
-            EnemyType randomType = EnemyType.values()[rand.nextInt(EnemyType.values().length)];
-            Enemy enemy = randomType.create(1);
-            enemy.setX(enemyX);
-            enemy.setY(enemyY);
-
-            session.getEnemies().add(enemy);
-            enemiesCreated++;
-        }
-
-        return enemiesCreated;
-    }
-
-    private void drawInitialState() {
-        // Очистка экрана
-        Toolkit.clearScreen(new CharColor(CharColor.BLACK, CharColor.BLACK));
-
-        // Отрисовка карты с туманом
-        renderer.drawMapWithFog(
-                session.getCurrentMap(),
-                session.getPlayer(),
-                fogOfWarService,
-                levelGenerator
-        );
-
-        // Отрисовка врагов
-        drawEnemies();
-    }
-
-    private void drawEnemies() {
-        for (Enemy enemy : session.getEnemies()) {
-            if (shouldDrawEnemy(enemy)) {
-                drawEnemy(enemy);
-            }
-        }
-    }
-
-    private boolean shouldDrawEnemy(Enemy enemy) {
-        return !enemy.isInvisible() &&
-                fogOfWarService.isVisible(enemy.getX(), enemy.getY());
-    }
-
-    private void drawEnemy(Enemy enemy) {
-        CharColor color = new CharColor(CharColor.BLACK, (short) getEnemyColor(enemy));
-        Toolkit.printString(String.valueOf(enemy.getType()), enemy.getX() + MAP_OFFSET_X, enemy.getY(), color);
-    }
-
-    private static int getEnemyColor(Enemy enemy) {
-        return switch (enemy.getType()) {
-            case ZOMBIE -> CharColor.GREEN;
-            case VAMPIRE -> CharColor.RED;
-            case GHOST -> CharColor.WHITE;
-            case OGRE -> CharColor.YELLOW;
-            case SNAKE_MAGE -> CharColor.CYAN;
-            default -> CharColor.WHITE;
-        };
     }
 
     // Геттеры для всех компонентов

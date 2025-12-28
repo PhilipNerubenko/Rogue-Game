@@ -9,18 +9,17 @@ import org.example.domain.service.InventoryService;
 public class Player extends Character  {
     private Position position;
     private Item equippedWeapon; // null = кулаки
-//    private Inventory inventory;
+    private Inventory inventory;
 //    private int maxHealth = GameConstants.Player.START_MAX_HEALTH;
 //    private int health = GameConstants.Player.START_HEALTH;
 //    private int agility = GameConstants.Player.START_AGILITY;
 //    private int strength = GameConstants.Player.START_STRENGTH;
     private InventoryService inventoryService;
 
-    public Player(Position position) {
+    public Player() {
         super(GameConstants.Player.START_MAX_HEALTH,
                 GameConstants.Player.START_AGILITY,
                 GameConstants.Player.START_STRENGTH);
-        this.position = position;
         this.inventoryService = new InventoryService();
     }
 
@@ -31,7 +30,9 @@ public class Player extends Character  {
         this.position = position;
         this.setInventory(inventory);
     }
-    // ВОТ ЭТОГО МЕТОДА НЕ ХВАТАЕТ:
+
+
+    public void setPosition(Position position) { this.position = position; }
     public Position getPosition() {
         return position;
     }

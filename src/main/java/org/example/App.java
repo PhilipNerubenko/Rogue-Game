@@ -30,7 +30,7 @@ public class App {
                         switch (currentOption) {
                             case 0: // NEW GAME
                                 GameInitializer initializer = new GameInitializer();
-                                initializer.initialize();
+                                initializer.initializeNewGame();
                                 GameLoop gameLoop = new GameLoop(initializer);
                                 gameLoop.start();  // Блокирует до выхода из игры
                                 break;
