@@ -149,7 +149,7 @@ public class JCursesRenderer implements Renderer {
         int startY = 5;
         int startX = GameConstants.Map.WIDTH + 10;
 
-        drawString(startX, startY, "=== РЮКЗАК ===", CharColor.WHITE);
+        drawString(startX, startY, "=== BACKPACK ===", CharColor.WHITE);
 
         int line = startY + 2;
         for (ItemType type : ItemType.values()) {

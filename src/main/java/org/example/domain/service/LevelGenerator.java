@@ -3,10 +3,8 @@ package org.example.domain.service;
 
 import org.example.config.GameConstants;
 import org.example.domain.entity.Enemy;
-import org.example.domain.entity.GameSession;
 import org.example.domain.entity.Item;
 import org.example.domain.model.Corridor;
-import org.example.domain.model.Level;
 import org.example.domain.model.Room;
 import org.example.domain.model.Position;
 
@@ -93,7 +91,6 @@ public class LevelGenerator {
                 asciiMap[curentRoom.getY2() - 2][curentRoom.getX2() -2] = 'E';
             }
         }
-
 
         return asciiMap;
     }
@@ -239,9 +236,6 @@ public class LevelGenerator {
         }
     }
 
-
-
-
     // Методы доступа:
     public Room getRoomAt(int x, int y) {
         return cellToRoomMap.get(new Position(x, y));
@@ -253,5 +247,9 @@ public class LevelGenerator {
 
     public Character getCellType(int x, int y) {
         return cellTypeMap.get(new Position(x, y));
+    }
+
+    public List<Item> getItems() {
+        return items;
     }
 }

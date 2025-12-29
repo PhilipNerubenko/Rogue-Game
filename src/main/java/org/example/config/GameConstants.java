@@ -105,7 +105,7 @@ public final class GameConstants {
         public static final int START_AGILITY = 5;
         public static final int START_STRENGTH = 5;
         public static final int SIZE_BACKPACK = 36; //  9 предметов  х  4 типа(еда, свитки, эликсир, оружие)
-
+        public static final int MAX_PER_TYPE = 9; //  9 предметов
 
     }
 }

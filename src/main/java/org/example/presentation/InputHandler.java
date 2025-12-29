@@ -52,8 +52,10 @@ public class InputHandler {
             return InputCommand.none();
         }
 
+        character = Character.toLowerCase(character);
+
         // Движение
-        switch (Character.toLowerCase(character)) {
+        switch (character) {
             case 'w': {
                 System.out.println("Распознано движение NORTH"); // Отладка
                 return InputCommand.move(Direction.NORTH);
@@ -70,6 +72,14 @@ public class InputHandler {
                 System.out.println("Распознано движение EAST"); // Отладка
                 return InputCommand.move(Direction.EAST);
             }
+        }
+
+        // Использование предметов
+        switch (character) {
+            case 'h': return InputCommand.useItem(ItemType.WEAPON);
+            case 'j': return InputCommand.useItem(ItemType.FOOD);
+            case 'k': return InputCommand.useItem(ItemType.ELIXIR);
+            case 'e': return InputCommand.useItem(ItemType.SCROLL);
         }
 
         return InputCommand.none();
@@ -101,7 +111,7 @@ public class InputHandler {
         }
 
         if (ch.getCode() == 27) { // ESC отмена
-            System.out.println("Обнаружен ESC (код 27)");
+            System.out.println("pressed ESC (kod 27)");
             resetAwaitingState();
             return InputCommand.none();
         }
@@ -109,7 +119,15 @@ public class InputHandler {
         return InputCommand.none();
     }
 
-    private void resetAwaitingState() {
+    /**
+     * Установить состояние ожидания выбора предмета
+     */
+    public void setAwaitingSelection(boolean awaiting, ItemType itemType) {
+        this.awaitingSelection = awaiting;
+        this.pendingItemType = awaiting ? itemType : null;
+    }
+
+    public void resetAwaitingState() {
         awaitingSelection = false;
         pendingItemType = null;
     }

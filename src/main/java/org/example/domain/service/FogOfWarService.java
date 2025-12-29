@@ -1,7 +1,5 @@
 package org.example.domain.service;
 
-
-
 import org.example.config.GameConstants;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
@@ -92,13 +90,10 @@ public class FogOfWarService {
 
             // Проверяем границы
             if (intX < 0 || intX >= map[0].length || intY < 0 || intY >= map.length) break;
-
-
             char cell = map[intY][intX];
             Position pos = new Position(intX, intY);    //текущая позиция луча бегущего по направлению
 
             // Если игрок в комнате Она видна всегда и луч останавливается  на стенах
-
             if (playerInRoom != null) {
                 if ( cell == '|' || cell == '~' || cell == ' '){
                     break;
@@ -107,12 +102,10 @@ public class FogOfWarService {
                     visibleCells.add(pos);
                     continue;
                 }
-
             }
 
 
             // Если игрок в коридоре  луч останавливается на стенах и земле
-
             if (playerInRoom == null) {
                 if ( cell == '|' || cell == '~' || cell == ' ' ){
                     break;
@@ -120,7 +113,6 @@ public class FogOfWarService {
                 if ( cell == '+' || cell == '#' ){
                     visibleCells.add(pos);
                 }
-
 
                 // Если дверь — заглядываем в комнату и останавливаемся
                 if (cell == '+') {
@@ -132,12 +124,7 @@ public class FogOfWarService {
                     }
                     break;
                 }
-
-
             }
-
-
-
 
         }
     }
