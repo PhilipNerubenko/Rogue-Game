@@ -3,6 +3,7 @@ package org.example.presentation;
 import jcurses.system.CharColor;
 import org.example.GameInitializer;
 import org.example.config.GameConstants;
+import org.example.datalayer.SessionStat;
 import org.example.datalayer.Statistics;
 import org.example.domain.entity.*;
 import org.example.domain.model.Direction;
@@ -67,19 +68,11 @@ public class GameLoop {
         this.symbolAtNewPosition = symbolUnderPlayer;
     }
 
-    public void start() throws IOException {
-        generateNewLevel();
+    public void start(SessionStat sessionStat) throws IOException {
+        generateNewLevel(sessionStat);
         syncPlayerPositionWithEntity();
 
-        sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
-            renderer.shutdown();
-            System.out.println(TERMINATE);
-            System.exit(0);
-        });
-
-        renderer.clearScreen();
-        enemyAIService.updateAllGhostEffects(session, playerX, playerY);
-        System.out.print(HIDE_CURSOR);
+        initPresentation();
 
         running = true;
 
@@ -92,7 +85,7 @@ public class GameLoop {
             }
 
             if (session.getPlayer().isSleepTurns()) {
-                handleSleepTurn();
+                handleSleepTurn(sessionStat);
                 continue;
             }
 
@@ -123,13 +116,13 @@ public class GameLoop {
             // 3. ОБРАБОТКА
             switch (command.getType()) {
                 case MOVE:
-                    handleMovement(command.getDirection());
+                    handleMovement(command.getDirection(), sessionStat);
                     break;
                 case USE_ITEM:
                     handleUseItem(command.getItemType());
                     break;
                 case SELECT_INDEX:
-                    handleItemSelection(command.getSelectedIndex());
+                    handleItemSelection(command.getSelectedIndex(), sessionStat);
                     break;
                 default:
                     break;
@@ -147,7 +140,7 @@ public class GameLoop {
 
             // Проверяем смерть игрока
             if (session.getPlayer().getHealth() <= 0) {
-                handleDeath();
+                handleDeath(sessionStat);
                 running = false;
             }
         }
@@ -155,14 +148,26 @@ public class GameLoop {
         renderer.shutdown();
     }
 
-    private void handleDeath() throws IOException {
-        renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
-        Statistics.updateScoreBoard();
+    private void initPresentation() {
+        sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
+            renderer.shutdown();
+            System.out.println(TERMINATE);
+            System.exit(0);
+        });
+
+        renderer.clearScreen();
+        enemyAIService.updateAllGhostEffects(session, playerX, playerY);
+        System.out.print(HIDE_CURSOR);
     }
 
-    private void handleVictory() throws IOException {
+    private void handleDeath(SessionStat sessionStat) throws IOException {
+        renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
+        Statistics.updateScoreBoard(sessionStat);
+    }
+
+    private void handleVictory(SessionStat sessionStat) throws IOException {
         renderer.drawMessage(DEATH_MESSAGE_Y, VICTORY, CharColor.GREEN);
-        Statistics.updateScoreBoard();
+        Statistics.updateScoreBoard(sessionStat);
     }
 
     private boolean canMoveTo(int x, int y) {
@@ -271,7 +276,7 @@ public class GameLoop {
         this.playerY = pos.getY();
     }
 
-    private void generateNewLevel() throws IOException {
+    private void generateNewLevel(SessionStat sessionStat) throws IOException {
         int levelToGenerate;
 
         if (session.getCurrentMap() == null) {
@@ -283,7 +288,7 @@ public class GameLoop {
 
         // Проверка на победу
         if (levelToGenerate > 21) {
-            handleVictory();
+            handleVictory(sessionStat);
             running = false;
             return;
         }
@@ -373,7 +378,7 @@ public class GameLoop {
         return enemiesCreated;
     }
 
-    private void handleSleepTurn() throws IOException {
+    private void handleSleepTurn(SessionStat sessionStat) throws IOException {
         String sleepMsg = "You are sleep! Zzz...";
         session.getPlayer().setSleepTurns(false);
         renderer.drawMessage(UI_START_Y, sleepMsg, CharColor.CYAN);
@@ -398,12 +403,12 @@ public class GameLoop {
         }
 
         if (session.getPlayer().getHealth() <= 0) {
-            handleDeath();
+            handleDeath(sessionStat);
             running = false;
         }
     }
 
-    private void handleMovement(Direction dir) throws IOException {
+    private void handleMovement(Direction dir, SessionStat sessionStat) {
 
         try {
             int newX = playerX + dir.getDx();
@@ -427,12 +432,13 @@ public class GameLoop {
             Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
             if (enemyAtPosition != null) {
 //                System.out.println("DEBUG: Enemy found at position");
-                String message = combatService.attackEnemy(session, enemyAtPosition);
+                String message = combatService.attackEnemy(session, enemyAtPosition, sessionStat);
                 activeMessageLine1 = message;
                 messageTimer = MESSAGE_DURATION;
 
                 if (enemyAtPosition.getHealth() <= 0) {
                     combatService.removeEnemy(session, enemyAtPosition, asciiMap);
+                    sessionStat.incrementEnemies();
                 }
             } else if (canMoveTo(newX, newY)) {
 //                System.out.println("DEBUG: Can move to position");
@@ -461,6 +467,7 @@ public class GameLoop {
 
                         // Обновляем позицию в entity
                         session.getPlayer().move(dir);
+                        sessionStat.incrementMoves();
                         return;
                     } else {
 //                        System.out.println("DEBUG: getItemAt returned null!");
@@ -470,7 +477,9 @@ public class GameLoop {
                 // ВТОРОЕ: Проверяем выход
                 if (symbolAtNewPosition == 'E' || symbolAtNewPosition == EXIT) {
 //                    System.out.println("DEBUG: Exit found!");
-                    generateNewLevel();
+                    generateNewLevel(sessionStat);
+                    sessionStat.incrementLevel();
+                    sessionStat.incrementMoves();
                     return;
                 }
 
@@ -489,6 +498,7 @@ public class GameLoop {
 
                 // Синхронизируем с Player entity
                 session.getPlayer().move(dir);
+                sessionStat.incrementMoves();
             } else {
 //                System.out.println("DEBUG: Cannot move to position");
             }
@@ -549,12 +559,18 @@ public class GameLoop {
         }
     }
 
-    private void handleItemSelection(int index) {
+    private void handleItemSelection(int index, SessionStat sessionStat) throws IOException {
         if (inputHandler.isAwaitingSelection()) {
             ItemType type = inputHandler.getPendingItemType();
             activeMessageLine3 = "Item type used " + type + " index " + index;
             messageTimer = MESSAGE_DURATION;
             inputHandler.resetAwaitingState();
+
+            switch (type) {
+                case FOOD -> sessionStat.incrementFood();
+                case ELIXIR -> sessionStat.incrementElixirs();
+                case SCROLL -> sessionStat.incrementScrolls();
+            }
         }
     }
 

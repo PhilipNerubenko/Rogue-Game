@@ -13,9 +13,23 @@ public class Statistics {
         private static final ObjectMapper objectMapper = new ObjectMapper();
 
 
-    public static void updateScoreBoard() throws IOException {
-        File scoreboardFile = new File(GameConstants.PathToFiles.SCOREBOARD_PATH);
+    public static void saveCurrentStats(SessionStat sessionStat) throws IOException {
         File statsFile = new File(GameConstants.PathToFiles.STATISTICS_PATH);
+
+        // Создание директорий если нужно
+        File parentDir = statsFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+
+        // Запись текущего состояния
+        objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValue(statsFile, sessionStat);
+    }
+
+    public static void updateScoreBoard(SessionStat sessionStat) throws IOException {
+        File scoreboardFile = new File(GameConstants.PathToFiles.SCOREBOARD_PATH);
+        //File statsFile = new File(GameConstants.PathToFiles.STATISTICS_PATH);
 
         // Создание scoreboard.json если его нет
         if (!scoreboardFile.exists()) {
@@ -26,11 +40,11 @@ public class Statistics {
         }
 
         // Создание statistics.json если его нет
-        if (!statsFile.exists()) {
-            ObjectNode emptyStat = objectMapper.createObjectNode();
-            objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValue(statsFile, emptyStat);
-        }
+//        if (!statsFile.exists()) {
+//            ObjectNode emptyStat = objectMapper.createObjectNode();
+//            objectMapper.writerWithDefaultPrettyPrinter()
+//                    .writeValue(statsFile, emptyStat);
+//        }
 
         // Чтение scoreboard
         JsonNode allStatJson = objectMapper.readTree(scoreboardFile);
@@ -51,10 +65,12 @@ public class Statistics {
         }
 
         // Чтение statistics
-        JsonNode statJson = objectMapper.readTree(statsFile);
+        //JsonNode statJson = objectMapper.readTree(statsFile);
+        JsonNode sessionStatJson = objectMapper.valueToTree(sessionStat);
 
         // Добавление статистики
-        arraySessions.add(statJson);
+        //arraySessions.add(statJson);
+        arraySessions.add(sessionStatJson);
 
         // Запись обратно
         objectMapper.writerWithDefaultPrettyPrinter()
@@ -62,7 +78,7 @@ public class Statistics {
 
     }
 
-    public static void resetStatistics() throws IOException {
+    public static void resetStatistics(SessionStat sessionStat) throws IOException {
         File statsFile = new File(GameConstants.PathToFiles.STATISTICS_PATH);
 
         File parentDir = statsFile.getParentFile();
@@ -75,20 +91,11 @@ public class Statistics {
             objectMapper.writerWithDefaultPrettyPrinter()
                     .writeValue(statsFile, emptyStat);
         }
-        SessionStat zeroStat = new SessionStat(
-                0,  // treasures
-                1,  // level
-                0,  // enemies
-                0,  // food
-                0,  // elixirs
-                0,  // scrolls
-                0,  // attacks
-                0,  // missed
-                0   // moves
-        );
+
+        sessionStat.reset();
 
         objectMapper.writerWithDefaultPrettyPrinter()
-                .writeValue(statsFile, zeroStat);
+                .writeValue(statsFile, sessionStat);
     }
 
 }
