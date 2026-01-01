@@ -4,7 +4,7 @@ import org.example.domain.entity.ItemType;
 
 public class InputCommand {
     public enum Type {
-        MOVE, USE_ITEM, SELECT_INDEX, QUIT, NONE
+        NONE, MOVE, USE_ITEM, SELECT_INDEX, UNEQUIP_WEAPON, QUIT
     }
 
     private final Type type;
@@ -37,6 +37,10 @@ public class InputCommand {
 
     public static InputCommand none() {
         return new InputCommand(Type.NONE, null, null, -1);
+    }
+
+    public static InputCommand unequipWeapon() {
+        return new InputCommand(Type.UNEQUIP_WEAPON, null, null, -1);
     }
 
     public Type getType() { return type; }

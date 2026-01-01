@@ -25,6 +25,8 @@ public class Inventory {
         // Сокровища - особый случай
         if (item.getType().equalsIgnoreCase("treasure")) {
             totalTreasureValue += item.getValue();
+            // Также добавляем в слот для отслеживания
+            slots.get(ItemType.TREASURE).add(item);
             return true;
         }
 

@@ -89,6 +89,12 @@ public class Player extends Character {
 
         // Применяем эффекты предмета
         applyItemEffects(item);
+
+        // Для оружия - особый случай
+        if (type == ItemType.WEAPON) {
+            equip(item);
+        }
+
         return true;
     }
 
@@ -122,10 +128,9 @@ public class Player extends Character {
         }
     }
 
-    // Метод для получения общей стоимости сокровищ
+    // Добавить метод для получения стоимости сокровищ:
     public int getTreasureValue() {
-        // Нужно будет добавить метод в Inventory для получения стоимости сокровищ
-        return 0; // TODO: реализовать
+        return this.getInventory().getTreasureValue();
     }
 
     @Override

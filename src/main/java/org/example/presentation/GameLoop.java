@@ -131,6 +131,9 @@ public class GameLoop {
                 case SELECT_INDEX:
                     handleItemSelection(command.getSelectedIndex());
                     break;
+                case UNEQUIP_WEAPON:
+                    handleUnequipWeapon();
+                    break;
                 default:
                     break;
             }
@@ -220,14 +223,16 @@ public class GameLoop {
         }
 
         // Подсказка
-        renderer.drawString(3, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
+       // renderer.drawString(3, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
+        String controls = "WASD:move | h:weapon | j:food | k:elixir | e:scroll | q:unequip | ESC:exit";
+        renderer.drawString(3, 29, controls, CharColor.CYAN);
 
         // Статус Бар
         renderer.drawStatusBar(
                 session.getPlayer().getHealth(),
                 session.getPlayer().getMaxHealth(),
                 session.getLevelNum(),
-                0
+                session.getPlayer().getTreasureValue()
         );
 
         activeMessageLine3 = String.format(
@@ -505,16 +510,44 @@ public class GameLoop {
                 y >= 0 && y < GameConstants.Map.HEIGHT;
     }
 
-    private void handleUseItem(ItemType itemType) {
-        inputHandler.setAwaitingSelection(true, itemType);
-        activeMessageLine3 = "Select an item " + itemType + " (1-9) or ESC to cancel";
-        messageTimer = MESSAGE_DURATION;
-    }
+//    private void handleUseItem(ItemType itemType) {
+//        inputHandler.setAwaitingSelection(true, itemType);
+//        activeMessageLine3 = "Select an item " + itemType + " (1-9) or ESC to cancel";
+//        messageTimer = MESSAGE_DURATION;
+//    }
 
     private void handleItemPickup(Item item, int x, int y) {
+        System.out.println("DEBUG: handleItemPickup called for item:");
+        System.out.println("  Type: " + item.getType());
+        System.out.println("  SubType: " + item.getSubType());
+        System.out.println("  Value: " + item.getValue());
+
         Player player = session.getPlayer();
         Inventory inventory = player.getInventory();
 
+        // Для сокровищ - особый случай
+        if (item.getType().equalsIgnoreCase("treasure")) {
+            // Сокровища не имеют ограничений по количеству
+            if (inventory.add(item)) {
+
+                session.getCurrentLevelItems().remove(item);
+                asciiMap[y][x] = '.';
+
+                activeMessageLine3 = String.format("Picked up: %d gold", item.getValue());
+                messageTimer = MESSAGE_DURATION;
+
+                // Обновляем позицию игрока
+                renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
+                fogOfWarService.markCellAsExplored(x, y);
+                playerX = x;
+                playerY = y;
+                symbolUnderPlayer = asciiMap[playerY][playerX];
+                session.getPlayer().setPosition(new Position(x, y));
+            }
+            return;
+        }
+
+        // Для обычных предметов
         ItemType type;
         try {
             type = ItemType.valueOf(item.getType().toUpperCase());
@@ -537,6 +570,7 @@ public class GameLoop {
                     item.getSubType(), type.name().toLowerCase());
             messageTimer = MESSAGE_DURATION;
 
+            // Обновляем позицию игрока
             renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
             fogOfWarService.markCellAsExplored(x, y);
             playerX = x;
@@ -550,13 +584,107 @@ public class GameLoop {
     }
 
     private void handleItemSelection(int index) {
-        if (inputHandler.isAwaitingSelection()) {
-            ItemType type = inputHandler.getPendingItemType();
-            activeMessageLine3 = "Item type used " + type + " index " + index;
+        if (!inputHandler.isAwaitingSelection()) {
+            return;
+        }
+
+        ItemType type = inputHandler.getPendingItemType();
+        Player player = session.getPlayer();
+
+        try {
+            if (type == ItemType.WEAPON) {
+                handleWeaponSelection(index);
+            } else {
+                handleConsumableSelection(type, index);
+            }
+        } catch (Exception e) {
+            activeMessageLine3 = "Error using item: " + e.getMessage();
             messageTimer = MESSAGE_DURATION;
+        } finally {
             inputHandler.resetAwaitingState();
         }
     }
+
+    private void handleUnequipWeapon() {
+        Player player = session.getPlayer();
+        Item currentWeapon = player.getEquippedWeapon();
+
+        if (currentWeapon != null && !currentWeapon.getSubType().equals("fists")) {
+            player.unequipWeapon();
+            activeMessageLine3 = "Weapon unequipped";
+            messageTimer = MESSAGE_DURATION;
+        } else {
+            activeMessageLine3 = "No weapon equipped!";
+            messageTimer = MESSAGE_DURATION;
+        }
+    }
+
+    private void handleWeaponSelection(int index) {
+        Player player = session.getPlayer();
+        Inventory inventory = player.getInventory();
+
+        if (index == 0) {
+            // Снять оружие
+            player.unequipWeapon();
+            activeMessageLine3 = "Weapon unequipped";
+            messageTimer = MESSAGE_DURATION;
+            return;
+        }
+
+        // Индексы начинаются с 1 для пользователя
+        int itemIndex = index - 1;
+        List<Item> weapons = inventory.getItems(ItemType.WEAPON);
+
+        if (itemIndex < 0 || itemIndex >= weapons.size()) {
+            activeMessageLine3 = "Invalid weapon selection!";
+            messageTimer = MESSAGE_DURATION;
+            return;
+        }
+
+        Item weapon = weapons.get(itemIndex);
+        player.equip(weapon);
+
+        // Удаляем из инвентаря (так как теперь экипировано)
+        inventory.take(ItemType.WEAPON, itemIndex);
+
+        activeMessageLine3 = String.format("Equipped: %s (STR+%d)",
+                weapon.getSubType(), weapon.getStrength());
+        messageTimer = MESSAGE_DURATION;
+    }
+
+    private void handleConsumableSelection(ItemType type, int index) {
+        Player player = session.getPlayer();
+
+        // Индексы начинаются с 1 для пользователя
+        int itemIndex = index - 1;
+
+        // Используем предмет через метод игрока
+        boolean success = player.useItem(type, itemIndex);
+
+        if (success) {
+            String itemName = type.name().toLowerCase();
+            activeMessageLine3 = "Used " + itemName + " successfully!";
+            messageTimer = MESSAGE_DURATION;
+
+            // Обновляем статус игрока в UI
+            updatePlayerStatus();
+        } else {
+            activeMessageLine3 = "Failed to use item!";
+            messageTimer = MESSAGE_DURATION;
+        }
+    }
+
+    private void updatePlayerStatus() {
+        // Обновляем отображение статуса игрока
+        Player player = session.getPlayer();
+        renderer.drawStatusBar(
+                player.getHealth(),
+                player.getMaxHealth(),
+                session.getLevelNum(),
+                player.getTreasureValue()
+        );
+    }
+
 
     private boolean isItemSymbol(char symbol) {
 //        System.out.println("DEBUG isItemSymbol: checking '" + symbol + "'");
@@ -689,5 +817,110 @@ public class GameLoop {
                 " (" + String.join(", ", effects) + ")";
 
         return String.format("- %s%s", item.getSubType(), effectsStr);
+    }
+
+    private void handleUseItem(ItemType itemType) {
+        Player player = session.getPlayer();
+        Inventory inventory = player.getInventory();
+
+        // Проверяем, есть ли предметы этого типа
+        if (inventory.count(itemType) == 0) {
+            activeMessageLine3 = "No " + itemType.name().toLowerCase() + " in inventory!";
+            messageTimer = MESSAGE_DURATION;
+            return;
+        }
+
+        // Показываем список предметов
+        if (itemType == ItemType.WEAPON) {
+            showWeaponSelection();
+        } else {
+            showItemSelection(itemType);
+        }
+    }
+
+    private void showWeaponSelection() {
+        inputHandler.setAwaitingSelection(true, ItemType.WEAPON);
+
+        Player player = session.getPlayer();
+        List<Item> weapons = player.getInventory().getItems(ItemType.WEAPON);
+
+        // Показываем список оружия
+        StringBuilder message = new StringBuilder("Select weapon (0-9):\n");
+        message.append("0. Unequip current\n");
+
+        for (int i = 0; i < weapons.size(); i++) {
+            Item weapon = weapons.get(i);
+            message.append(String.format("%d. %s (STR+%d)\n",
+                    i + 1, weapon.getSubType(), weapon.getStrength()));
+        }
+
+        // Разбиваем на строки для отображения
+        String[] lines = message.toString().split("\n");
+        for (int i = 0; i < Math.min(lines.length, 3); i++) {
+//            if (i == 0) {
+//                renderer.drawMessage(MESSAGE_LINE_1, lines[i], CharColor.YELLOW);
+//            } else if (i == 1) {
+//                renderer.drawMessage(MESSAGE_LINE_2, lines[i], CharColor.WHITE);
+//            } else if (i == 2) {
+//                renderer.drawMessage(MESSAGE_LINE_3, lines[i], CharColor.WHITE);
+//            }
+
+            if (i == 0) {
+                renderer.drawMessage(45, lines[i], CharColor.YELLOW);
+            } else if (i == 1) {
+                renderer.drawMessage(45, lines[i], CharColor.WHITE);
+            } else if (i == 2) {
+                renderer.drawMessage(45, lines[i], CharColor.WHITE);
+            }
+        }
+    }
+
+    private void showItemSelection(ItemType itemType) {
+        inputHandler.setAwaitingSelection(true, itemType);
+
+        Player player = session.getPlayer();
+        List<Item> items = player.getInventory().getItems(itemType);
+
+        // Показываем список предметов
+        StringBuilder message = new StringBuilder("Select " + itemType.name().toLowerCase() + " (1-9):\n");
+
+        for (int i = 0; i < Math.min(items.size(), 9); i++) {
+            Item item = items.get(i);
+            message.append(String.format("%d. %s", i + 1, formatItemForSelection(item)));
+            if (i < Math.min(items.size(), 9) - 1) {
+                message.append("\n");
+            }
+        }
+
+        String[] lines = message.toString().split("\n");
+        for (int i = 0; i < Math.min(lines.length, 3); i++) {
+//            if (i == 0) {
+//                renderer.drawMessage(MESSAGE_LINE_1, lines[i], CharColor.YELLOW);
+//            } else {
+//                renderer.drawMessage(MESSAGE_LINE_1 + i, lines[i], CharColor.WHITE);
+//            }
+
+            if (i == 0) {
+                renderer.drawMessage(45, lines[i], CharColor.YELLOW);
+            } else {
+                renderer.drawMessage(45 + i, lines[i], CharColor.WHITE);
+            }
+        }
+    }
+
+    private String formatItemForSelection(Item item) {
+        List<String> effects = new ArrayList<>();
+
+        if (item.getHealth() > 0) effects.add("HP+" + item.getHealth());
+        if (item.getMaxHealth() > 0) effects.add("MaxHP+" + item.getMaxHealth());
+        if (item.getAgility() > 0) effects.add("AGI+" + item.getAgility());
+        if (item.getStrength() > 0 && !item.getType().equals("weapon")) {
+            effects.add("STR+" + item.getStrength());
+        }
+
+        String effectsStr = effects.isEmpty() ? "" :
+                " (" + String.join(", ", effects) + ")";
+
+        return item.getSubType() + effectsStr;
     }
 }

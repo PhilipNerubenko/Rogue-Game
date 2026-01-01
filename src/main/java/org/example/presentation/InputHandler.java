@@ -54,7 +54,7 @@ public class InputHandler {
 
         character = Character.toLowerCase(character);
 
-        // Движение
+        // Движение и выбор предмета
         switch (character) {
             case 'w': {
                 System.out.println("Распознано движение NORTH"); // Отладка
@@ -72,15 +72,30 @@ public class InputHandler {
                 System.out.println("Распознано движение EAST"); // Отладка
                 return InputCommand.move(Direction.EAST);
             }
+            case 'h':
+                System.out.println("Распознано использование оружия");
+                return InputCommand.useItem(ItemType.WEAPON);
+            case 'j':
+                System.out.println("Распознано использование еды");
+                return InputCommand.useItem(ItemType.FOOD);
+            case 'k':
+                System.out.println("Распознано использование эликсира");
+                return InputCommand.useItem(ItemType.ELIXIR);
+            case 'e':
+                System.out.println("Распознано использование свитка");
+                return InputCommand.useItem(ItemType.SCROLL);
+            case 'q': // Убрать оружие (unequip)
+                System.out.println("Распознано снятие оружия");
+                return InputCommand.unequipWeapon();
         }
 
         // Использование предметов
-        switch (character) {
-            case 'h': return InputCommand.useItem(ItemType.WEAPON);
-            case 'j': return InputCommand.useItem(ItemType.FOOD);
-            case 'k': return InputCommand.useItem(ItemType.ELIXIR);
-            case 'e': return InputCommand.useItem(ItemType.SCROLL);
-        }
+//        switch (character) {
+//            case 'h': return InputCommand.useItem(ItemType.WEAPON);
+//            case 'j': return InputCommand.useItem(ItemType.FOOD);
+//            case 'k': return InputCommand.useItem(ItemType.ELIXIR);
+//            case 'e': return InputCommand.useItem(ItemType.SCROLL);
+//        }
 
         return InputCommand.none();
     }

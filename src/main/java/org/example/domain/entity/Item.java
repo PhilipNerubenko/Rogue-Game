@@ -36,6 +36,16 @@ public class Item {
         );
     }
 
+    // В конструкторе или фабричных методах:
+    public static Item createTreasure(int value) {
+        return new Item(
+                ItemType.TREASURE.name().toLowerCase(), // "treasure"
+                "gold",
+                0, 0, 0, 0, // нет эффектов
+                value
+        );
+    }
+
     public String getType() {
         return type;
     }
