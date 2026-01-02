@@ -232,9 +232,31 @@ public class GameLoop  {
         if (inputHandler.isAwaitingSelection()) {
             return;
         }
+//        // Отрисовка предметов
+//        for (Item item : session.getCurrentLevelItems()) {
+//            if (item.getX() >= 0 && item.getY() >= 0) {
+//                if (fogOfWarService.isVisible(item.getX(), item.getY())) {
+//                    char symbol = switch (item.getType()) {
+//                        case "food" -> ',';
+//                        case "elixir" -> '!';
+//                        case "scroll" -> '?';
+//                        case "weapon" -> ')';
+//                        case "treasure" -> '$';
+//                        default -> '*';
+//                    };
+//                    renderer.drawChar(item.getX(), item.getY(), symbol, CharColor.YELLOW);
+//                }
+//            }
+//        }
+
         // Отрисовка предметов
         for (Item item : session.getCurrentLevelItems()) {
             if (item.getX() >= 0 && item.getY() >= 0) {
+                // ВАЖНО: проверяем, не на позиции ли игрока
+                if (item.getX() == playerX && item.getY() == playerY) {
+                    continue; // Пропускаем отрисовку предмета под игроком
+                }
+
                 if (fogOfWarService.isVisible(item.getX(), item.getY())) {
                     char symbol = switch (item.getType()) {
                         case "food" -> ',';
@@ -388,7 +410,9 @@ public class GameLoop  {
             int enemyY = room.getY1() + 1 + rand.nextInt(room.getHeight() - 2);
 
             EnemyType randomType = EnemyType.values()[rand.nextInt(EnemyType.values().length)];
-            Enemy enemy = randomType.create(1);
+
+            // Более Злые монстры с ростом уровня.
+            Enemy enemy = randomType.create(session.getLevelNum());
             enemy.setX(enemyX);
             enemy.setY(enemyY);
 

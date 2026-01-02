@@ -49,5 +49,15 @@
     "attacks" : 3,
     "missed" : 0,
     "moves" : 34
+  }, {
+    "treasures" : 0,
+    "levelNum" : 1,
+    "enemies" : 0,
+    "food" : 0,
+    "elixirs" : 0,
+    "scrolls" : 0,
+    "attacks" : 0,
+    "missed" : 5,
+    "moves" : 45
   } ]
 }
