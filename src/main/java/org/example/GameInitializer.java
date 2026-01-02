@@ -36,7 +36,6 @@ public class GameInitializer {
         // 4. FogOfWarService
         this.fogOfWarService = new FogOfWarService(levelGenerator);
 
-
     }
 
     public void initializeNewGame() throws IOException{
@@ -66,12 +65,5 @@ public class GameInitializer {
     public FogOfWarService getFogOfWarService() { return fogOfWarService; }
     public LevelGenerator getLevelGenerator() { return levelGenerator; }
 
-    public char[][] getAsciiMap() {
-        // Возвращаем карту из сессии, а не создаем новую
-        if (session.getCurrentMap() != null) {
-            return session.getCurrentMap();
-        }
-        // Fallback на случай, если карта еще не создана
-        return levelGenerator.createAsciiMap(MAP_LEVEL);
-    }
+
 }

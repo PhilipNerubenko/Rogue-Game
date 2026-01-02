@@ -14,13 +14,6 @@ public class Room {
     private boolean startRoom;
     private boolean exitRoom;
 
-//    public Room(int positionX, int positionY, int width, int height) {
-//        this.positionX = positionX;
-//        this.positionY = positionY;
-//        this.width = width;
-//        this.height = height;
-//    }
-
     public Room(int roomID, Position roomPosition, int width, int height) {
         this.id = roomID;
         this.x1 = roomPosition.getX();
@@ -32,10 +25,6 @@ public class Room {
         this.startRoom = false;
         this.exitRoom = false;
 
-    }
-    // Room("room_" + index, new Position(gridX, gridY), width, height);
-    public int getId() {
-        return id;
     }
 
     public int getX1() {

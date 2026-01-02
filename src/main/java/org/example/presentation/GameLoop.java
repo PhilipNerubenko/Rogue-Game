@@ -61,7 +61,6 @@ public class GameLoop {
         this.levelGenerator = initializer.getLevelGenerator();
         this.asciiMap = new char[GameConstants.Map.HEIGHT][GameConstants.Map.WIDTH];
 
-        Position playerPos = session.getPlayer().getPosition();
         this.playerX = 0;
         this.playerY = 0;
         this.symbolAtNewPosition = symbolUnderPlayer;
@@ -73,13 +72,11 @@ public class GameLoop {
 
         sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
             renderer.shutdown();
-            System.out.println(TERMINATE);
             System.exit(0);
         });
 
         renderer.clearScreen();
         enemyAIService.updateAllGhostEffects(session, playerX, playerY);
-        System.out.print(HIDE_CURSOR);
 
         running = true;
 
@@ -101,7 +98,15 @@ public class GameLoop {
             drawMap();
             drawEnemies();
             renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
-            drawUI();
+
+            // Если ожидаем выбор предмета - рендерим меню поверх
+            if (inputHandler.isAwaitingSelection()) {
+                // Перерисовываем меню выбора
+                redrawSelectionMenu();
+            } else {
+                // Обычный UI
+                drawUI();
+            }
 
             if (messageTimer > 0) {
                 if (activeMessageLine1 != null) {
@@ -205,6 +210,11 @@ public class GameLoop {
     }
 
     private void drawUI() {
+
+        // Если ожидаем выбор предмета - не рисуем обычный UI
+        if (inputHandler.isAwaitingSelection()) {
+            return;
+        }
         // Отрисовка предметов
         for (Item item : session.getCurrentLevelItems()) {
             if (item.getX() >= 0 && item.getY() >= 0) {
@@ -223,7 +233,7 @@ public class GameLoop {
         }
 
         // Подсказка
-       // renderer.drawString(3, 29, "Use WASD to move, ESC to exit", CharColor.CYAN);
+
         String controls = "WASD:move | h:weapon | j:food | k:elixir | e:scroll | q:unequip | ESC:exit";
         renderer.drawString(3, 29, controls, CharColor.CYAN);
 
@@ -235,14 +245,8 @@ public class GameLoop {
                 session.getPlayer().getTreasureValue()
         );
 
-        activeMessageLine3 = String.format(
-                "DEBAG Now: (%d,%d) '%c' | Next: '%c'",
-                playerX, playerY, symbolUnderPlayer, symbolAtNewPosition
-        );
-        renderer.drawString(3, 30, activeMessageLine3, CharColor.CYAN);
-
         // Предметы на уровне
-        int itemListY = 32;
+        int itemListY = 33;
         renderer.drawString(3, itemListY++, "=== ITEMS ON LEVEL ===", CharColor.CYAN);
 
         if (session.getCurrentLevelItems().isEmpty()) {
@@ -414,24 +418,18 @@ public class GameLoop {
             int newX = playerX + dir.getDx();
             int newY = playerY + dir.getDy();
 
-//            System.out.println("DEBUG handleMovement: player=(" + playerX + "," + playerY +
-//                    "), new=(" + newX + "," + newY + ")");
-
             // Проверяем границы
             if (newX < 0 || newX >= GameConstants.Map.WIDTH ||
                     newY < 0 || newY >= GameConstants.Map.HEIGHT) {
-//                System.out.println("DEBUG: Out of bounds!");
                 return;
             }
 
             // Проверяем символ на НОВОЙ позиции ПЕРЕД перемещением
             symbolAtNewPosition = asciiMap[newY][newX];
-//            System.out.println("DEBUG: symbolAtNewPosition = '" + symbolAtNewPosition + "'");
 
             // Проверяем, есть ли враг
             Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
             if (enemyAtPosition != null) {
-//                System.out.println("DEBUG: Enemy found at position");
                 String message = combatService.attackEnemy(session, enemyAtPosition);
                 activeMessageLine1 = message;
                 messageTimer = MESSAGE_DURATION;
@@ -440,15 +438,11 @@ public class GameLoop {
                     combatService.removeEnemy(session, enemyAtPosition, asciiMap);
                 }
             } else if (canMoveTo(newX, newY)) {
-//                System.out.println("DEBUG: Can move to position");
 
                 // ПЕРВОЕ: Проверяем предмет на новой клетке
                 if (isItemSymbol(symbolAtNewPosition)) {
-//                    System.out.println("DEBUG: Item symbol detected! Calling getItemAt...");
                     // ✅ Используем существующий метод getItemAt()
                     Item item = getItemAt(newX, newY);
-                    if (item != null) {
-//                        System.out.println("DEBUG: Item found, calling handleItemPickup");
                         // Подбираем предмет
                         handleItemPickup(item, newX, newY);
 
@@ -467,20 +461,15 @@ public class GameLoop {
                         // Обновляем позицию в entity
                         session.getPlayer().move(dir);
                         return;
-                    } else {
-//                        System.out.println("DEBUG: getItemAt returned null!");
-                    }
                 }
 
                 // ВТОРОЕ: Проверяем выход
                 if (symbolAtNewPosition == 'E' || symbolAtNewPosition == EXIT) {
-//                    System.out.println("DEBUG: Exit found!");
                     generateNewLevel();
                     return;
                 }
 
                 // ТРЕТЬЕ: Обычное перемещение (без предмета)
-//                System.out.println("DEBUG: Normal movement");
                 // Затираем старую позицию
                 renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
 
@@ -495,7 +484,6 @@ public class GameLoop {
                 // Синхронизируем с Player entity
                 session.getPlayer().move(dir);
             } else {
-//                System.out.println("DEBUG: Cannot move to position");
             }
         } catch (Exception e) {
             System.err.println("ERROR in handleMovement: " + e.getMessage());
@@ -505,22 +493,26 @@ public class GameLoop {
         }
     }
 
-    private boolean isWithinBounds(int x, int y) {
-        return x >= 0 && x < GameConstants.Map.WIDTH &&
-                y >= 0 && y < GameConstants.Map.HEIGHT;
+
+    private void handleUseItem(ItemType itemType) {
+        Player player = session.getPlayer();
+        Inventory inventory = player.getInventory();
+
+        if (inventory.count(itemType) == 0) {
+            activeMessageLine3 = "No " + itemType.name().toLowerCase() + " in inventory!";
+            messageTimer = MESSAGE_DURATION;
+            return;
+        }
+
+        // Просто переходим в режим ожидания выбора
+        inputHandler.setAwaitingSelection(true, itemType);
+
+        // Сообщение для пользователя
+        activeMessageLine3 = "Select " + itemType.name().toLowerCase() + " (1-9) or ESC to cancel";
+        messageTimer = MESSAGE_DURATION;
     }
 
-//    private void handleUseItem(ItemType itemType) {
-//        inputHandler.setAwaitingSelection(true, itemType);
-//        activeMessageLine3 = "Select an item " + itemType + " (1-9) or ESC to cancel";
-//        messageTimer = MESSAGE_DURATION;
-//    }
-
     private void handleItemPickup(Item item, int x, int y) {
-        System.out.println("DEBUG: handleItemPickup called for item:");
-        System.out.println("  Type: " + item.getType());
-        System.out.println("  SubType: " + item.getSubType());
-        System.out.println("  Value: " + item.getValue());
 
         Player player = session.getPlayer();
         Inventory inventory = player.getInventory();
@@ -598,6 +590,7 @@ public class GameLoop {
                 handleConsumableSelection(type, index);
             }
         } catch (Exception e) {
+            System.err.println("ERROR in handleItemSelection: " + e.getMessage());
             activeMessageLine3 = "Error using item: " + e.getMessage();
             messageTimer = MESSAGE_DURATION;
         } finally {
@@ -656,7 +649,12 @@ public class GameLoop {
         Player player = session.getPlayer();
 
         // Индексы начинаются с 1 для пользователя
-        int itemIndex = index - 1;
+        int itemIndex = index ;
+
+        List<Item> items = player.getInventory().getItems(type);
+        if (itemIndex >= 0 && itemIndex < items.size()) {
+            Item item = items.get(itemIndex);
+        }
 
         // Используем предмет через метод игрока
         boolean success = player.useItem(type, itemIndex);
@@ -685,15 +683,12 @@ public class GameLoop {
         );
     }
 
-
     private boolean isItemSymbol(char symbol) {
-//        System.out.println("DEBUG isItemSymbol: checking '" + symbol + "'");
         boolean result = symbol == ',' ||   // food
                 symbol == '!' ||   // elixir
                 symbol == '?' ||   // scroll
                 symbol == ')' ||   // weapon
                 symbol == '$';     // treasure
-//        System.out.println("DEBUG isItemSymbol: result = " + result);
         return result;
     }
 
@@ -732,7 +727,7 @@ public class GameLoop {
     }
 
     private void drawInventory() {
-        int startY = 29;
+        int startY = 31;
         renderer.drawString(43, startY++, "=== INVENTORY ===", CharColor.CYAN);
 
         Player player = session.getPlayer();
@@ -819,64 +814,60 @@ public class GameLoop {
         return String.format("- %s%s", item.getSubType(), effectsStr);
     }
 
-    private void handleUseItem(ItemType itemType) {
-        Player player = session.getPlayer();
-        Inventory inventory = player.getInventory();
+    private void redrawSelectionMenu() {
+        ItemType pendingType = inputHandler.getPendingItemType();
+        if (pendingType == null) return;
 
-        // Проверяем, есть ли предметы этого типа
-        if (inventory.count(itemType) == 0) {
-            activeMessageLine3 = "No " + itemType.name().toLowerCase() + " in inventory!";
-            messageTimer = MESSAGE_DURATION;
-            return;
+        // Очищаем область для меню
+        for (int y = 5; y < 15; y++) {
+            for (int x = 50; x < 80; x++) {
+                renderer.drawChar(x, y, ' ', CharColor.BLACK);
+            }
         }
 
-        // Показываем список предметов
-        if (itemType == ItemType.WEAPON) {
+        if (pendingType == ItemType.WEAPON) {
             showWeaponSelection();
         } else {
-            showItemSelection(itemType);
+            showItemSelection(pendingType);
         }
     }
 
     private void showWeaponSelection() {
-        inputHandler.setAwaitingSelection(true, ItemType.WEAPON);
+        // Используем правильные координаты (в пределах экрана 80x30)
+        int menuX = 50;
+        int menuY = 5;
+
+        // Очищаем область меню
+        for (int y = menuY; y < menuY + 10; y++) {
+            for (int x = menuX; x < menuX + 25; x++) {
+                renderer.drawChar(x, y, ' ', CharColor.BLACK);
+            }
+        }
 
         Player player = session.getPlayer();
         List<Item> weapons = player.getInventory().getItems(ItemType.WEAPON);
 
-        // Показываем список оружия
-        StringBuilder message = new StringBuilder("Select weapon (0-9):\n");
-        message.append("0. Unequip current\n");
+        // Рисуем рамку меню
+        renderer.drawString(menuX, menuY, "╔══════════════════════╗", CharColor.YELLOW);
+        renderer.drawString(menuX, menuY + 1, "║ Select weapon (0-9) ║", CharColor.YELLOW);
+        renderer.drawString(menuX, menuY + 2, "╠══════════════════════╣", CharColor.YELLOW);
 
-        for (int i = 0; i < weapons.size(); i++) {
+        int line = 3;
+        renderer.drawString(menuX + 2, menuY + line++, "0. Unequip current", CharColor.WHITE);
+
+        for (int i = 0; i < weapons.size() && i < 9; i++) {
             Item weapon = weapons.get(i);
-            message.append(String.format("%d. %s (STR+%d)\n",
-                    i + 1, weapon.getSubType(), weapon.getStrength()));
+            String text = String.format("%d. %s (STR+%d)",
+                    i + 1, weapon.getSubType(), weapon.getStrength());
+            renderer.drawString(menuX + 2, menuY + line++, text, CharColor.WHITE);
         }
 
-        // Разбиваем на строки для отображения
-        String[] lines = message.toString().split("\n");
-        for (int i = 0; i < Math.min(lines.length, 3); i++) {
-//            if (i == 0) {
-//                renderer.drawMessage(MESSAGE_LINE_1, lines[i], CharColor.YELLOW);
-//            } else if (i == 1) {
-//                renderer.drawMessage(MESSAGE_LINE_2, lines[i], CharColor.WHITE);
-//            } else if (i == 2) {
-//                renderer.drawMessage(MESSAGE_LINE_3, lines[i], CharColor.WHITE);
-//            }
-
-            if (i == 0) {
-                renderer.drawMessage(45, lines[i], CharColor.YELLOW);
-            } else if (i == 1) {
-                renderer.drawMessage(45, lines[i], CharColor.WHITE);
-            } else if (i == 2) {
-                renderer.drawMessage(45, lines[i], CharColor.WHITE);
-            }
-        }
+        renderer.drawString(menuX, menuY + line, "╚══════════════════════╝", CharColor.YELLOW);
+        renderer.drawString(menuX + 2, menuY + line + 1, "Press ESC to cancel", CharColor.CYAN);
     }
 
     private void showItemSelection(ItemType itemType) {
-        inputHandler.setAwaitingSelection(true, itemType);
+        //inputHandler.setAwaitingSelection(true, itemType);
 
         Player player = session.getPlayer();
         List<Item> items = player.getInventory().getItems(itemType);
@@ -894,11 +885,11 @@ public class GameLoop {
 
         String[] lines = message.toString().split("\n");
         for (int i = 0; i < Math.min(lines.length, 3); i++) {
-//            if (i == 0) {
-//                renderer.drawMessage(MESSAGE_LINE_1, lines[i], CharColor.YELLOW);
-//            } else {
-//                renderer.drawMessage(MESSAGE_LINE_1 + i, lines[i], CharColor.WHITE);
-//            }
+            if (i == 0) {
+                renderer.drawMessage(MESSAGE_LINE_1, lines[i], CharColor.YELLOW);
+            } else {
+                renderer.drawMessage(MESSAGE_LINE_1 + i, lines[i], CharColor.WHITE);
+            }
 
             if (i == 0) {
                 renderer.drawMessage(45, lines[i], CharColor.YELLOW);
@@ -923,4 +914,5 @@ public class GameLoop {
 
         return item.getSubType() + effectsStr;
     }
+
 }

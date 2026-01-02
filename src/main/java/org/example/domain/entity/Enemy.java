@@ -63,49 +63,49 @@ public class Enemy {
         return agility;
     }
 
-    public void setAgility(int agility) {
-        this.agility = agility;
-    }
-
-    public int getSpeed() {
-        return speed;
-    }
-
-    public void setSpeed(int speed) {
-        this.speed = speed;
-    }
+//    public void setAgility(int agility) {
+//        this.agility = agility;
+//    }
+//
+//    public int getSpeed() {
+//        return speed;
+//    }
+//
+//    public void setSpeed(int speed) {
+//        this.speed = speed;
+//    }
 
     public int getStrength() {
         return strength;
     }
 
-    public void setStrength(int strength) {
-        this.strength = strength;
-    }
+//    public void setStrength(int strength) {
+//        this.strength = strength;
+//    }
 
     public int getHostility() {
         return hostility;
     }
 
-    public void setHostility(int hostility) {
-        this.hostility = hostility;
-    }
-
-    public Color getColor() {
-        return color;
-    }
-
-    public void setColor(Color color) {
-        this.color = color;
-    }
-
-    public int getSpecialAbility() {
-        return specialAbility;
-    }
-
-    public void setSpecialAbility(int specialAbility) {
-        this.specialAbility = specialAbility;
-    }
+//    public void setHostility(int hostility) {
+//        this.hostility = hostility;
+//    }
+//
+//    public Color getColor() {
+//        return color;
+//    }
+//
+//    public void setColor(Color color) {
+//        this.color = color;
+//    }
+//
+//    public int getSpecialAbility() {
+//        return specialAbility;
+//    }
+//
+//    public void setSpecialAbility(int specialAbility) {
+//        this.specialAbility = specialAbility;
+//    }
 
     public boolean isInvisible() {
         return isInvisible;
@@ -164,8 +164,5 @@ public class Enemy {
         specialAbility &= ~abilityMask;
     }
 
-//    public boolean isWillCounterAttack() { return willCounterAttack; }
-//    public void setWillCounterAttack(boolean willCounterAttack) {
-//        this.willCounterAttack = willCounterAttack;
-//    }
+
 }

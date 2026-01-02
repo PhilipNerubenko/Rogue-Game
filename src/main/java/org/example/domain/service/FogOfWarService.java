@@ -50,7 +50,6 @@ public class FogOfWarService {
                 }
             }
             exploredRooms.add(currentRoom);
-
         }
 
         // 3. RAY CASTING из позиции игрока (для коридоров и дверей)
@@ -168,15 +167,6 @@ public class FogOfWarService {
 
     public boolean isExplored(int x, int y) {
         return exploredCells.contains(new Position(x, y));
-    }
-
-
-    public boolean isRoomExplored(Room room) {
-        return exploredRooms.contains(room);
-    }
-
-    public Room getCurrentRoom() {
-        return currentRoom;
     }
 
     public void markCellAsExplored(int x, int y) {

@@ -57,59 +57,32 @@ public class InputHandler {
         // Движение и выбор предмета
         switch (character) {
             case 'w': {
-                System.out.println("Распознано движение NORTH"); // Отладка
                 return InputCommand.move(Direction.NORTH);
             }
             case 's': {
-                System.out.println("Распознано движение SOUTH"); // Отладка
                 return InputCommand.move(Direction.SOUTH);
             }
             case 'a': {
-                System.out.println("Распознано движение WEST"); // Отладка
                 return InputCommand.move(Direction.WEST);
             }
             case 'd': {
-                System.out.println("Распознано движение EAST"); // Отладка
                 return InputCommand.move(Direction.EAST);
             }
             case 'h':
-                System.out.println("Распознано использование оружия");
                 return InputCommand.useItem(ItemType.WEAPON);
             case 'j':
-                System.out.println("Распознано использование еды");
                 return InputCommand.useItem(ItemType.FOOD);
             case 'k':
-                System.out.println("Распознано использование эликсира");
                 return InputCommand.useItem(ItemType.ELIXIR);
             case 'e':
-                System.out.println("Распознано использование свитка");
                 return InputCommand.useItem(ItemType.SCROLL);
             case 'q': // Убрать оружие (unequip)
-                System.out.println("Распознано снятие оружия");
                 return InputCommand.unequipWeapon();
         }
-
-        // Использование предметов
-//        switch (character) {
-//            case 'h': return InputCommand.useItem(ItemType.WEAPON);
-//            case 'j': return InputCommand.useItem(ItemType.FOOD);
-//            case 'k': return InputCommand.useItem(ItemType.ELIXIR);
-//            case 'e': return InputCommand.useItem(ItemType.SCROLL);
-//        }
 
         return InputCommand.none();
     }
 
-        /**
-         * Безопасное чтение кода клавиши.
-         */
-        private int readKeyCode() {
-            try {
-                return Toolkit.readCharacter().getCode();
-            } catch (Exception e) {
-                return -1; // Ошибка ввода
-            }
-        }
 
     private InputCommand handleItemSelection(InputChar ch) {
         char character;
@@ -121,12 +94,10 @@ public class InputHandler {
 
         if (character >= '1' && character <= '9') {
             int index = character - '1';
-            resetAwaitingState();
             return InputCommand.selectIndex(index);
         }
 
         if (ch.getCode() == 27) { // ESC отмена
-            System.out.println("pressed ESC (kod 27)");
             resetAwaitingState();
             return InputCommand.none();
         }

@@ -2,9 +2,7 @@ package org.example.domain.service;
 
 
 import org.example.config.GameConstants;
-import org.example.domain.entity.Enemy;
 import org.example.domain.entity.Item;
-import org.example.domain.model.Corridor;
 import org.example.domain.model.Room;
 import org.example.domain.model.Position;
 
@@ -17,7 +15,6 @@ public class LevelGenerator {
     private static final int MAX_HEIGHT_ROOM_SIZE = GameConstants.Map.HEIGHT/3-4;   //максимальная высота комнаты
     private static final int MIN_HEIGHT_ROOM_SIZE = MAX_HEIGHT_ROOM_SIZE/2+1;         //минимальная  высота комнаты
     private List<Room> rooms;
-    private List<Corridor> corridors;
     private Random rand;
 
     // НОВЫЕ ПОЛЯ: карта клеток -> комната
@@ -27,7 +24,6 @@ public class LevelGenerator {
     // Тип клетки для быстрого доступа
     private final Map<Position, Character> cellTypeMap = new HashMap<>();
 
-    private  List<Enemy> enemies = new ArrayList<>();
     private  List<Item> items = new ArrayList<>();
 
     public LevelGenerator() {
@@ -47,9 +43,7 @@ public class LevelGenerator {
         rooms = new ArrayList<>();
         rooms = createRooms(levelNumber);
         addRoomsOnAsciiMap(asciiMap);
-        corridors = new ArrayList<>();
         Random rand = new Random();
-//        corridors = createCorridor();
         addCorridorsOnAsciiMap(asciiMap);
 
         // === ГЕНЕРАЦИЯ И РАЗМЕЩЕНИЕ ПРЕДМЕТОВ ===
@@ -91,17 +85,11 @@ public class LevelGenerator {
                 asciiMap[curentRoom.getY2() - 2][curentRoom.getX2() -2] = 'E';
             }
         }
-
         return asciiMap;
     }
 
-
     public List<Room> getRooms() {
         return rooms;
-    }
-
-    public List<Corridor> getCorridors() {
-        return corridors;
     }
 
     public Random getRand() {
@@ -157,7 +145,6 @@ public class LevelGenerator {
             }
         }
     }
-
 
     private void addCorridorsOnAsciiMap(char[][] asciiMap) {
         for (int yRoom = 0; yRoom < 3; yRoom++) {
@@ -239,14 +226,6 @@ public class LevelGenerator {
     // Методы доступа:
     public Room getRoomAt(int x, int y) {
         return cellToRoomMap.get(new Position(x, y));
-    }
-
-    public boolean isCorridor(int x, int y) {
-        return corridorCells.contains(new Position(x, y));
-    }
-
-    public Character getCellType(int x, int y) {
-        return cellTypeMap.get(new Position(x, y));
     }
 
     public List<Item> getItems() {

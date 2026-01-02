@@ -5,6 +5,7 @@ import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
+import org.example.domain.entity.Item;
 import org.example.presentation.Renderer;
 
 import java.util.Random;
@@ -38,8 +39,18 @@ public class CombatService {
         enemy.setHealth(enemy.getHealth() - damage);
 
         String msg = "You dealt " + damage + " dmg to " + enemy.getType();
-        if (enemy.getHealth() <= 0) msg += " - KILLED!";
+        if (enemy.getHealth() <= 0) {
+            // ДОБАВИТЬ СЮДА ЛОГИКУ ДОБАВЛЕНИЯ ЗОЛОТА!
+            int gold = calculateGoldDrop(enemy);
 
+            // Создаем предмет "золото"
+            Item goldItem = Item.createTreasure(gold);
+
+            // Добавляем в инвентарь игрока
+            session.getPlayer().getInventory().add(goldItem);
+
+            msg += " - KILLED!, added " + gold;
+        }
         return msg;
     }
 
@@ -56,13 +67,11 @@ public class CombatService {
 
         if (guaranteed) {
             session.getPlayer().setHealth(session.getPlayer().getHealth() - damage);
-            //renderer.drawMessage(MESSAGE_LINE_2, enemy.getType() + " COUNTERATTACKS for " + damage + " dmg!", CharColor.YELLOW);
             return enemy.getType() + " COUNTERATTACKS for " + damage + " dmg!";
         }
 
         // Обычная атака с шансом промаха
         if (!isHit(enemy.getAgility(), session.getPlayer().getAgility())) {
-            //renderer.drawMessage(MESSAGE_LINE_2, enemy.getType() + " missed!", CharColor.YELLOW);
             return enemy.getType() + " missed!";
         }
 
@@ -88,7 +97,6 @@ public class CombatService {
         }
 
         if (session.getPlayer().getHealth() <= 0) message.append(" - YOU DIED!");
-        //renderer.drawMessage(MESSAGE_LINE_2, message.toString(), CharColor.YELLOW);
 
         // После удара огра — выставляем отдых
         if (enemy.hasAbility(Enemy.ABILITY_OGRE_REST)) {
@@ -104,5 +112,27 @@ public class CombatService {
         int finalChance = Math.max(MIN_HIT_CHANCE, Math.min(MAX_HIT_CHANCE, baseChance + agilityDelta * AGILITY_MULTIPLIER));
         Random rand = new Random();
         return rand.nextInt(100) < finalChance;
+    }
+
+    private int calculateGoldDrop(Enemy enemy) {
+        // Формула для расчета золота в зависимости от характеристик врага
+        int baseGold = 10; // Базовое значение
+
+        // Модификаторы в зависимости от характеристик врага
+        int hostilityBonus = enemy.getHostility() * 2;
+        int strengthBonus = enemy.getStrength() * 1;
+        int agilityBonus = enemy.getAgility() * 1;
+        int healthBonus = enemy.getHealth() / 10; // 10% от максимального здоровья
+
+        int totalGold = baseGold + hostilityBonus + strengthBonus +
+                agilityBonus + healthBonus;
+
+        // Добавляем случайность ±20%
+        Random rand = new Random();
+        int variation = (int)(totalGold * 0.2);
+        totalGold += rand.nextInt(variation * 2) - variation;
+
+        // Минимум 1 золото
+        return Math.max(1, totalGold);
     }
 }
