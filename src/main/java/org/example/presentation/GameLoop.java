@@ -3,6 +3,7 @@ package org.example.presentation;
 import jcurses.system.CharColor;
 import org.example.GameInitializer;
 import org.example.config.GameConstants;
+import org.example.datalayer.SessionStat;
 import org.example.datalayer.Statistics;
 import org.example.domain.entity.*;
 import org.example.domain.model.Direction;
@@ -22,7 +23,7 @@ import static org.example.config.GameConstants.ProbabilitiesAndBalance.*;
 import static org.example.config.GameConstants.ScreenConfig.*;
 import static org.example.config.GameConstants.TextMessages.*;
 
-public class GameLoop {
+public class GameLoop  {
 
     private final GameSession session;
     private final InputHandler inputHandler;
@@ -66,9 +67,10 @@ public class GameLoop {
         this.symbolAtNewPosition = symbolUnderPlayer;
     }
 
-    public void start() throws IOException {
-        generateNewLevel();
+    public void start(SessionStat sessionStat) throws IOException {
+        generateNewLevel(sessionStat);
         syncPlayerPositionWithEntity();
+
 
         sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
             renderer.shutdown();
@@ -77,6 +79,9 @@ public class GameLoop {
 
         renderer.clearScreen();
         enemyAIService.updateAllGhostEffects(session, playerX, playerY);
+
+        initPresentation();
+
 
         running = true;
 
@@ -89,7 +94,7 @@ public class GameLoop {
             }
 
             if (session.getPlayer().isSleepTurns()) {
-                handleSleepTurn();
+                handleSleepTurn(sessionStat);
                 continue;
             }
 
@@ -128,13 +133,13 @@ public class GameLoop {
             // 3. ОБРАБОТКА
             switch (command.getType()) {
                 case MOVE:
-                    handleMovement(command.getDirection());
+                    handleMovement(command.getDirection(), sessionStat);
                     break;
                 case USE_ITEM:
                     handleUseItem(command.getItemType());
                     break;
                 case SELECT_INDEX:
-                    handleItemSelection(command.getSelectedIndex());
+                    handleItemSelection(command.getSelectedIndex(), sessionStat);
                     break;
                 case UNEQUIP_WEAPON:
                     handleUnequipWeapon();
@@ -155,7 +160,7 @@ public class GameLoop {
 
             // Проверяем смерть игрока
             if (session.getPlayer().getHealth() <= 0) {
-                handleDeath();
+                handleDeath(sessionStat);
                 running = false;
             }
         }
@@ -163,14 +168,26 @@ public class GameLoop {
         renderer.shutdown();
     }
 
-    private void handleDeath() throws IOException {
-        renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
-        Statistics.updateScoreBoard();
+    private void initPresentation() {
+        sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
+            renderer.shutdown();
+            System.out.println(TERMINATE);
+            System.exit(0);
+        });
+
+        renderer.clearScreen();
+        enemyAIService.updateAllGhostEffects(session, playerX, playerY);
+        System.out.print(HIDE_CURSOR);
     }
 
-    private void handleVictory() throws IOException {
+    private void handleDeath(SessionStat sessionStat) throws IOException {
+        renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
+        Statistics.updateScoreBoard(sessionStat);
+    }
+
+    private void handleVictory(SessionStat sessionStat) throws IOException {
         renderer.drawMessage(DEATH_MESSAGE_Y, VICTORY, CharColor.GREEN);
-        Statistics.updateScoreBoard();
+        Statistics.updateScoreBoard(sessionStat);
     }
 
     private boolean canMoveTo(int x, int y) {
@@ -280,7 +297,7 @@ public class GameLoop {
         this.playerY = pos.getY();
     }
 
-    private void generateNewLevel() throws IOException {
+    private void generateNewLevel(SessionStat sessionStat) throws IOException {
         int levelToGenerate;
 
         if (session.getCurrentMap() == null) {
@@ -292,7 +309,7 @@ public class GameLoop {
 
         // Проверка на победу
         if (levelToGenerate > 21) {
-            handleVictory();
+            handleVictory(sessionStat);
             running = false;
             return;
         }
@@ -382,7 +399,7 @@ public class GameLoop {
         return enemiesCreated;
     }
 
-    private void handleSleepTurn() throws IOException {
+    private void handleSleepTurn(SessionStat sessionStat) throws IOException {
         String sleepMsg = "You are sleep! Zzz...";
         session.getPlayer().setSleepTurns(false);
         renderer.drawMessage(UI_START_Y, sleepMsg, CharColor.CYAN);
@@ -407,12 +424,12 @@ public class GameLoop {
         }
 
         if (session.getPlayer().getHealth() <= 0) {
-            handleDeath();
+            handleDeath(sessionStat);
             running = false;
         }
     }
 
-    private void handleMovement(Direction dir) throws IOException {
+    private void handleMovement(Direction dir, SessionStat sessionStat) {
 
         try {
             int newX = playerX + dir.getDx();
@@ -430,12 +447,16 @@ public class GameLoop {
             // Проверяем, есть ли враг
             Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
             if (enemyAtPosition != null) {
-                String message = combatService.attackEnemy(session, enemyAtPosition);
+
+//                System.out.println("DEBUG: Enemy found at position");
+                String message = combatService.attackEnemy(session, enemyAtPosition, sessionStat);
+
                 activeMessageLine1 = message;
                 messageTimer = MESSAGE_DURATION;
 
                 if (enemyAtPosition.getHealth() <= 0) {
                     combatService.removeEnemy(session, enemyAtPosition, asciiMap);
+                    sessionStat.incrementEnemies();
                 }
             } else if (canMoveTo(newX, newY)) {
 
@@ -460,12 +481,18 @@ public class GameLoop {
 
                         // Обновляем позицию в entity
                         session.getPlayer().move(dir);
+                        sessionStat.incrementMoves();
                         return;
                 }
 
                 // ВТОРОЕ: Проверяем выход
                 if (symbolAtNewPosition == 'E' || symbolAtNewPosition == EXIT) {
-                    generateNewLevel();
+
+//                    System.out.println("DEBUG: Exit found!");
+                    generateNewLevel(sessionStat);
+                    sessionStat.incrementLevel();
+                    sessionStat.incrementMoves();
+
                     return;
                 }
 
@@ -483,6 +510,7 @@ public class GameLoop {
 
                 // Синхронизируем с Player entity
                 session.getPlayer().move(dir);
+                sessionStat.incrementMoves();
             } else {
             }
         } catch (Exception e) {
@@ -575,7 +603,8 @@ public class GameLoop {
         }
     }
 
-    private void handleItemSelection(int index) {
+
+    private void handleItemSelection(int index, SessionStat sessionStat) {
         if (!inputHandler.isAwaitingSelection()) {
             return;
         }
@@ -592,9 +621,16 @@ public class GameLoop {
         } catch (Exception e) {
             System.err.println("ERROR in handleItemSelection: " + e.getMessage());
             activeMessageLine3 = "Error using item: " + e.getMessage();
+
             messageTimer = MESSAGE_DURATION;
         } finally {
             inputHandler.resetAwaitingState();
+
+            switch (type) {
+                case FOOD -> safeIncrement(sessionStat::incrementFood);
+                case ELIXIR -> safeIncrement(sessionStat::incrementElixirs);
+                case SCROLL -> safeIncrement(sessionStat::incrementScrolls);
+            }
         }
     }
 
@@ -913,6 +949,19 @@ public class GameLoop {
                 " (" + String.join(", ", effects) + ")";
 
         return item.getSubType() + effectsStr;
+    }
+
+    private void safeIncrement(ThrowingRunnable incrementAction) {
+        try {
+            incrementAction.run();
+        } catch (IOException e) {
+            System.err.println("Statistics update failed: " + e.getMessage());
+        }
+    }
+
+    @FunctionalInterface
+    interface ThrowingRunnable {
+        void run() throws IOException;
     }
 
 }

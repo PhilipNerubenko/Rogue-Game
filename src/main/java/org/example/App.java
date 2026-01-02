@@ -1,6 +1,7 @@
 package org.example;
 
 import jcurses.system.Toolkit;
+import org.example.datalayer.SessionStat;
 import org.example.presentation.GameLoop;
 import org.example.presentation.JCursesRenderer;
 import sun.misc.Signal;
@@ -12,6 +13,18 @@ public class App {
 
     public static void main(String[] args) {
         init_presentation();
+
+        SessionStat sessionStat = new SessionStat(
+                0,  // treasures
+                1,  // level
+                0,  // enemies
+                0,  // food
+                0,  // elixirs
+                0,  // scrolls
+                0,  // attacks
+                0,  // missed
+                0   // moves
+        );
 
         JCursesRenderer renderer = null;
         try {
@@ -30,9 +43,9 @@ public class App {
                         switch (currentOption) {
                             case 0: // NEW GAME
                                 GameInitializer initializer = new GameInitializer();
-                                initializer.initializeNewGame();
+                                initializer.initializeNewGame(sessionStat);
                                 GameLoop gameLoop = new GameLoop(initializer);
-                                gameLoop.start();  // Блокирует до выхода из игры
+                                gameLoop.start(sessionStat);  // Блокирует до выхода из игры
                                 break;
                             case 1: // LOAD GAME
                                 // TODO: реализовать загрузку игры

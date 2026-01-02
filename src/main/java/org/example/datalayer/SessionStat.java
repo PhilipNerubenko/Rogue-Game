@@ -1,6 +1,8 @@
 package org.example.datalayer;
 
 
+import java.io.IOException;
+
 public class SessionStat implements Comparable<SessionStat>{
     private int treasures;
     private int levelNum;
@@ -42,7 +44,6 @@ public class SessionStat implements Comparable<SessionStat>{
 
     public void setLevelNum(int levelN) {
         this.levelNum = levelN;
-
     }
 
     public int getEnemies() {
@@ -101,6 +102,62 @@ public class SessionStat implements Comparable<SessionStat>{
         this.moves = moves;
     }
 
+    public void reset() {
+        this.treasures = 0;
+        this.levelNum = 1;
+        this.enemies = 0;
+        this.food = 0;
+        this.elixirs = 0;
+        this.scrolls = 0;
+        this.attacks = 0;
+        this.missed = 0;
+        this.moves = 0;
+    }
+
+    public void incrementTreasures() throws IOException {
+        this.treasures++;
+        Statistics.saveCurrentStats(this);
+    }
+
+    public void incrementLevel() throws IOException {
+        this.levelNum++;
+        Statistics.saveCurrentStats(this);
+    }
+
+    public void incrementEnemies() throws IOException {
+        this.enemies++;
+        Statistics.saveCurrentStats(this);
+    }
+
+    public void incrementFood() throws IOException {
+        this.food++;
+        Statistics.saveCurrentStats(this);
+    }
+
+    public void incrementElixirs() throws IOException {
+        this.elixirs++;
+        Statistics.saveCurrentStats(this);
+    }
+
+    public void incrementScrolls() throws IOException {
+        this.scrolls++;
+        Statistics.saveCurrentStats(this);
+    }
+
+    public void incrementAttacks() throws IOException {
+        this.attacks++;
+        Statistics.saveCurrentStats(this);
+    }
+
+    public void incrementMissed() throws IOException {
+        this.missed++;
+        Statistics.saveCurrentStats(this);
+    }
+
+    public void incrementMoves() throws IOException {
+        this.moves++;
+        Statistics.saveCurrentStats(this);
+    }
 
     @Override
     public int compareTo(SessionStat o) {

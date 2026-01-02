@@ -1,5 +1,7 @@
 package org.example;
 
+import org.example.datalayer.SessionStat;
+import org.example.datalayer.Statistics;
 import org.example.domain.entity.*;
 import org.example.domain.service.*;
 import org.example.presentation.InputHandler;
@@ -38,7 +40,7 @@ public class GameInitializer {
 
     }
 
-    public void initializeNewGame() throws IOException{
+    public void initializeNewGame(SessionStat sessionStat) throws IOException{
         // 1. Создаем игрока (позиция игрока будет записана в в GameLoop)
         Player player =  new Player();
         session.setPlayer(player);
@@ -52,6 +54,9 @@ public class GameInitializer {
 
         // 4. Карта будет создана позже в GameLoop
         session.setCurrentMap(null);
+
+        // 5. Сбрасываем статистику
+        Statistics.resetStatistics(sessionStat);
 
     }
 

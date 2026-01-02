@@ -3,16 +3,19 @@ package org.example.domain.service;
 
 import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
+import org.example.datalayer.SessionStat;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
+
 import org.example.domain.entity.Item;
 import org.example.presentation.Renderer;
 
+
+import java.io.IOException;
 import java.util.Random;
 
 import static org.example.config.GameConstants.Map.MAP_OFFSET_X;
 import static org.example.config.GameConstants.ProbabilitiesAndBalance.*;
-import static org.example.config.GameConstants.ScreenConfig.*;
 import static org.example.config.GameConstants.TextMessages.*;
 
 /**
@@ -21,16 +24,18 @@ import static org.example.config.GameConstants.TextMessages.*;
 
 public class CombatService {
 
-    public String attackEnemy(GameSession session, Enemy enemy) {
+    public String attackEnemy(GameSession session, Enemy enemy, SessionStat sessionStat) throws IOException {
 
         // Проверка промаха
         if (!isHit(session.getPlayer().getAgility(), enemy.getAgility())) {
+            sessionStat.incrementMissed();
             return MISSED;
         }
 
         // Способность: первый удар промах
         if (enemy.hasAbility(Enemy.ABILITY_FIRST_MISS)) {
             enemy.removeAbility(Enemy.ABILITY_FIRST_MISS);
+            sessionStat.incrementMissed();
             return MISSED_VAMPIRE;
         }
 
@@ -43,6 +48,7 @@ public class CombatService {
             // ДОБАВИТЬ СЮДА ЛОГИКУ ДОБАВЛЕНИЯ ЗОЛОТА!
             int gold = calculateGoldDrop(enemy);
 
+
             // Создаем предмет "золото"
             Item goldItem = Item.createTreasure(gold);
 
@@ -51,6 +57,10 @@ public class CombatService {
 
             msg += " - KILLED!, added " + gold;
         }
+
+        sessionStat.incrementAttacks(); // Увеличиваем счётчик атак
+
+
         return msg;
     }
 
