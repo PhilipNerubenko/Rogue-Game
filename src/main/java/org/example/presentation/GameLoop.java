@@ -661,7 +661,7 @@ public class GameLoop  {
         }
 
         // Индексы начинаются с 1 для пользователя
-        int itemIndex = index - 1;
+        int itemIndex = index - 1;  // Преобразуем в индекс массива
         List<Item> weapons = inventory.getItems(ItemType.WEAPON);
 
         if (itemIndex < 0 || itemIndex >= weapons.size()) {
@@ -685,7 +685,7 @@ public class GameLoop  {
         Player player = session.getPlayer();
 
         // Индексы начинаются с 1 для пользователя
-        int itemIndex = index ;
+        int itemIndex = index - 1; // Преобразуем в индекс массива
 
         List<Item> items = player.getInventory().getItems(type);
         if (itemIndex >= 0 && itemIndex < items.size()) {
@@ -788,7 +788,7 @@ public class GameLoop  {
         int treasureValue = inventory.getTreasureValue();
         if (treasureValue > 0) {
             renderer.drawString(45, startY++,
-                    String.format("💰 Treasure: %d gold", treasureValue),
+                    String.format("Treasure: %d gold", treasureValue),
                     CharColor.YELLOW);
         }
 
@@ -824,7 +824,7 @@ public class GameLoop  {
         Item equipped = player.getEquippedWeapon();
         if (equipped != null && !equipped.getSubType().equals("fists")) {
             renderer.drawString(43, startY++,
-                    String.format("🗡️ Equipped: %s (STR+%d)",
+                    String.format("Weapon Equipped: %s (STR+%d)",
                             equipped.getSubType(),
                             equipped.getStrength()),
                     CharColor.GREEN);
@@ -842,7 +842,7 @@ public class GameLoop  {
         if (item.getMaxHealth() > 0) effects.add("MaxHP+" + item.getMaxHealth());
         if (item.getAgility() > 0) effects.add("AGI+" + item.getAgility());
         if (item.getStrength() > 0) effects.add("STR+" + item.getStrength());
-        if (item.getValue() > 0) effects.add("💰" + item.getValue());
+        if (item.getValue() > 0) effects.add("Gold" + item.getValue());
 
         String effectsStr = effects.isEmpty() ? "" :
                 " (" + String.join(", ", effects) + ")";
@@ -884,9 +884,9 @@ public class GameLoop  {
         List<Item> weapons = player.getInventory().getItems(ItemType.WEAPON);
 
         // Рисуем рамку меню
-        renderer.drawString(menuX, menuY, "╔══════════════════════╗", CharColor.YELLOW);
-        renderer.drawString(menuX, menuY + 1, "║ Select weapon (0-9) ║", CharColor.YELLOW);
-        renderer.drawString(menuX, menuY + 2, "╠══════════════════════╣", CharColor.YELLOW);
+        renderer.drawString(menuX, menuY, "+----------------------+", CharColor.YELLOW);
+        renderer.drawString(menuX, menuY + 1, "| Select weapon (0-9) |", CharColor.YELLOW);
+        renderer.drawString(menuX, menuY + 2, "+----------------------+", CharColor.YELLOW);
 
         int line = 3;
         renderer.drawString(menuX + 2, menuY + line++, "0. Unequip current", CharColor.WHITE);
@@ -898,7 +898,7 @@ public class GameLoop  {
             renderer.drawString(menuX + 2, menuY + line++, text, CharColor.WHITE);
         }
 
-        renderer.drawString(menuX, menuY + line, "╚══════════════════════╝", CharColor.YELLOW);
+        renderer.drawString(menuX, menuY + line, "+----------------------+", CharColor.YELLOW);
         renderer.drawString(menuX + 2, menuY + line + 1, "Press ESC to cancel", CharColor.CYAN);
     }
 

@@ -93,7 +93,7 @@ public class InputHandler {
         }
 
         if (character >= '1' && character <= '9') {
-            int index = character - '1';
+            int index = character - '0';
             return InputCommand.selectIndex(index);
         }
 
