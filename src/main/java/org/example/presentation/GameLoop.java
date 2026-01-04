@@ -23,7 +23,7 @@ import static org.example.config.GameConstants.ProbabilitiesAndBalance.*;
 import static org.example.config.GameConstants.ScreenConfig.*;
 import static org.example.config.GameConstants.TextMessages.*;
 
-public class GameLoop  {
+public class GameLoop {
 
     private final GameSession session;
     private final InputHandler inputHandler;
@@ -51,6 +51,12 @@ public class GameLoop  {
     private int messageTimer = 0;
     private static final int MESSAGE_DURATION = 2;
 
+    // Статистика текущей сессии
+    private SessionStat currentSessionStat;
+
+    // Флаг загрузки игры
+    private boolean isLoadingGame = false;
+
     public GameLoop(GameInitializer initializer) {
         this.session = initializer.getSession();
         this.inputHandler = initializer.getInputHandler();
@@ -65,12 +71,28 @@ public class GameLoop  {
         this.playerX = 0;
         this.playerY = 0;
         this.symbolAtNewPosition = symbolUnderPlayer;
+
+        // Передаем сессию в inputHandler
+        this.inputHandler.setGameSession(this.session);
     }
 
     public void start(SessionStat sessionStat) throws IOException {
-        generateNewLevel(sessionStat);
-        syncPlayerPositionWithEntity();
+        // Сохраняем статистику в поле класса
+        this.currentSessionStat = sessionStat;
 
+        // Передаем статистику в inputHandler
+        this.inputHandler.setSessionStat(sessionStat);
+
+        // Проверяем, была ли игра загружена
+        if (session.getCurrentMap() == null || session.getPlayer() == null) {
+            // Новая игра или неполная загрузка
+            generateNewLevel();
+        } else {
+            // Игра была загружена, восстанавливаем состояние
+            restoreLoadedGame();
+        }
+
+        syncPlayerPositionWithEntity();
 
         sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
             renderer.shutdown();
@@ -81,7 +103,6 @@ public class GameLoop  {
         enemyAIService.updateAllGhostEffects(session, playerX, playerY);
 
         initPresentation();
-
 
         running = true;
 
@@ -94,7 +115,7 @@ public class GameLoop  {
             }
 
             if (session.getPlayer().isSleepTurns()) {
-                handleSleepTurn(sessionStat);
+                handleSleepTurn();
                 continue;
             }
 
@@ -133,13 +154,13 @@ public class GameLoop  {
             // 3. ОБРАБОТКА
             switch (command.getType()) {
                 case MOVE:
-                    handleMovement(command.getDirection(), sessionStat);
+                    handleMovement(command.getDirection());
                     break;
                 case USE_ITEM:
                     handleUseItem(command.getItemType());
                     break;
                 case SELECT_INDEX:
-                    handleItemSelection(command.getSelectedIndex(), sessionStat);
+                    handleItemSelection(command.getSelectedIndex());
                     break;
                 case UNEQUIP_WEAPON:
                     handleUnequipWeapon();
@@ -160,12 +181,53 @@ public class GameLoop  {
 
             // Проверяем смерть игрока
             if (session.getPlayer().getHealth() <= 0) {
-                handleDeath(sessionStat);
+                handleDeath();
                 running = false;
             }
         }
 
         renderer.shutdown();
+    }
+
+    private void restoreLoadedGame() {
+        // Восстанавливаем состояние из загруженной сессии
+        System.out.println("Restoring loaded game...");
+
+        // Копируем карту из сессии
+        asciiMap = session.getCurrentMap();
+
+        // Восстанавливаем LevelGenerator из данных GameSession
+        if (session.getRooms() != null) {
+            levelGenerator.restoreFromGameState(
+                    asciiMap,
+                    session.getRooms(),
+                    session.getCurrentLevelItems()
+            );
+        }
+
+        // Устанавливаем позицию игрока
+        Position playerPos = session.getPlayer().getPosition();
+        playerX = playerPos.getX();
+        playerY = playerPos.getY();
+        symbolUnderPlayer = asciiMap[playerY][playerX];
+
+        // Сбрасываем туман войны
+        fogOfWarService.reset();
+
+        // ВАЖНО: Помечаем ВСЮ карту как исследованную при загрузке
+        fogOfWarService.markAllAsExplored(asciiMap);
+
+        // Затем обновляем видимость
+        fogOfWarService.updateVisibility(playerPos, asciiMap);
+
+        // И принудительно показываем всю исследованную карту
+        fogOfWarService.showFullMapForLoadedGame();
+
+        activeMessageLine1 = "Loaded game - Level " + session.getLevelNum();
+        messageTimer = MESSAGE_DURATION;
+
+        System.out.println("Game restored: Level " + session.getLevelNum() +
+                ", Player at (" + playerX + "," + playerY + ")");
     }
 
     private void initPresentation() {
@@ -180,14 +242,14 @@ public class GameLoop  {
         System.out.print(HIDE_CURSOR);
     }
 
-    private void handleDeath(SessionStat sessionStat) throws IOException {
+    private void handleDeath() throws IOException {
         renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
-        Statistics.updateScoreBoard(sessionStat);
+        Statistics.updateScoreBoard(currentSessionStat);
     }
 
-    private void handleVictory(SessionStat sessionStat) throws IOException {
+    private void handleVictory() throws IOException {
         renderer.drawMessage(DEATH_MESSAGE_Y, VICTORY, CharColor.GREEN);
-        Statistics.updateScoreBoard(sessionStat);
+        Statistics.updateScoreBoard(currentSessionStat);
     }
 
     private boolean canMoveTo(int x, int y) {
@@ -227,27 +289,10 @@ public class GameLoop  {
     }
 
     private void drawUI() {
-
         // Если ожидаем выбор предмета - не рисуем обычный UI
         if (inputHandler.isAwaitingSelection()) {
             return;
         }
-//        // Отрисовка предметов
-//        for (Item item : session.getCurrentLevelItems()) {
-//            if (item.getX() >= 0 && item.getY() >= 0) {
-//                if (fogOfWarService.isVisible(item.getX(), item.getY())) {
-//                    char symbol = switch (item.getType()) {
-//                        case "food" -> ',';
-//                        case "elixir" -> '!';
-//                        case "scroll" -> '?';
-//                        case "weapon" -> ')';
-//                        case "treasure" -> '$';
-//                        default -> '*';
-//                    };
-//                    renderer.drawChar(item.getX(), item.getY(), symbol, CharColor.YELLOW);
-//                }
-//            }
-//        }
 
         // Отрисовка предметов
         for (Item item : session.getCurrentLevelItems()) {
@@ -272,14 +317,15 @@ public class GameLoop  {
         }
 
         // Подсказка
-
-        String controls = "WASD:move | h:weapon | j:food | k:elixir | e:scroll | q:unequip | ESC:exit";
+        String controls = "WASD:move | h:weapon | j:food | k:elixir | e:scroll | q:unequip | ESC:save & exit";
         renderer.drawString(3, 29, controls, CharColor.CYAN);
 
         // Статус Бар
         renderer.drawStatusBar(
                 session.getPlayer().getHealth(),
                 session.getPlayer().getMaxHealth(),
+                session.getPlayer().getPosition().getX(),
+                session.getPlayer().getPosition().getY(),
                 session.getLevelNum(),
                 session.getPlayer().getTreasureValue()
         );
@@ -319,7 +365,7 @@ public class GameLoop  {
         this.playerY = pos.getY();
     }
 
-    private void generateNewLevel(SessionStat sessionStat) throws IOException {
+    private void generateNewLevel() throws IOException {
         int levelToGenerate;
 
         if (session.getCurrentMap() == null) {
@@ -331,7 +377,7 @@ public class GameLoop  {
 
         // Проверка на победу
         if (levelToGenerate > 21) {
-            handleVictory(sessionStat);
+            handleVictory();
             running = false;
             return;
         }
@@ -340,6 +386,9 @@ public class GameLoop  {
         char[][] newMap = levelGenerator.createAsciiMap(levelToGenerate);
         session.setCurrentMap(newMap);
         asciiMap = newMap;
+
+        // Сохраняем комнаты в GameSession
+        session.setRooms(levelGenerator.getRooms());
 
         // Предметы из LevelGenerator
         session.getCurrentLevelItems().clear();
@@ -374,6 +423,11 @@ public class GameLoop  {
             activeMessageLine2 = "You have gone deeper...";
         }
         messageTimer = MESSAGE_DURATION;
+
+        // Увеличиваем уровень в статистике
+        if (levelToGenerate > 1) {
+            currentSessionStat.incrementLevel();
+        }
     }
 
     private void createEnemies() {
@@ -423,7 +477,7 @@ public class GameLoop  {
         return enemiesCreated;
     }
 
-    private void handleSleepTurn(SessionStat sessionStat) throws IOException {
+    private void handleSleepTurn() throws IOException {
         String sleepMsg = "You are sleep! Zzz...";
         session.getPlayer().setSleepTurns(false);
         renderer.drawMessage(UI_START_Y, sleepMsg, CharColor.CYAN);
@@ -448,13 +502,12 @@ public class GameLoop  {
         }
 
         if (session.getPlayer().getHealth() <= 0) {
-            handleDeath(sessionStat);
+            handleDeath();
             running = false;
         }
     }
 
-    private void handleMovement(Direction dir, SessionStat sessionStat) {
-
+    private void handleMovement(Direction dir) {
         try {
             int newX = playerX + dir.getDx();
             int newY = playerY + dir.getDy();
@@ -471,23 +524,21 @@ public class GameLoop  {
             // Проверяем, есть ли враг
             Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
             if (enemyAtPosition != null) {
-
-//                System.out.println("DEBUG: Enemy found at position");
-                String message = combatService.attackEnemy(session, enemyAtPosition, sessionStat);
+                String message = combatService.attackEnemy(session, enemyAtPosition, currentSessionStat);
 
                 activeMessageLine1 = message;
                 messageTimer = MESSAGE_DURATION;
 
                 if (enemyAtPosition.getHealth() <= 0) {
                     combatService.removeEnemy(session, enemyAtPosition, asciiMap);
-                    sessionStat.incrementEnemies();
+                    currentSessionStat.incrementEnemies();
                 }
             } else if (canMoveTo(newX, newY)) {
 
                 // ПЕРВОЕ: Проверяем предмет на новой клетке
                 if (isItemSymbol(symbolAtNewPosition)) {
-                    // ✅ Используем существующий метод getItemAt()
                     Item item = getItemAt(newX, newY);
+                    if (item != null) {
                         // Подбираем предмет
                         handleItemPickup(item, newX, newY);
 
@@ -505,18 +556,15 @@ public class GameLoop  {
 
                         // Обновляем позицию в entity
                         session.getPlayer().move(dir);
-                        sessionStat.incrementMoves();
+                        currentSessionStat.incrementMoves();
                         return;
+                    }
                 }
 
                 // ВТОРОЕ: Проверяем выход
                 if (symbolAtNewPosition == 'E' || symbolAtNewPosition == EXIT) {
-
-//                    System.out.println("DEBUG: Exit found!");
-                    generateNewLevel(sessionStat);
-                    sessionStat.incrementLevel();
-                    sessionStat.incrementMoves();
-
+                    generateNewLevel();
+                    currentSessionStat.incrementMoves();
                     return;
                 }
 
@@ -534,8 +582,7 @@ public class GameLoop  {
 
                 // Синхронизируем с Player entity
                 session.getPlayer().move(dir);
-                sessionStat.incrementMoves();
-            } else {
+                currentSessionStat.incrementMoves();
             }
         } catch (Exception e) {
             System.err.println("ERROR in handleMovement: " + e.getMessage());
@@ -544,7 +591,6 @@ public class GameLoop  {
             messageTimer = MESSAGE_DURATION;
         }
     }
-
 
     private void handleUseItem(ItemType itemType) {
         Player player = session.getPlayer();
@@ -565,7 +611,6 @@ public class GameLoop  {
     }
 
     private void handleItemPickup(Item item, int x, int y) {
-
         Player player = session.getPlayer();
         Inventory inventory = player.getInventory();
 
@@ -573,20 +618,19 @@ public class GameLoop  {
         if (item.getType().equalsIgnoreCase("treasure")) {
             // Сокровища не имеют ограничений по количеству
             if (inventory.add(item)) {
-
                 session.getCurrentLevelItems().remove(item);
                 asciiMap[y][x] = '.';
 
                 activeMessageLine3 = String.format("Picked up: %d gold", item.getValue());
                 messageTimer = MESSAGE_DURATION;
 
-                // Обновляем позицию игрока
-                renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
-                fogOfWarService.markCellAsExplored(x, y);
-                playerX = x;
-                playerY = y;
-                symbolUnderPlayer = asciiMap[playerY][playerX];
-                session.getPlayer().setPosition(new Position(x, y));
+//                // Обновляем позицию игрока
+//                renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
+//                fogOfWarService.markCellAsExplored(x, y);
+//                playerX = x;
+//                playerY = y;
+//                symbolUnderPlayer = asciiMap[playerY][playerX];
+//                session.getPlayer().setPosition(new Position(x, y));
             }
             return;
         }
@@ -614,21 +658,20 @@ public class GameLoop  {
                     item.getSubType(), type.name().toLowerCase());
             messageTimer = MESSAGE_DURATION;
 
-            // Обновляем позицию игрока
-            renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
-            fogOfWarService.markCellAsExplored(x, y);
-            playerX = x;
-            playerY = y;
-            symbolUnderPlayer = asciiMap[playerY][playerX];
-            session.getPlayer().setPosition(new Position(x, y));
+//            // Обновляем позицию игрока
+//            renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
+//            fogOfWarService.markCellAsExplored(x, y);
+//            playerX = x;
+//            playerY = y;
+//            symbolUnderPlayer = asciiMap[playerY][playerX];
+//            session.getPlayer().setPosition(new Position(x, y));
         } else {
             activeMessageLine3 = "Failed to add item to inventory";
             messageTimer = MESSAGE_DURATION;
         }
     }
 
-
-    private void handleItemSelection(int index, SessionStat sessionStat) {
+    private void handleItemSelection(int index) {
         if (!inputHandler.isAwaitingSelection()) {
             return;
         }
@@ -651,9 +694,9 @@ public class GameLoop  {
             inputHandler.resetAwaitingState();
 
             switch (type) {
-                case FOOD -> safeIncrement(sessionStat::incrementFood);
-                case ELIXIR -> safeIncrement(sessionStat::incrementElixirs);
-                case SCROLL -> safeIncrement(sessionStat::incrementScrolls);
+                case FOOD -> safeIncrement(() -> currentSessionStat.incrementFood());
+                case ELIXIR -> safeIncrement(() -> currentSessionStat.incrementElixirs());
+                case SCROLL -> safeIncrement(() -> currentSessionStat.incrementScrolls());
             }
         }
     }
@@ -738,22 +781,22 @@ public class GameLoop  {
         renderer.drawStatusBar(
                 player.getHealth(),
                 player.getMaxHealth(),
+                player.getPosition().getX(),
+                player.getPosition().getY(),
                 session.getLevelNum(),
                 player.getTreasureValue()
         );
     }
 
     private boolean isItemSymbol(char symbol) {
-        boolean result = symbol == ',' ||   // food
+        return symbol == ',' ||   // food
                 symbol == '!' ||   // elixir
                 symbol == '?' ||   // scroll
                 symbol == ')' ||   // weapon
                 symbol == '$';     // treasure
-        return result;
     }
 
     private Item getItemAt(int x, int y) {
-
         for (Item item : session.getCurrentLevelItems()) {
             if (item.getX() == x && item.getY() == y) {
                 return item;
@@ -788,7 +831,7 @@ public class GameLoop  {
 
     private void drawInventory() {
         int startY = 31;
-        renderer.drawString(43, startY++, "=== INVENTORY ===", CharColor.CYAN);
+        renderer.drawString(43, startY++, "=== INVENTORY! ===", CharColor.CYAN);
 
         Player player = session.getPlayer();
         Inventory inventory = player.getInventory();
@@ -862,7 +905,7 @@ public class GameLoop  {
     private String formatItemInfo(Item item) {
         List<String> effects = new ArrayList<>();
 
-        if (item.getHealth() > 0) effects.add("HP+" + item.getHealth());
+        if (item.getHealth() > 0) effects.add("HP.+" + item.getHealth());
         if (item.getMaxHealth() > 0) effects.add("MaxHP+" + item.getMaxHealth());
         if (item.getAgility() > 0) effects.add("AGI+" + item.getAgility());
         if (item.getStrength() > 0) effects.add("STR+" + item.getStrength());
@@ -927,8 +970,6 @@ public class GameLoop  {
     }
 
     private void showItemSelection(ItemType itemType) {
-        //inputHandler.setAwaitingSelection(true, itemType);
-
         Player player = session.getPlayer();
         List<Item> items = player.getInventory().getItems(itemType);
 
@@ -962,7 +1003,7 @@ public class GameLoop  {
     private String formatItemForSelection(Item item) {
         List<String> effects = new ArrayList<>();
 
-        if (item.getHealth() > 0) effects.add("HP+" + item.getHealth());
+        if (item.getHealth() > 0) effects.add("HP,+" + item.getHealth());
         if (item.getMaxHealth() > 0) effects.add("MaxHP+" + item.getMaxHealth());
         if (item.getAgility() > 0) effects.add("AGI+" + item.getAgility());
         if (item.getStrength() > 0 && !item.getType().equals("weapon")) {
@@ -987,5 +1028,4 @@ public class GameLoop  {
     interface ThrowingRunnable {
         void run() throws IOException;
     }
-
 }

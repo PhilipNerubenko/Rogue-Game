@@ -1,7 +1,12 @@
 package org.example.domain.entity;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.awt.*;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Enemy {
     private char type;
     private int health;
@@ -14,7 +19,7 @@ public class Enemy {
     private int diagX = 1;
     private int diagY = 1;
 
-    // Дополнительные свойста из ТЗ
+    // Дополнительные свойства из ТЗ
     private Color color;
     private int specialAbility;
     private boolean isInvisible;
@@ -30,7 +35,16 @@ public class Enemy {
     public static final int ABILITY_SNAKE_SLEEP = 64;     // Змеиный маг: сон игрока
     public static final int ABILITY_DIAGONAL_MOVE = 128;  // Змеиный маг: диагональное движение
 
-    public Enemy(char type, int health, int agility, int speed, int strength, int hostility, Color color, int specialAbility) {
+    @JsonCreator
+    public Enemy(
+            @JsonProperty("type") char type,
+            @JsonProperty("health") int health,
+            @JsonProperty("agility") int agility,
+            @JsonProperty("speed") int speed,
+            @JsonProperty("strength") int strength,
+            @JsonProperty("hostility") int hostility,
+            @JsonProperty("color") Color color,
+            @JsonProperty("specialAbility") int specialAbility) {
         this.type = type;
         this.health = health;
         this.agility = agility;
@@ -41,6 +55,11 @@ public class Enemy {
         this.specialAbility = specialAbility;
         this.isInvisible = false;
         this.restTurns = 0;
+    }
+
+    // Конструктор по умолчанию для Jackson
+    public Enemy() {
+        this(' ', 0, 0, 0, 0, 0, Color.WHITE, 0);
     }
 
     public char getType() {
@@ -163,6 +182,4 @@ public class Enemy {
     public void removeAbility(int abilityMask) {
         specialAbility &= ~abilityMask;
     }
-
-
 }

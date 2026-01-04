@@ -1,5 +1,10 @@
 package org.example.domain.entity;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Item {
     private String type;
     private String subType;
@@ -15,7 +20,16 @@ public class Item {
     // КОНСТАНТА для кулаков
     public static final int FISTS_STRENGTH = 3;
 
-    public Item(String type, String subType, int health, int maxHealth, int agility, int strength, int value) {
+    // Конструктор для Jackson
+    @JsonCreator
+    public Item(
+            @JsonProperty("type") String type,
+            @JsonProperty("subType") String subType,
+            @JsonProperty("health") int health,
+            @JsonProperty("maxHealth") int maxHealth,
+            @JsonProperty("agility") int agility,
+            @JsonProperty("strength") int strength,
+            @JsonProperty("value") int value) {
         this.type = type;
         this.subType = subType;
         this.health = health;
@@ -23,6 +37,11 @@ public class Item {
         this.agility = agility;
         this.strength = strength;
         this.value = value;
+    }
+
+    // Конструктор по умолчанию для Jackson
+    public Item() {
+        this("", "", 0, 0, 0, 0, 0);
     }
 
     // ФАБРИЧНЫЙ МЕТОД для создания кулаков

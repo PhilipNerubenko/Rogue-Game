@@ -13,7 +13,8 @@ repositories {
 
 dependencies {
     implementation("com.baulsupp.kolja:jcurses:0.9.5.3")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.20.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1") // Обновленная версия
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.1")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

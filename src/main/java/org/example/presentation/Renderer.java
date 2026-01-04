@@ -37,7 +37,7 @@ public interface Renderer {
 
     // ========== ОТРИСОВКА ИНТЕРФЕЙСА ПОЛЬЗОВАТЕЛЯ (UI) ==========
     // Нарисовать панель статуса (здоровье, уровень, сокровища).
-    void drawStatusBar(int playerHealth, int maxHealth, int level, int treasures);
+    void drawStatusBar(int playerHealth, int maxHealth,  int pX, int pY, int level, int treasures);
 
     // Нарисовать инвентарь
     void drawInventory(Inventory inventory);

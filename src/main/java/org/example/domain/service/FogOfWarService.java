@@ -178,4 +178,72 @@ public class FogOfWarService {
         exploredCells.clear();
         exploredRooms.clear(); // ИССЛЕДОВАННЫЕ КОМНАТЫ
     }
+    /**
+     * Метод для обновления видимости при загрузке сохранения
+     * Отмечает комнату игрока как исследованную
+     */
+    public void updateForLoadedGame(Position playerPos, char[][] map) {
+        // Сбрасываем состояние
+        reset();
+
+        // Определяем комнату игрока
+        currentRoom = levelGenerator.getRoomAt(playerPos.getX(), playerPos.getY());
+
+        if (currentRoom != null) {
+            // Добавляем всю комнату игрока в исследованные
+            for (int x = currentRoom.getX1(); x <= currentRoom.getX2(); x++) {
+                for (int y = currentRoom.getY1(); y <= currentRoom.getY2(); y++) {
+                    exploredCells.add(new Position(x, y));
+                }
+            }
+            exploredRooms.add(currentRoom);
+
+            // Теперь обновляем видимость нормально
+            updateVisibility(playerPos, map);
+        }
+    }
+
+    /**
+     * Метод для принудительного отображения всей карты (используется при загрузке сохранения)
+     */
+    public void showFullMapForLoadedGame() {
+        // Очищаем только visibleCells, но сохраняем exploredCells
+        visibleCells.clear();
+
+        // Добавляем ВСЕ исследованные клетки в видимые
+        visibleCells.addAll(exploredCells);
+
+        // Также добавляем текущую комнату целиком, если она есть
+        if (currentRoom != null) {
+            for (int x = currentRoom.getX1(); x <= currentRoom.getX2(); x++) {
+                for (int y = currentRoom.getY1(); y <= currentRoom.getY2(); y++) {
+                    visibleCells.add(new Position(x, y));
+                    exploredCells.add(new Position(x, y));
+                }
+            }
+            exploredRooms.add(currentRoom);
+        }
+    }
+
+    /**
+     * Метод для пометки всей карты как исследованной (при загрузке сохранения)
+     */
+    public void markAllAsExplored(char[][] map) {
+        if (map == null) return;
+
+        for (int y = 0; y < map.length; y++) {
+            for (int x = 0; x < map[y].length; x++) {
+                // Помечаем все НЕ пустые клетки как исследованные
+                if (map[y][x] != ' ') {
+                    exploredCells.add(new Position(x, y));
+                }
+            }
+        }
+
+        // Также помечаем все комнаты как исследованные
+        List<Room> allRooms = levelGenerator.getRooms();
+        if (allRooms != null) {
+            exploredRooms.addAll(allRooms);
+        }
+    }
 }

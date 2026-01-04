@@ -1,19 +1,38 @@
 package org.example.domain.entity;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.example.config.GameConstants;
 import org.example.domain.model.Direction;
 import org.example.domain.model.Position;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Player extends Character {
     private Position position;
     private Item equippedWeapon; // null = кулаки
 
+    @JsonCreator
+    public Player(
+            @JsonProperty("position") Position position,
+            @JsonProperty("equippedWeapon") Item equippedWeapon,
+            @JsonProperty("maxHealth") int maxHealth,
+            @JsonProperty("health") int health,
+            @JsonProperty("agility") int agility,
+            @JsonProperty("strength") int strength) {
+        super(maxHealth, agility, strength);
+        this.setHealth(health);
+        this.position = position != null ? position : new Position(0, 0);
+        this.equippedWeapon = equippedWeapon != null ? equippedWeapon : Item.createFists();
+    }
+
+    // Конструктор по умолчанию для Jackson
     public Player() {
-        super(GameConstants.Player.START_MAX_HEALTH,
+        this(new Position(0, 0), Item.createFists(),
+                GameConstants.Player.START_MAX_HEALTH,
+                GameConstants.Player.START_MAX_HEALTH,
                 GameConstants.Player.START_AGILITY,
                 GameConstants.Player.START_STRENGTH);
-        this.equippedWeapon = Item.createFists();
-        this.position = new Position(0, 0); // Временная позиция, будет обновлена в GameLoop
     }
 
     public Player(Position position) {

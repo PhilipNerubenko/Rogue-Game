@@ -1,6 +1,5 @@
 package org.example.domain.service;
 
-
 import org.example.config.GameConstants;
 import org.example.domain.entity.Item;
 import org.example.domain.model.Room;
@@ -9,11 +8,11 @@ import org.example.domain.model.Position;
 import java.util.*;
 
 public class LevelGenerator {
-    private static final int ROOMS_AT_LEVEL = GameConstants.Map.ROOMS;              //комнат на уровне
-    private static final int MAX_WIDTH_ROOM_SIZE = GameConstants.Map.WIDTH/3-4;     //максимальная ширина комнаты
-    private static final int MIN_WIDTH_ROOM_SIZE = MAX_WIDTH_ROOM_SIZE/4;           //минимальная  ширина комнаты
-    private static final int MAX_HEIGHT_ROOM_SIZE = GameConstants.Map.HEIGHT/3-4;   //максимальная высота комнаты
-    private static final int MIN_HEIGHT_ROOM_SIZE = MAX_HEIGHT_ROOM_SIZE/2+1;         //минимальная  высота комнаты
+    private static final int ROOMS_AT_LEVEL = GameConstants.Map.ROOMS;
+    private static final int MAX_WIDTH_ROOM_SIZE = GameConstants.Map.WIDTH/3-4;
+    private static final int MIN_WIDTH_ROOM_SIZE = MAX_WIDTH_ROOM_SIZE/4;
+    private static final int MAX_HEIGHT_ROOM_SIZE = GameConstants.Map.HEIGHT/3-4;
+    private static final int MIN_HEIGHT_ROOM_SIZE = MAX_HEIGHT_ROOM_SIZE/2+1;
     private List<Room> rooms;
     private Random rand;
 
@@ -24,17 +23,16 @@ public class LevelGenerator {
     // Тип клетки для быстрого доступа
     private final Map<Position, Character> cellTypeMap = new HashMap<>();
 
-    private  List<Item> items = new ArrayList<>();
+    private List<Item> items = new ArrayList<>();
 
     public LevelGenerator() {
         this.rand = new Random();  // Или new Random(seed), если нужен фиксированный seed для воспроизводимости
     }
 
-    public char[][] createAsciiMap(int levelNumber){
-
+    public char[][] createAsciiMap(int levelNumber) {
         char[][] asciiMap = new char[GameConstants.Map.HEIGHT][GameConstants.Map.WIDTH];
         //заполняем пробелами
-        for (int y =0; y < GameConstants.Map.HEIGHT; y++) {
+        for (int y = 0; y < GameConstants.Map.HEIGHT; y++) {
             for (int x = 0; x < GameConstants.Map.WIDTH; x++) {
                 asciiMap[y][x] = ' ';
             }
@@ -43,7 +41,6 @@ public class LevelGenerator {
         rooms = new ArrayList<>();
         rooms = createRooms(levelNumber);
         addRoomsOnAsciiMap(asciiMap);
-        Random rand = new Random();
         addCorridorsOnAsciiMap(asciiMap);
 
         // === ГЕНЕРАЦИЯ И РАЗМЕЩЕНИЕ ПРЕДМЕТОВ ===
@@ -80,11 +77,15 @@ public class LevelGenerator {
 
         //добавляем выход если комната isExitRoom
         for(int i = 0; i < ROOMS_AT_LEVEL; i++){
-        Room curentRoom = rooms.get(i);
+            Room curentRoom = rooms.get(i);
             if (curentRoom.isExitRoom()){
                 asciiMap[curentRoom.getY2() - 2][curentRoom.getX2() -2] = 'E';
             }
         }
+
+        // После генерации карты, заполняем внутренние структуры
+        rebuildInternalMaps(asciiMap);
+
         return asciiMap;
     }
 
@@ -96,7 +97,7 @@ public class LevelGenerator {
         return rand;
     }
 
-    private List<Room> createRooms(int levelNumber){
+    private List<Room> createRooms(int levelNumber) {
         // Генерируем 9 комнат в 3x3 сетке
         for (int i = 0; i < ROOMS_AT_LEVEL; i++) {
             Room room = generateRandomRoom(i);
@@ -104,7 +105,7 @@ public class LevelGenerator {
             if (i == ROOMS_AT_LEVEL - 1) room.setExitRoom(true);      // Последняя = выход
             rooms.add(room);
         }
-        return  rooms;
+        return rooms;
     }
 
     private Room generateRandomRoom(int index) {
@@ -112,11 +113,10 @@ public class LevelGenerator {
         int height = MIN_HEIGHT_ROOM_SIZE + (int)(Math.random() * (MAX_HEIGHT_ROOM_SIZE - MIN_HEIGHT_ROOM_SIZE));
 
         // Позиция в "сетке" 3x3
-        int gridX = (index % 3) * (MAX_WIDTH_ROOM_SIZE +3);
-        int gridY = (index / 3) * (MAX_HEIGHT_ROOM_SIZE+3);
-        return new Room( index, new Position(gridX, gridY), width, height);
+        int gridX = (index % 3) * (MAX_WIDTH_ROOM_SIZE + 3);
+        int gridY = (index / 3) * (MAX_HEIGHT_ROOM_SIZE + 3);
+        return new Room(index, new Position(gridX, gridY), width, height);
     }
-
 
     private void addRoomsOnAsciiMap(char[][] asciiMap) {
         cellToRoomMap.clear(); // Очистка перед генерацией
@@ -162,7 +162,7 @@ public class LevelGenerator {
     private void addHorizontalCorridor(char[][] asciiMap, int xRoom, int yRoom) {
         int first = yRoom * 3 + xRoom;
         int second = first + 1;
-        int xStart = rooms.get(first).getX2();;
+        int xStart = rooms.get(first).getX2();
         int yStart = rand.nextInt(rooms.get(first).getY2() - rooms.get(first).getY1() - 1) + rooms.get(first).getY1() + 1;
         int xEnd = rooms.get(second).getX1();
         int yEnd = rand.nextInt(rooms.get(second).getY2() - rooms.get(second).getY1() - 1) + rooms.get(second).getY1() + 1;
@@ -206,7 +206,6 @@ public class LevelGenerator {
         addVerticalLine(asciiMap, crossLine, yEnd, xEnd);
     }
 
-
     private void addHorizontalLine(char[][] asciiMap, int from, int where, int y) {
         int start = Math.min(from, where);
         int end = Math.max(from, where);
@@ -230,5 +229,90 @@ public class LevelGenerator {
 
     public List<Item> getItems() {
         return items;
+    }
+
+    // Метод для восстановления состояния из сохранения
+    public void restoreFromGameState(char[][] savedMap, List<Room> savedRooms, List<Item> savedItems) {
+        if (savedMap == null) {
+            return;
+        }
+
+        // Восстанавливаем комнаты
+        if (savedRooms != null) {
+            this.rooms = new ArrayList<>(savedRooms);
+        }
+
+        // Восстанавливаем предметы
+        if (savedItems != null) {
+            this.items = new ArrayList<>(savedItems);
+        }
+
+        // Перестраиваем внутренние структуры на основе сохраненной карты
+        rebuildInternalMaps(savedMap);
+    }
+
+    // Перестраиваем внутренние структуры на основе карты
+    private void rebuildInternalMaps(char[][] map) {
+        cellToRoomMap.clear();
+        corridorCells.clear();
+        cellTypeMap.clear();
+
+        if (map == null || rooms == null) {
+            return;
+        }
+
+        // Заполняем cellTypeMap и находим коридоры
+        for (int y = 0; y < map.length; y++) {
+            for (int x = 0; x < map[y].length; x++) {
+                char tile = map[y][x];
+                Position pos = new Position(x, y);
+                cellTypeMap.put(pos, tile);
+
+                if (tile == '#') {
+                    corridorCells.add(pos);
+                }
+            }
+        }
+
+        // Заполняем cellToRoomMap
+        for (Room room : rooms) {
+            for (int x = room.getX1(); x <= room.getX2(); x++) {
+                for (int y = room.getY1(); y <= room.getY2(); y++) {
+                    Position pos = new Position(x, y);
+                    cellToRoomMap.put(pos, room);
+                }
+            }
+        }
+
+        // Также добавляем клетки коридоров в cellToRoomMap (если они примыкают к комнатам)
+        for (Position corridorPos : corridorCells) {
+            // Проверяем соседние клетки для нахождения ближайшей комнаты
+            int x = corridorPos.getX();
+            int y = corridorPos.getY();
+
+            // Проверяем все направления
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    if (dx == 0 && dy == 0) continue;
+
+                    Position checkPos = new Position(x + dx, y + dy);
+                    Room adjacentRoom = cellToRoomMap.get(checkPos);
+                    if (adjacentRoom != null) {
+                        cellToRoomMap.put(corridorPos, adjacentRoom);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Геттер для cellTypeMap (может понадобиться для отладки)
+    public Map<Position, Character> getCellTypeMap() {
+        return Collections.unmodifiableMap(cellTypeMap);
+    }
+
+    // Метод для проверки, является ли клетка частью коридора
+    public boolean isCorridor(int x, int y) {
+        return corridorCells.contains(new Position(x, y));
     }
 }

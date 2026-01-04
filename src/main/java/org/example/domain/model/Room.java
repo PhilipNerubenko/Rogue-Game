@@ -1,18 +1,46 @@
 package org.example.domain.model;
 
-public class Room {
-    private final int id;
-    private final int x1;                  // значение Х - левый верхний угол
-    private final int y1;                  // значение Х - левый верхний угол
-    private final int width;               // количество символов по горизонтали
-    private final int height;              // количество строк по вертикали
-    private final int x2;                  // значение Х - правый нижний угол
-    private final int y2;                  // значение Y - правый нижний угол
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 
 
-    private boolean startRoom;
-    private boolean exitRoom;
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public class Room {
+        private final int id;
+        private final int x1;                  // значение Х - левый верхний угол
+        private final int y1;                  // значение Х - левый верхний угол
+        private final int width;               // количество символов по горизонтали
+        private final int height;              // количество строк по вертикали
+        private final int x2;                  // значение Х - правый нижний угол
+        private final int y2;                  // значение Y - правый нижний угол
+
+        private boolean startRoom;
+        private boolean exitRoom;
+
+        @JsonCreator
+        public Room(
+                @JsonProperty("id") int roomID,
+                @JsonProperty("x1") int x1,
+                @JsonProperty("y1") int y1,
+                @JsonProperty("width") int width,
+                @JsonProperty("height") int height) {
+            this.id = roomID;
+            this.x1 = x1;
+            this.y1 = y1;
+            this.width = width;
+            this.height = height;
+            this.x2 = x1 + width;
+            this.y2 = y1 + height;
+            this.startRoom = false;
+            this.exitRoom = false;
+        }
+
+        // Конструктор по умолчанию для Jackson
+        public Room() {
+            this(0, 0, 0, 0, 0);
+        }
 
     public Room(int roomID, Position roomPosition, int width, int height) {
         this.id = roomID;

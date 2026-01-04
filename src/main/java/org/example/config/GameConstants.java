@@ -16,6 +16,7 @@ public final class GameConstants {
     public static final class PathToFiles {
 
         public static final String DATA_DIR = "data";
+        public static final String SAVES_DIR = DATA_DIR + "/saves";
         public static final String SAVE_PATH = DATA_DIR + "/save.json";
         public static final String STATISTICS_PATH = DATA_DIR + "/statistics.json";
         public static final String SCOREBOARD_PATH = DATA_DIR + "/scoreboard.json";

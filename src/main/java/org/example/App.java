@@ -1,5 +1,6 @@
 package org.example;
 
+import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
 import org.example.datalayer.SessionStat;
 import org.example.presentation.GameLoop;
@@ -45,16 +46,13 @@ public class App {
                                 GameInitializer initializer = new GameInitializer();
                                 initializer.initializeNewGame(sessionStat);
                                 GameLoop gameLoop = new GameLoop(initializer);
-                                gameLoop.start(sessionStat);  // Блокирует до выхода из игры
+                                gameLoop.start(sessionStat);
                                 break;
                             case 1: // LOAD GAME
-                                // TODO: реализовать загрузку игры
+                                handleLoadGame(renderer, sessionStat);
                                 break;
                             case 2: // SCOREBOARD
-                                // TODO: реализовать показ таблицы лидеров
-
                                 renderer.drawScoreboard();
-
                                 while (Toolkit.readCharacter().getCharacter() != 27);
                                 break;
                             case 3: // EXIT GAME
@@ -85,6 +83,54 @@ public class App {
                 Toolkit.shutdown();
             }
             System.out.print(SHOW_CURSOR);
+        }
+    }
+
+    private static void handleLoadGame(JCursesRenderer renderer, SessionStat sessionStat) {
+        try {
+            GameInitializer initializer = new GameInitializer();
+            GameLoop gameLoop = new GameLoop(initializer);
+
+            // Получаем InputHandler и проверяем наличие сохранений
+            org.example.presentation.InputHandler inputHandler = initializer.getInputHandler();
+
+            if (!inputHandler.hasSavedGames()) {
+                renderer.clearScreen();
+                renderer.drawString(10, 10, "No saved games found!", CharColor.RED);
+                renderer.drawString(10, 12, "Press any key to continue...", CharColor.YELLOW);
+                renderer.refresh();
+                Toolkit.readCharacter();
+                return;
+            }
+
+            // Создаем новую статистику (она будет перезаписана при загрузке)
+            SessionStat loadedSessionStat = new SessionStat();
+
+            // Загружаем игру
+            boolean loaded = inputHandler.loadSavedGame(
+                    initializer.getSession(),
+                    loadedSessionStat,
+                    initializer.getLevelGenerator()
+            );
+
+            if (loaded) {
+                // Устанавливаем сессию и статистику в InputHandler
+                inputHandler.setGameSession(initializer.getSession());
+                inputHandler.setSessionStat(loadedSessionStat);
+
+                // Запускаем игру с загруженной статистикой
+                gameLoop.start(loadedSessionStat);
+            } else {
+                renderer.clearScreen();
+                renderer.drawString(10, 10, "Failed to load game!", CharColor.RED);
+                renderer.drawString(10, 12, "Press any key to continue...", CharColor.YELLOW);
+                renderer.refresh();
+                Toolkit.readCharacter();
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error loading game: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
