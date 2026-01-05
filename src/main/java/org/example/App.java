@@ -3,6 +3,8 @@ package org.example;
 import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
 import org.example.datalayer.SessionStat;
+import org.example.domain.model.Position;
+import org.example.domain.service.FogOfWarService;
 import org.example.presentation.GameLoop;
 import org.example.presentation.JCursesRenderer;
 import sun.misc.Signal;
@@ -117,6 +119,13 @@ public class App {
                 // Устанавливаем сессию и статистику в InputHandler
                 inputHandler.setGameSession(initializer.getSession());
                 inputHandler.setSessionStat(loadedSessionStat);
+
+                // ВАЖНО: Обновляем туман войны после загрузки
+                FogOfWarService fog = initializer.getFogOfWarService();
+                if (fog != null && initializer.getSession().getCurrentMap() != null) {
+                    Position playerPos = initializer.getSession().getPlayer().getPosition();
+                    fog.updateForLoadedGame(playerPos, initializer.getSession().getCurrentMap());
+                }
 
                 // Запускаем игру с загруженной статистикой
                 gameLoop.start(loadedSessionStat);

@@ -10,6 +10,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.example.config.GameConstants;
 import org.example.domain.entity.*;
 import org.example.domain.model.Position;
+import org.example.domain.model.Room;
+import org.example.domain.service.FogOfWarService;
 import org.example.domain.service.LevelGenerator;
 
 import java.awt.*;
@@ -383,4 +385,74 @@ public class AutosaveService {
 
         return info;
     }
+
+    /**
+     * Сохраняет состояние тумана войны
+     */
+    public void saveFogOfWarState(FogOfWarService fog, String filename) {
+        try {
+            File fogFile = new File(AUTOSAVE_DIR + "/" + filename + "_fog.json");
+
+            // Создаем объект для сохранения состояния тумана
+            Map<String, Object> fogState = new HashMap<>();
+
+            // Сохраняем исследованные клетки
+            Set<String> exploredPositions = new HashSet<>();
+            for (Position pos : fog.getAllExploredCells()) {
+                exploredPositions.add(pos.getX() + "," + pos.getY());
+            }
+            fogState.put("exploredCells", exploredPositions);
+
+            // Сохраняем исследованные комнаты
+            List<Integer> exploredRoomIds = new ArrayList<>();
+            for (Room room : fog.getAllExploredRooms()) {
+                exploredRoomIds.add(getRoomId(room));
+            }
+            fogState.put("exploredRooms", exploredRoomIds);
+
+            // Записываем в файл
+            objectMapper.writeValue(fogFile, fogState);
+
+        } catch (IOException e) {
+            System.err.println("Failed to save fog of war state: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Загружает состояние тумана войны
+     */
+    public void loadFogOfWarState(FogOfWarService fog, String filename) {
+        try {
+            File fogFile = new File(AUTOSAVE_DIR + "/" + filename + "_fog.json");
+            if (!fogFile.exists()) {
+                return; // Файл не существует, оставляем состояние по умолчанию
+            }
+
+            // Читаем состояние
+            Map<String, Object> fogState = objectMapper.readValue(fogFile, Map.class);
+
+            // Восстанавливаем исследованные клетки
+            Set<String> exploredPositions = (Set<String>) fogState.get("exploredCells");
+            if (exploredPositions != null) {
+                for (String posStr : exploredPositions) {
+                    String[] coords = posStr.split(",");
+                    int x = Integer.parseInt(coords[0]);
+                    int y = Integer.parseInt(coords[1]);
+                    fog.markCellAsExplored(x, y);
+                }
+            }
+
+        } catch (IOException e) {
+            System.err.println("Failed to load fog of war state: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Получает ID комнаты (нужно добавить поле id в класс Room или использовать хэш)
+     */
+    private int getRoomId(Room room) {
+        // Простой способ получить уникальный ID для комнаты
+        return Objects.hash(room.getX1(), room.getY1(), room.getWidth(), room.getHeight());
+    }
+
 }

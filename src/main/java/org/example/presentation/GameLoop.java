@@ -112,6 +112,7 @@ public class GameLoop {
             } else {
                 activeMessageLine1 = null;
                 activeMessageLine2 = null;
+                activeMessageLine3 = null;
             }
 
             if (session.getPlayer().isSleepTurns()) {
@@ -140,6 +141,9 @@ public class GameLoop {
                 }
                 if (activeMessageLine2 != null) {
                     renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, CharColor.YELLOW);
+                }
+                if (activeMessageLine3 != null) {
+                    renderer.drawMessage(MESSAGE_LINE_3, activeMessageLine3, CharColor.CYAN);
                 }
             }
 
@@ -214,14 +218,30 @@ public class GameLoop {
         // Сбрасываем туман войны
         fogOfWarService.reset();
 
-        // ВАЖНО: Помечаем ВСЮ карту как исследованную при загрузке
-        fogOfWarService.markAllAsExplored(asciiMap);
+        // ВАЖНО: При загрузке игры нужно пометить всю карту как исследованную
+        // 1. Сначала помечаем все комнаты как исследованные
+        if (session.getRooms() != null) {
+            for (Room room : session.getRooms()) {
+                for (int x = room.getX1(); x <= room.getX2(); x++) {
+                    for (int y = room.getY1(); y <= room.getY2(); y++) {
+                        // Помечаем все клетки комнаты как исследованные
+                        fogOfWarService.markCellAsExplored(x, y);
+                    }
+                }
+            }
+        }
 
-        // Затем обновляем видимость
+        // 2. Помечаем все коридоры как исследованные
+        for (int y = 0; y < asciiMap.length; y++) {
+            for (int x = 0; x < asciiMap[y].length; x++) {
+                if (asciiMap[y][x] == '#' || asciiMap[y][x] == '+') {
+                    fogOfWarService.markCellAsExplored(x, y);
+                }
+            }
+        }
+
+        // 3. Обновляем видимость для текущей позиции игрока
         fogOfWarService.updateVisibility(playerPos, asciiMap);
-
-        // И принудительно показываем всю исследованную карту
-        fogOfWarService.showFullMapForLoadedGame();
 
         activeMessageLine1 = "Loaded game - Level " + session.getLevelNum();
         messageTimer = MESSAGE_DURATION;
@@ -623,14 +643,6 @@ public class GameLoop {
 
                 activeMessageLine3 = String.format("Picked up: %d gold", item.getValue());
                 messageTimer = MESSAGE_DURATION;
-
-//                // Обновляем позицию игрока
-//                renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
-//                fogOfWarService.markCellAsExplored(x, y);
-//                playerX = x;
-//                playerY = y;
-//                symbolUnderPlayer = asciiMap[playerY][playerX];
-//                session.getPlayer().setPosition(new Position(x, y));
             }
             return;
         }
@@ -657,14 +669,6 @@ public class GameLoop {
             activeMessageLine3 = String.format("Picked up: %s (%s)",
                     item.getSubType(), type.name().toLowerCase());
             messageTimer = MESSAGE_DURATION;
-
-//            // Обновляем позицию игрока
-//            renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
-//            fogOfWarService.markCellAsExplored(x, y);
-//            playerX = x;
-//            playerY = y;
-//            symbolUnderPlayer = asciiMap[playerY][playerX];
-//            session.getPlayer().setPosition(new Position(x, y));
         } else {
             activeMessageLine3 = "Failed to add item to inventory";
             messageTimer = MESSAGE_DURATION;
@@ -680,24 +684,33 @@ public class GameLoop {
         Player player = session.getPlayer();
 
         try {
+            boolean success = false;
+
             if (type == ItemType.WEAPON) {
-                handleWeaponSelection(index);
+                success = handleWeaponSelection(index);
             } else {
-                handleConsumableSelection(type, index);
+                success = handleConsumableSelection(type, index);
             }
+
+            if (success) {
+                // Обновляем статистику
+                switch (type) {
+                    case FOOD -> safeIncrement(() -> currentSessionStat.incrementFood());
+                    case ELIXIR -> safeIncrement(() -> currentSessionStat.incrementElixirs());
+                    case SCROLL -> safeIncrement(() -> currentSessionStat.incrementScrolls());
+                    default -> {}
+                }
+
+                // Обновляем статус игрока
+                updatePlayerStatus();
+            }
+
         } catch (Exception e) {
             System.err.println("ERROR in handleItemSelection: " + e.getMessage());
             activeMessageLine3 = "Error using item: " + e.getMessage();
-
             messageTimer = MESSAGE_DURATION;
         } finally {
             inputHandler.resetAwaitingState();
-
-            switch (type) {
-                case FOOD -> safeIncrement(() -> currentSessionStat.incrementFood());
-                case ELIXIR -> safeIncrement(() -> currentSessionStat.incrementElixirs());
-                case SCROLL -> safeIncrement(() -> currentSessionStat.incrementScrolls());
-            }
         }
     }
 
@@ -706,8 +719,9 @@ public class GameLoop {
         Item currentWeapon = player.getEquippedWeapon();
 
         if (currentWeapon != null && !currentWeapon.getSubType().equals("fists")) {
+            // Просто вызываем unequipWeapon - он сам добавит оружие в инвентарь
             player.unequipWeapon();
-            activeMessageLine3 = "Weapon unequipped";
+            activeMessageLine3 = "Weapon unequipped and added to inventory";
             messageTimer = MESSAGE_DURATION;
         } else {
             activeMessageLine3 = "No weapon equipped!";
@@ -715,16 +729,24 @@ public class GameLoop {
         }
     }
 
-    private void handleWeaponSelection(int index) {
+    private boolean handleWeaponSelection(int index) {
         Player player = session.getPlayer();
         Inventory inventory = player.getInventory();
 
         if (index == 0) {
             // Снять оружие
-            player.unequipWeapon();
-            activeMessageLine3 = "Weapon unequipped";
-            messageTimer = MESSAGE_DURATION;
-            return;
+            Item currentWeapon = player.getEquippedWeapon();
+            if (currentWeapon != null && !currentWeapon.getSubType().equals("fists")) {
+                // НЕ добавляем в инвентарь здесь - это сделает player.unequipWeapon()
+                player.unequipWeapon();
+                activeMessageLine3 = "Weapon unequipped and added to inventory";
+                messageTimer = MESSAGE_DURATION;
+                return true;
+            } else {
+                activeMessageLine3 = "No weapon equipped!";
+                messageTimer = MESSAGE_DURATION;
+                return false;
+            }
         }
 
         // Индексы начинаются с 1 для пользователя
@@ -734,10 +756,19 @@ public class GameLoop {
         if (itemIndex < 0 || itemIndex >= weapons.size()) {
             activeMessageLine3 = "Invalid weapon selection!";
             messageTimer = MESSAGE_DURATION;
-            return;
+            return false;
         }
 
         Item weapon = weapons.get(itemIndex);
+
+        // Если уже экипировано оружие, снимаем его
+        Item currentWeapon = player.getEquippedWeapon();
+        if (currentWeapon != null && !currentWeapon.getSubType().equals("fists")) {
+            // Снимаем текущее оружие
+            player.unequipWeapon(); // Это добавит оружие в инвентарь
+        }
+
+        // Экипируем новое оружие
         player.equip(weapon);
 
         // Удаляем из инвентаря (так как теперь экипировано)
@@ -746,46 +777,58 @@ public class GameLoop {
         activeMessageLine3 = String.format("Equipped: %s (STR+%d)",
                 weapon.getSubType(), weapon.getStrength());
         messageTimer = MESSAGE_DURATION;
+        return true;
     }
 
-    private void handleConsumableSelection(ItemType type, int index) {
+    private boolean handleConsumableSelection(ItemType type, int index) {
         Player player = session.getPlayer();
+        Inventory inventory = player.getInventory();
 
         // Индексы начинаются с 1 для пользователя
         int itemIndex = index - 1; // Преобразуем в индекс массива
 
-        List<Item> items = player.getInventory().getItems(type);
-        if (itemIndex >= 0 && itemIndex < items.size()) {
-            Item item = items.get(itemIndex);
+        // Получаем предмет из инвентаря
+        Item item = inventory.take(type, itemIndex);
+
+        if (item == null) {
+            activeMessageLine3 = "No item at selected position!";
+            messageTimer = MESSAGE_DURATION;
+            return false;
         }
 
-        // Используем предмет через метод игрока
-        boolean success = player.useItem(type, itemIndex);
+        // Применяем эффекты предмета
+        applyItemEffects(player, item);
 
-        if (success) {
-            String itemName = type.name().toLowerCase();
-            activeMessageLine3 = "Used " + itemName + " successfully!";
-            messageTimer = MESSAGE_DURATION;
+        String itemName = type.name().toLowerCase();
+        activeMessageLine3 = "Used " + itemName + " (" + item.getSubType() + ") successfully!";
+        messageTimer = MESSAGE_DURATION;
 
-            // Обновляем статус игрока в UI
-            updatePlayerStatus();
-        } else {
-            activeMessageLine3 = "Failed to use item!";
-            messageTimer = MESSAGE_DURATION;
-        }
+        return true;
     }
 
-    private void updatePlayerStatus() {
-        // Обновляем отображение статуса игрока
-        Player player = session.getPlayer();
-        renderer.drawStatusBar(
-                player.getHealth(),
-                player.getMaxHealth(),
-                player.getPosition().getX(),
-                player.getPosition().getY(),
-                session.getLevelNum(),
-                player.getTreasureValue()
-        );
+    private void applyItemEffects(Player player, Item item) {
+        // Восстановление здоровья (еда)
+        if (item.getHealth() > 0) {
+            player.heal(item.getHealth());
+        }
+
+        // Увеличение максимального здоровья (свитки/эликсиры)
+        if (item.getMaxHealth() > 0) {
+            int newMaxHealth = player.getMaxHealth() + item.getMaxHealth();
+            player.setMaxHealth(newMaxHealth);
+            // Также восстанавливаем здоровье на ту же величину
+            player.heal(item.getMaxHealth());
+        }
+
+        // Увеличение ловкости (свитки/эликсиры)
+        if (item.getAgility() > 0) {
+            player.setAgility(player.getAgility() + item.getAgility());
+        }
+
+        // Увеличение силы (свитки/эликсиры)
+        if (item.getStrength() > 0 && !item.getType().equals("weapon")) {
+            player.setStrength(player.getStrength() + item.getStrength());
+        }
     }
 
     private boolean isItemSymbol(char symbol) {
@@ -921,81 +964,83 @@ public class GameLoop {
         ItemType pendingType = inputHandler.getPendingItemType();
         if (pendingType == null) return;
 
-        // Очищаем область для меню
-        for (int y = 5; y < 15; y++) {
-            for (int x = 50; x < 80; x++) {
-                renderer.drawChar(x, y, ' ', CharColor.BLACK);
-            }
-        }
-
-        if (pendingType == ItemType.WEAPON) {
-            showWeaponSelection();
-        } else {
-            showItemSelection(pendingType);
-        }
-    }
-
-    private void showWeaponSelection() {
-        // Используем правильные координаты (в пределах экрана 80x30)
-        int menuX = 50;
+        // Очищаем область для меню (правый верхний угол)
+        int menuX = 45;
         int menuY = 5;
+        int menuWidth = 30;
+        int menuHeight = 15;
 
-        // Очищаем область меню
-        for (int y = menuY; y < menuY + 10; y++) {
-            for (int x = menuX; x < menuX + 25; x++) {
+        // Очищаем область
+        for (int y = menuY; y < menuY + menuHeight; y++) {
+            for (int x = menuX; x < menuX + menuWidth; x++) {
                 renderer.drawChar(x, y, ' ', CharColor.BLACK);
             }
         }
-
-        Player player = session.getPlayer();
-        List<Item> weapons = player.getInventory().getItems(ItemType.WEAPON);
 
         // Рисуем рамку меню
-        renderer.drawString(menuX, menuY, "+----------------------+", CharColor.YELLOW);
-        renderer.drawString(menuX, menuY + 1, "| Select weapon (0-9) |", CharColor.YELLOW);
-        renderer.drawString(menuX, menuY + 2, "+----------------------+", CharColor.YELLOW);
+        String border = "+" + "-".repeat(menuWidth - 2) + "+";
+        renderer.drawString(menuX, menuY, border, CharColor.YELLOW);
+        renderer.drawString(menuX, menuY + menuHeight - 1, border, CharColor.YELLOW);
 
-        int line = 3;
-        renderer.drawString(menuX + 2, menuY + line++, "0. Unequip current", CharColor.WHITE);
-
-        for (int i = 0; i < weapons.size() && i < 9; i++) {
-            Item weapon = weapons.get(i);
-            String text = String.format("%d. %s (STR+%d)",
-                    i + 1, weapon.getSubType(), weapon.getStrength());
-            renderer.drawString(menuX + 2, menuY + line++, text, CharColor.WHITE);
+        for (int y = menuY + 1; y < menuY + menuHeight - 1; y++) {
+            renderer.drawChar(menuX, y, '|', CharColor.YELLOW);
+            renderer.drawChar(menuX + menuWidth - 1, y, '|', CharColor.YELLOW);
         }
 
-        renderer.drawString(menuX, menuY + line, "+----------------------+", CharColor.YELLOW);
-        renderer.drawString(menuX + 2, menuY + line + 1, "Press ESC to cancel", CharColor.CYAN);
+        // Заголовок
+        String title = " Select " + pendingType.name().toLowerCase() + " ";
+        int titleX = menuX + (menuWidth - title.length()) / 2;
+        renderer.drawString(titleX, menuY + 1, title, CharColor.CYAN);
+
+        if (pendingType == ItemType.WEAPON) {
+            showWeaponSelectionMenu(menuX + 2, menuY + 3);
+        } else {
+            showConsumableSelectionMenu(pendingType, menuX + 2, menuY + 3);
+        }
+
+        // Подсказка
+        renderer.drawString(menuX + 2, menuY + menuHeight - 2,
+                "0-9: select, ESC: cancel", CharColor.WHITE);
     }
 
-    private void showItemSelection(ItemType itemType) {
+    private void showWeaponSelectionMenu(int x, int y) {
         Player player = session.getPlayer();
-        List<Item> items = player.getInventory().getItems(itemType);
+        List<Item> weapons = player.getInventory().getItems(ItemType.WEAPON);
+        Item equippedWeapon = player.getEquippedWeapon();
 
-        // Показываем список предметов
-        StringBuilder message = new StringBuilder("Select " + itemType.name().toLowerCase() + " (1-9):\n");
+        int line = y;
 
-        for (int i = 0; i < Math.min(items.size(), 9); i++) {
-            Item item = items.get(i);
-            message.append(String.format("%d. %s", i + 1, formatItemForSelection(item)));
-            if (i < Math.min(items.size(), 9) - 1) {
-                message.append("\n");
+        // Опция 0: снять оружие
+        String currentWeaponName = (equippedWeapon != null && !equippedWeapon.getSubType().equals("fists"))
+                ? equippedWeapon.getSubType() : "fists";
+        renderer.drawString(x, line++, String.format("0. Unequip (%s)", currentWeaponName), CharColor.WHITE);
+
+        // Список оружия в инвентаре
+        if (weapons.isEmpty()) {
+            renderer.drawString(x, line++, "No weapons in inventory", CharColor.YELLOW);
+        } else {
+            for (int i = 0; i < weapons.size() && i < 9; i++) {
+                Item weapon = weapons.get(i);
+                String text = String.format("%d. %s (STR+%d)",
+                        i + 1, weapon.getSubType(), weapon.getStrength());
+                renderer.drawString(x, line++, text, CharColor.WHITE);
             }
         }
+    }
 
-        String[] lines = message.toString().split("\n");
-        for (int i = 0; i < Math.min(lines.length, 3); i++) {
-            if (i == 0) {
-                renderer.drawMessage(MESSAGE_LINE_1, lines[i], CharColor.YELLOW);
-            } else {
-                renderer.drawMessage(MESSAGE_LINE_1 + i, lines[i], CharColor.WHITE);
-            }
+    private void showConsumableSelectionMenu(ItemType type, int x, int y) {
+        Player player = session.getPlayer();
+        List<Item> items = player.getInventory().getItems(type);
 
-            if (i == 0) {
-                renderer.drawMessage(45, lines[i], CharColor.YELLOW);
-            } else {
-                renderer.drawMessage(45 + i, lines[i], CharColor.WHITE);
+        int line = y;
+
+        if (items.isEmpty()) {
+            renderer.drawString(x, line++, "No " + type.name().toLowerCase() + " in inventory", CharColor.YELLOW);
+        } else {
+            for (int i = 0; i < items.size() && i < 9; i++) {
+                Item item = items.get(i);
+                String text = String.format("%d. %s", i + 1, formatItemForSelection(item));
+                renderer.drawString(x, line++, text, CharColor.WHITE);
             }
         }
     }
@@ -1014,6 +1059,19 @@ public class GameLoop {
                 " (" + String.join(", ", effects) + ")";
 
         return item.getSubType() + effectsStr;
+    }
+
+    private void updatePlayerStatus() {
+        // Обновляем отображение статуса игрока
+        Player player = session.getPlayer();
+        renderer.drawStatusBar(
+                player.getHealth(),
+                player.getMaxHealth(),
+                player.getPosition().getX(),
+                player.getPosition().getY(),
+                session.getLevelNum(),
+                player.getTreasureValue()
+        );
     }
 
     private void safeIncrement(ThrowingRunnable incrementAction) {

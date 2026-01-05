@@ -1,0 +1,425 @@
+{
+  "save_timestamp" : "2026-01-05T12:20:44.531877337",
+  "player" : {
+    "max_health" : 30,
+    "health" : 27,
+    "agility" : 5,
+    "strength" : 13,
+    "position_x" : 28,
+    "position_y" : 1,
+    "sleep_turns" : false,
+    "inventory" : [ {
+      "type" : "weapon",
+      "subType" : "Sword (damage +4)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 8,
+      "value" : 0,
+      "x" : 51,
+      "y" : 3
+    }, {
+      "type" : "weapon",
+      "subType" : "Blade (damage +5)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 7,
+      "value" : 0,
+      "x" : 53,
+      "y" : 1
+    }, {
+      "type" : "weapon",
+      "subType" : "Blade (damage +8)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 8,
+      "value" : 0,
+      "x" : 3,
+      "y" : 1
+    }, {
+      "type" : "weapon",
+      "subType" : "Sword (damage +8)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 8,
+      "value" : 0,
+      "x" : 28,
+      "y" : 1
+    }, {
+      "type" : "food",
+      "subType" : "Food",
+      "health" : 9,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 1,
+      "y" : 1
+    }, {
+      "type" : "food",
+      "subType" : "Food",
+      "health" : 12,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 53,
+      "y" : 12
+    }, {
+      "type" : "food",
+      "subType" : "Food",
+      "health" : 12,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 54,
+      "y" : 20
+    }, {
+      "type" : "elixir",
+      "subType" : "gility Potion (+5)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 5,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 27,
+      "y" : 1
+    }, {
+      "type" : "elixir",
+      "subType" : "gility Potion (+5)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 5,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 28,
+      "y" : 1
+    }, {
+      "type" : "elixir",
+      "subType" : "Strength Potion (+6)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 6,
+      "value" : 0,
+      "x" : 32,
+      "y" : 1
+    }, {
+      "type" : "scroll",
+      "subType" : "Health Scroll (+4 HP)",
+      "health" : 0,
+      "maxHealth" : 4,
+      "agility" : 0,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 6,
+      "y" : 2
+    }, {
+      "type" : "treasure",
+      "subType" : "Gold",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 0,
+      "value" : 119,
+      "x" : 3,
+      "y" : 2
+    }, {
+      "type" : "treasure",
+      "subType" : "gold",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 0,
+      "value" : 25,
+      "x" : -1,
+      "y" : -1
+    } ],
+    "equipped_weapon" : {
+      "type" : "weapon",
+      "subType" : "Sword (damage +6)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 8,
+      "value" : 0,
+      "x" : 51,
+      "y" : 20
+    }
+  },
+  "level" : {
+    "level_number" : 2,
+    "ascii_map" : [ "|~~~~~|                  |~~~~~~~~|               |~~~~~~|                      ", "|.....+##################+........|               |...)!.|                      ", "|.....|                  |........|               |..$...|                      ", "|.....|                  |........|               |..!...|                      ", "|~~+~~|                  |........+###############+......|                      ", "   #                     |~~~~~~+~|               |~~~~~+|                      ", "   #                         ####                       #                       ", "   #                         #                        ###                       ", "   ####                      #                        #                         ", "|~~~~~+~~~~~~~|          |~~~+~~~~|               |~~~+~~~~~|                   ", "|.............|          |.!.$....|               |......!..|                   ", "|........)....|          |........+#              |....)....|                   ", "|.............+##########+..?.....|###############+...?.....|                   ", "|~+~~~~~~~~~~~|          |........|               |.........|                   ", "  #                      |~~~~+~~~|               |~~~~~~~+~|                   ", "  #############               #                     #######                     ", "              #               ######                #                           ", "              #                    #                #                           ", "|~~~~~~~~~~~~~+~~~~|     |~~~~~~~~~+~~~~~~~~~~|   |~+~~|                        ", "|?!.?...)..........|     |.........).......,..+## |....|                        ", "|..................|#####+.........)..........| ##+).E.|                        ", "|..................+#    |....................|   |....|                        ", "|~~~~~~~~~~~~~~~~~~|     |~~~~~~~~~~~~~~~~~~~~|   |~~~~|                        ", "                                                                                ", "                                                                                ", "                                                                                ", "                                                                                ", "                                                                                ", "                                                                                ", "                                                                                " ],
+    "items" : [ {
+      "type" : "weapon",
+      "subType" : "Blade (damage +8)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 9,
+      "value" : 0,
+      "x" : 8,
+      "y" : 19
+    }, {
+      "type" : "weapon",
+      "subType" : "Blade (damage +6)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 7,
+      "value" : 0,
+      "x" : 35,
+      "y" : 20
+    }, {
+      "type" : "scroll",
+      "subType" : "Agility Scroll (+2)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 2,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 28,
+      "y" : 12
+    }, {
+      "type" : "weapon",
+      "subType" : "Blade (damage +8)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 8,
+      "value" : 0,
+      "x" : 54,
+      "y" : 1
+    }, {
+      "type" : "treasure",
+      "subType" : "Gold",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 0,
+      "value" : 176,
+      "x" : 29,
+      "y" : 10
+    }, {
+      "type" : "elixir",
+      "subType" : "gility Potion (+6)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 6,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 55,
+      "y" : 1
+    }, {
+      "type" : "scroll",
+      "subType" : "Agility Scroll (+2)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 2,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 54,
+      "y" : 12
+    }, {
+      "type" : "weapon",
+      "subType" : "Blade (damage +6)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 8,
+      "value" : 0,
+      "x" : 35,
+      "y" : 19
+    }, {
+      "type" : "treasure",
+      "subType" : "Gold",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 0,
+      "value" : 226,
+      "x" : 53,
+      "y" : 2
+    }, {
+      "type" : "weapon",
+      "subType" : "Sword (damage +7)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 6,
+      "value" : 0,
+      "x" : 9,
+      "y" : 11
+    }, {
+      "type" : "food",
+      "subType" : "Food",
+      "health" : 15,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 43,
+      "y" : 19
+    }, {
+      "type" : "elixir",
+      "subType" : "gility Potion (+6)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 6,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 53,
+      "y" : 3
+    }, {
+      "type" : "weapon",
+      "subType" : "Blade (damage +7)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 9,
+      "value" : 0,
+      "x" : 51,
+      "y" : 20
+    }, {
+      "type" : "elixir",
+      "subType" : "gility Potion (+6)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 6,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 57,
+      "y" : 10
+    }, {
+      "type" : "scroll",
+      "subType" : "Health Scroll (+4 HP)",
+      "health" : 0,
+      "maxHealth" : 4,
+      "agility" : 0,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 4,
+      "y" : 19
+    }, {
+      "type" : "elixir",
+      "subType" : "gility Potion (+6)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 6,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 2,
+      "y" : 19
+    }, {
+      "type" : "weapon",
+      "subType" : "Sword (damage +6)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 6,
+      "value" : 0,
+      "x" : 55,
+      "y" : 11
+    }, {
+      "type" : "scroll",
+      "subType" : "Strength Scroll (+2)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 0,
+      "strength" : 2,
+      "value" : 0,
+      "x" : 1,
+      "y" : 19
+    }, {
+      "type" : "elixir",
+      "subType" : "gility Potion (+6)",
+      "health" : 0,
+      "maxHealth" : 0,
+      "agility" : 6,
+      "strength" : 0,
+      "value" : 0,
+      "x" : 27,
+      "y" : 10
+    } ],
+    "enemies" : [ {
+      "type" : "o",
+      "health" : 37,
+      "agility" : 3,
+      "strength" : 16,
+      "hostility" : 5,
+      "x" : 32,
+      "y" : 10,
+      "diagX" : 1,
+      "diagY" : 1,
+      "restTurns" : 0,
+      "invisible" : false
+    }, {
+      "type" : "z",
+      "health" : 23,
+      "agility" : 4,
+      "strength" : 8,
+      "hostility" : 5,
+      "x" : 57,
+      "y" : 12,
+      "diagX" : 1,
+      "diagY" : 1,
+      "restTurns" : 0,
+      "invisible" : false
+    }, {
+      "type" : "o",
+      "health" : 37,
+      "agility" : 3,
+      "strength" : 16,
+      "hostility" : 5,
+      "x" : 3,
+      "y" : 11,
+      "diagX" : 1,
+      "diagY" : 1,
+      "restTurns" : 0,
+      "invisible" : false
+    }, {
+      "type" : "v",
+      "health" : 29,
+      "agility" : 8,
+      "strength" : 10,
+      "hostility" : 7,
+      "x" : 52,
+      "y" : 4,
+      "diagX" : 1,
+      "diagY" : 1,
+      "restTurns" : 0,
+      "invisible" : false
+    }, {
+      "type" : "z",
+      "health" : 23,
+      "agility" : 4,
+      "strength" : 8,
+      "hostility" : 5,
+      "x" : 3,
+      "y" : 20,
+      "diagX" : 1,
+      "diagY" : 1,
+      "restTurns" : 0,
+      "invisible" : false
+    } ],
+    "rooms" : [ ]
+  },
+  "statistics" : {
+    "treasures" : 0,
+    "levelNum" : 2,
+    "enemies" : 1,
+    "food" : 0,
+    "elixirs" : 0,
+    "scrolls" : 0,
+    "attacks" : 1,
+    "missed" : 2,
+    "moves" : 192
+  },
+  "game_session" : {
+    "current_map" : [ "|~~~~~|                  |~~~~~~~~|               |~~~~~~|                      ", "|.....+##################+........|               |...)!.|                      ", "|.....|                  |........|               |..$...|                      ", "|.....|                  |........|               |..!...|                      ", "|~~+~~|                  |........+###############+......|                      ", "   #                     |~~~~~~+~|               |~~~~~+|                      ", "   #                         ####                       #                       ", "   #                         #                        ###                       ", "   ####                      #                        #                         ", "|~~~~~+~~~~~~~|          |~~~+~~~~|               |~~~+~~~~~|                   ", "|.............|          |.!.$....|               |......!..|                   ", "|........)....|          |........+#              |....)....|                   ", "|.............+##########+..?.....|###############+...?.....|                   ", "|~+~~~~~~~~~~~|          |........|               |.........|                   ", "  #                      |~~~~+~~~|               |~~~~~~~+~|                   ", "  #############               #                     #######                     ", "              #               ######                #                           ", "              #                    #                #                           ", "|~~~~~~~~~~~~~+~~~~|     |~~~~~~~~~+~~~~~~~~~~|   |~+~~|                        ", "|?!.?...)..........|     |.........).......,..+## |....|                        ", "|..................|#####+.........)..........| ##+).E.|                        ", "|..................+#    |....................|   |....|                        ", "|~~~~~~~~~~~~~~~~~~|     |~~~~~~~~~~~~~~~~~~~~|   |~~~~|                        ", "                                                                                ", "                                                                                ", "                                                                                ", "                                                                                ", "                                                                                ", "                                                                                ", "                                                                                " ]
+  }
+}

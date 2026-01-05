@@ -197,9 +197,81 @@ public class FogOfWarService {
                 }
             }
             exploredRooms.add(currentRoom);
+        }
 
-            // Теперь обновляем видимость нормально
-            updateVisibility(playerPos, map);
+        // Помечаем все коридоры как исследованные
+        if (map != null) {
+            for (int y = 0; y < map.length; y++) {
+                for (int x = 0; x < map[y].length; x++) {
+                    char tile = map[y][x];
+                    // Коридоры и двери всегда исследованы
+                    if (tile == '#' || tile == '+') {
+                        exploredCells.add(new Position(x, y));
+                    }
+                }
+            }
+        }
+
+        // Обновляем видимость
+        updateVisibility(playerPos, map);
+    }
+
+    /**
+     * Метод для принудительного отображения исследованной карты
+     */
+    public void showExploredMap(char[][] map) {
+        if (map == null) return;
+
+        // Сначала очищаем видимые клетки
+        visibleCells.clear();
+
+        // Добавляем все исследованные клетки в видимые
+        visibleCells.addAll(exploredCells);
+
+        // Также добавляем коридоры и двери
+        for (int y = 0; y < map.length; y++) {
+            for (int x = 0; x < map[y].length; x++) {
+                char tile = map[y][x];
+                if (tile == '#' || tile == '+') {
+                    Position pos = new Position(x, y);
+                    if (!visibleCells.contains(pos)) {
+                        visibleCells.add(pos);
+                    }
+                }
+            }
+        }
+
+        // Обновляем исследованные комнаты
+        updateExploredRoomsFromCells();
+    }
+
+    /**
+     * Обновляет список исследованных комнат на основе исследованных клеток
+     */
+    private void updateExploredRoomsFromCells() {
+        exploredRooms.clear();
+
+        // Получаем все комнаты из LevelGenerator
+        List<Room> allRooms = levelGenerator.getRooms();
+        if (allRooms == null) return;
+
+        for (Room room : allRooms) {
+            boolean roomExplored = true;
+
+            // Проверяем, все ли клетки комнаты исследованы
+            for (int x = room.getX1(); x <= room.getX2(); x++) {
+                for (int y = room.getY1(); y <= room.getY2(); y++) {
+                    if (!exploredCells.contains(new Position(x, y))) {
+                        roomExplored = false;
+                        break;
+                    }
+                }
+                if (!roomExplored) break;
+            }
+
+            if (roomExplored) {
+                exploredRooms.add(room);
+            }
         }
     }
 
@@ -245,5 +317,35 @@ public class FogOfWarService {
         if (allRooms != null) {
             exploredRooms.addAll(allRooms);
         }
+    }
+
+    /**
+     * Возвращает все исследованные клетки (для сохранения)
+     */
+    public Set<Position> getAllExploredCells() {
+        return new HashSet<>(exploredCells);
+    }
+
+    /**
+     * Возвращает все исследованные комнаты (для сохранения)
+     */
+    public Set<Room> getAllExploredRooms() {
+        return new HashSet<>(exploredRooms);
+    }
+
+    /**
+     * Восстанавливает исследованные клетки из сохранения
+     */
+    public void restoreExploredCells(Set<Position> cells) {
+        exploredCells.clear();
+        exploredCells.addAll(cells);
+    }
+
+    /**
+     * Восстанавливает исследованные комнаты из сохранения
+     */
+    public void restoreExploredRooms(Set<Room> rooms) {
+        exploredRooms.clear();
+        exploredRooms.addAll(rooms);
     }
 }

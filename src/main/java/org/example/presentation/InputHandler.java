@@ -30,7 +30,6 @@ public class InputHandler {
         this.autosaveService = new AutosaveService();
     }
 
-    // Добавляем сеттеры для session и sessionStat
     public void setGameSession(GameSession session) {
         this.session = session;
     }
@@ -46,7 +45,13 @@ public class InputHandler {
 
         // Обработка ESC для автосохранения
         if (keyCode == ESC_KEY_CODE) {
-            // Если игрок жив, сохраняем игру
+            // Если ожидаем выбор - просто отменяем выбор
+            if (awaitingSelection) {
+                resetAwaitingState();
+                return InputCommand.none();
+            }
+
+            // Иначе сохраняем и выходим
             if (session != null && session.getPlayer() != null && !session.getPlayer().isDead()) {
                 try {
                     boolean saved = autosaveService.saveGame(session, sessionStat);
@@ -84,23 +89,25 @@ public class InputHandler {
             return InputCommand.move(Direction.EAST);
         }
 
-        // Использование предметов
-        if (keyChar == 'h' || keyChar == 'H') {
-            return InputCommand.useItem(ItemType.WEAPON);
-        }
-        if (keyChar == 'j' || keyChar == 'J') {
-            return InputCommand.useItem(ItemType.FOOD);
-        }
-        if (keyChar == 'k' || keyChar == 'K') {
-            return InputCommand.useItem(ItemType.ELIXIR);
-        }
-        if (keyChar == 'e' || keyChar == 'E') {
-            return InputCommand.useItem(ItemType.SCROLL);
-        }
+        // Использование предметов (только если не ожидаем выбора)
+        if (!awaitingSelection) {
+            if (keyChar == 'h' || keyChar == 'H') {
+                return InputCommand.useItem(ItemType.WEAPON);
+            }
+            if (keyChar == 'j' || keyChar == 'J') {
+                return InputCommand.useItem(ItemType.FOOD);
+            }
+            if (keyChar == 'k' || keyChar == 'K') {
+                return InputCommand.useItem(ItemType.ELIXIR);
+            }
+            if (keyChar == 'e' || keyChar == 'E') {
+                return InputCommand.useItem(ItemType.SCROLL);
+            }
 
-        // Снятие оружия
-        if (keyChar == 'q' || keyChar == 'Q') {
-            return InputCommand.unequipWeapon();
+            // Снятие оружия
+            if (keyChar == 'q' || keyChar == 'Q') {
+                return InputCommand.unequipWeapon();
+            }
         }
 
         // Пропуск хода
@@ -112,19 +119,15 @@ public class InputHandler {
     }
 
     private InputCommand handleSelectionInput(char keyChar) {
-        // Отмена выбора
-        if (keyChar == 27) { // ESC
-            resetAwaitingState();
-            return InputCommand.none();
-        }
+        // Отмена выбора ESC уже обработана выше
 
         // Выбор цифры 0-9
         if (keyChar >= '0' && keyChar <= '9') {
             int index = Character.getNumericValue(keyChar);
-            resetAwaitingState();
             return InputCommand.selectIndex(index);
         }
 
+        // Любая другая клавиша - игнорируем
         return InputCommand.none();
     }
 
