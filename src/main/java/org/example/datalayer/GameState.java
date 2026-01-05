@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.example.domain.entity.*;
 import org.example.domain.model.Position;
+import org.example.domain.model.Room;
 import org.example.domain.service.LevelGenerator;
 
 import java.time.LocalDateTime;
@@ -30,6 +31,9 @@ public class GameState {
 
     @JsonProperty("game_session")
     private GameSessionState gameSessionState;
+
+    @JsonProperty("fog_of_war")
+    private FogOfWarState fogOfWarState;
 
     // Конструкторы
     public GameState() {
@@ -80,6 +84,10 @@ public class GameState {
     public void setGameSessionState(GameSessionState gameSessionState) {
         this.gameSessionState = gameSessionState;
     }
+
+    public FogOfWarState getFogOfWarState() { return fogOfWarState; }
+
+    public void setFogOfWarState(FogOfWarState fogOfWarState) { this.fogOfWarState = fogOfWarState; }
 
     // Вложенные классы для организации данных
 
@@ -271,5 +279,25 @@ public class GameState {
         public void setCurrentMap(char[][] currentMap) {
             this.currentMap = currentMap;
         }
+    }
+
+    public static class FogOfWarState {
+        @JsonProperty("explored_cells")
+        private List<Position> exploredCells;
+
+        @JsonProperty("explored_rooms")
+        private List<Room> exploredRooms;
+
+        public FogOfWarState() {
+            this.exploredCells = new ArrayList<>();
+            this.exploredRooms = new ArrayList<>();
+        }
+
+        // Геттеры и сеттеры
+        public List<Position> getExploredCells() { return exploredCells; }
+        public void setExploredCells(List<Position> exploredCells) { this.exploredCells = exploredCells; }
+
+        public List<Room> getExploredRooms() { return exploredRooms; }
+        public void setExploredRooms(List<Room> exploredRooms) { this.exploredRooms = exploredRooms; }
     }
 }

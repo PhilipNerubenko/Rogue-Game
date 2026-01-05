@@ -37,6 +37,7 @@ public class AutosaveService {
     private static final int MAX_AUTOSAVES = 10;
 
     private final ObjectMapper objectMapper;
+    private FogOfWarService fogOfWarService;
 
     public AutosaveService() {
         this.objectMapper = new ObjectMapper();
@@ -201,7 +202,6 @@ public class AutosaveService {
     /**
      * Создает GameState из текущей игровой сессии
      */
-
     private GameState createGameState(GameSession session, SessionStat sessionStat) {
         GameState gameState = new GameState();
 
@@ -246,11 +246,22 @@ public class AutosaveService {
         GameState.GameSessionState gameSessionState = new GameState.GameSessionState();
         gameSessionState.setCurrentMap(session.getCurrentMap());
 
+        // Сохраняем состояние тумана войны
+        GameState.FogOfWarState fogOfWarState = new GameState.FogOfWarState();
+        if (fogOfWarService != null) {
+            Set<Position> exploredCells = fogOfWarService.getAllExploredCells();
+            fogOfWarState.setExploredCells(new ArrayList<>(exploredCells));
+
+            Set<Room> exploredRooms = fogOfWarService.getAllExploredRooms();
+            fogOfWarState.setExploredRooms(new ArrayList<>(exploredRooms));
+        }
+
         // Устанавливаем все состояния в gameState
         gameState.setPlayerState(playerState);
         gameState.setLevelState(levelState);
         gameState.setSessionStat(sessionStat);
         gameState.setGameSessionState(gameSessionState);
+        gameState.setFogOfWarState(fogOfWarState);
 
         return gameState;
     }
@@ -297,6 +308,11 @@ public class AutosaveService {
             session.getEnemies().addAll(gameState.getLevelState().getEnemies());
         }
 
+        // Восстанавливаем комнаты
+        if (gameState.getLevelState().getRooms() != null) {
+            session.setRooms(new ArrayList<>(gameState.getLevelState().getRooms()));
+        }
+
         // Восстанавливаем игрока - КРИТИЧЕСКИ ВАЖНО: используем конструктор с параметрами
         GameState.PlayerState playerState = gameState.getPlayerState();
 
@@ -322,6 +338,16 @@ public class AutosaveService {
         player.setInventory(inventory);
 
         session.setPlayer(player);
+
+        // Восстанавливаем состояние тумана войны
+        if (fogOfWarService != null && gameState.getFogOfWarState() != null) {
+            fogOfWarService.restoreExploredCells(
+                    new HashSet<>(gameState.getFogOfWarState().getExploredCells())
+            );
+            fogOfWarService.restoreExploredRooms(
+                    new HashSet<>(gameState.getFogOfWarState().getExploredRooms())
+            );
+        }
 
         // Обновляем генератор уровня
         if (levelGenerator != null) {
@@ -455,4 +481,17 @@ public class AutosaveService {
         return Objects.hash(room.getX1(), room.getY1(), room.getWidth(), room.getHeight());
     }
 
+    /**
+     * Устанавливает сервис тумана войны
+     */
+    public void setFogOfWarService(FogOfWarService fogOfWarService) {
+        this.fogOfWarService = fogOfWarService;
+    }
+
+    /**
+     * Получает сервис тумана войны
+     */
+    public FogOfWarService getFogOfWarService() {
+        return fogOfWarService;
+    }
 }

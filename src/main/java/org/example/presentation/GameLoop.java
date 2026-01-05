@@ -193,8 +193,12 @@ public class GameLoop {
         renderer.shutdown();
     }
 
+
+
+    /**
+     * Помечает всю карту как исследованную при загрузке игры
+     */
     private void restoreLoadedGame() {
-        // Восстанавливаем состояние из загруженной сессии
         System.out.println("Restoring loaded game...");
 
         // Копируем карту из сессии
@@ -215,32 +219,8 @@ public class GameLoop {
         playerY = playerPos.getY();
         symbolUnderPlayer = asciiMap[playerY][playerX];
 
-        // Сбрасываем туман войны
-        fogOfWarService.reset();
-
-        // ВАЖНО: При загрузке игры нужно пометить всю карту как исследованную
-        // 1. Сначала помечаем все комнаты как исследованные
-        if (session.getRooms() != null) {
-            for (Room room : session.getRooms()) {
-                for (int x = room.getX1(); x <= room.getX2(); x++) {
-                    for (int y = room.getY1(); y <= room.getY2(); y++) {
-                        // Помечаем все клетки комнаты как исследованные
-                        fogOfWarService.markCellAsExplored(x, y);
-                    }
-                }
-            }
-        }
-
-        // 2. Помечаем все коридоры как исследованные
-        for (int y = 0; y < asciiMap.length; y++) {
-            for (int x = 0; x < asciiMap[y].length; x++) {
-                if (asciiMap[y][x] == '#' || asciiMap[y][x] == '+') {
-                    fogOfWarService.markCellAsExplored(x, y);
-                }
-            }
-        }
-
-        // 3. Обновляем видимость для текущей позиции игрока
+        // ВАЖНО: НЕ вызываем markAllMapAsExplored() - состояние тумана уже восстановлено
+        // Обновляем видимость для текущей позиции игрока
         fogOfWarService.updateVisibility(playerPos, asciiMap);
 
         activeMessageLine1 = "Loaded game - Level " + session.getLevelNum();

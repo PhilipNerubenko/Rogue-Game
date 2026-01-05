@@ -182,38 +182,74 @@ public class FogOfWarService {
      * Метод для обновления видимости при загрузке сохранения
      * Отмечает комнату игрока как исследованную
      */
-    public void updateForLoadedGame(Position playerPos, char[][] map) {
-        // Сбрасываем состояние
-        reset();
 
-        // Определяем комнату игрока
+    public void updateForLoadedGame(Position playerPos, char[][] map) {
+        if (map == null || playerPos == null) return;
+
+        // НЕ сбрасываем exploredCells - они уже должны быть восстановлены из сохранения
+        // visibleCells очищаем для текущего обновления
+        visibleCells.clear();
+
+        // 1. Определяем текущую комнату игрока
         currentRoom = levelGenerator.getRoomAt(playerPos.getX(), playerPos.getY());
 
-        if (currentRoom != null) {
-            // Добавляем всю комнату игрока в исследованные
+        // 2. Если комната игрока исследована, показываем ее
+        if (currentRoom != null && exploredRooms.contains(currentRoom)) {
+            // Показываем всю комнату
             for (int x = currentRoom.getX1(); x <= currentRoom.getX2(); x++) {
                 for (int y = currentRoom.getY1(); y <= currentRoom.getY2(); y++) {
+                    visibleCells.add(new Position(x, y));
+                    // Убедимся, что клетки комнаты отмечены как исследованные
                     exploredCells.add(new Position(x, y));
                 }
             }
-            exploredRooms.add(currentRoom);
         }
 
-        // Помечаем все коридоры как исследованные
-        if (map != null) {
-            for (int y = 0; y < map.length; y++) {
-                for (int x = 0; x < map[y].length; x++) {
-                    char tile = map[y][x];
-                    // Коридоры и двери всегда исследованы
-                    if (tile == '#' || tile == '+') {
-                        exploredCells.add(new Position(x, y));
-                    }
-                }
+        // 3. Также добавляем видимые коридоры и двери из exploredCells
+        for (Position pos : exploredCells) {
+            int x = pos.getX();
+            int y = pos.getY();
+
+            if (x < 0 || y < 0 || y >= map.length || x >= map[0].length) {
+                continue;
+            }
+
+            char tile = map[y][x];
+            // Коридоры и двери всегда показываем если исследованы
+            if (tile == '#' || tile == '+') {
+                visibleCells.add(pos);
             }
         }
 
-        // Обновляем видимость
+        // 4. Обновляем видимость из текущей позиции игрока
         updateVisibility(playerPos, map);
+    }
+
+    /**
+     * Определяет исследованные комнаты на основе карты
+     */
+    private void updateExploredRoomsFromMap(char[][] map) {
+        List<Room> allRooms = levelGenerator.getRooms();
+        if (allRooms == null) return;
+
+        for (Room room : allRooms) {
+            // Проверяем, есть ли хоть одна исследованная клетка в комнате
+            boolean hasExploredCell = false;
+            for (int x = room.getX1(); x <= room.getX2(); x++) {
+                for (int y = room.getY1(); y <= room.getY2(); y++) {
+                    if (exploredCells.contains(new Position(x, y))) {
+                        hasExploredCell = true;
+                        break;
+                    }
+                }
+                if (hasExploredCell) break;
+            }
+
+            // Если комната имеет исследованные клетки, добавляем ее
+            if (hasExploredCell && !exploredRooms.contains(room)) {
+                exploredRooms.add(room);
+            }
+        }
     }
 
     /**

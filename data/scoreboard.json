@@ -99,5 +99,35 @@
     "attacks" : 2,
     "missed" : 3,
     "moves" : 219
+  }, {
+    "treasures" : 0,
+    "levelNum" : 1,
+    "enemies" : 0,
+    "food" : 0,
+    "elixirs" : 0,
+    "scrolls" : 0,
+    "attacks" : 2,
+    "missed" : 2,
+    "moves" : 98
+  }, {
+    "treasures" : 0,
+    "levelNum" : 1,
+    "enemies" : 0,
+    "food" : 0,
+    "elixirs" : 0,
+    "scrolls" : 0,
+    "attacks" : 0,
+    "missed" : 0,
+    "moves" : 144
+  }, {
+    "treasures" : 0,
+    "levelNum" : 1,
+    "enemies" : 1,
+    "food" : 1,
+    "elixirs" : 1,
+    "scrolls" : 1,
+    "attacks" : 2,
+    "missed" : 6,
+    "moves" : 290
   } ]
 }

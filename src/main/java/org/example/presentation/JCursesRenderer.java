@@ -80,12 +80,18 @@ public class JCursesRenderer implements Renderer {
     }
 
     public void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, LevelGenerator levelGen) {
-        fog.updateVisibility(player.getPosition(), map);
+        if (map == null) return;
 
         for (int y = 0; y < map.length; y++) {
             for (int x = 0; x < map[y].length; x++) {
                 char tile = map[y][x];
-                Room room = levelGen.getRoomAt(x, y);
+
+                // Пустые клетки всегда черные
+                if (tile == ' ') {
+                    drawChar(x, y, ' ', CharColor.BLACK);
+                    continue;
+                }
+
                 boolean visible = fog.isVisible(x, y);
                 boolean explored = fog.isExplored(x, y);
 
@@ -95,17 +101,10 @@ public class JCursesRenderer implements Renderer {
                     drawChar(x, y, tile, color);
                 } else if (explored) {
                     // ИССЛЕДОВАННАЯ КЛЕТКА — рисуем тускло
-                    if (tile == '|' || tile == '~') {
-                        // Стены — тусклый синий
-                        drawChar(x, y, tile, CharColor.BLUE);
-                    } else if (tile == '.') {
-                        // Пол — тусклый серый (или можно не рисовать)
-                        drawChar(x, y, '.', CharColor.BLACK);
-                    } else if (tile == '#' || tile == '+') {
-                        // Коридоры и двери — тусклый желтый
-                        drawChar(x, y, tile, CharColor.YELLOW);
+                    short color = getTileColorExplored(tile);
+                    if (color != -1) { // -1 означает "не рисовать"
+                        drawChar(x, y, tile, color);
                     } else {
-                        // Остальное — не рисуем
                         drawChar(x, y, ' ', CharColor.BLACK);
                     }
                 } else {
@@ -131,6 +130,19 @@ public class JCursesRenderer implements Renderer {
             case '?' -> CharColor.MAGENTA;       // Свиток — пурпурный
             case ')' -> CharColor.RED;           // Оружие — красное
             default -> CharColor.WHITE;
+        };
+    }
+
+    /**
+     * Цвета для ИССЛЕДОВАННЫХ клеток
+     */
+    private short getTileColorExplored(char tile) {
+        return switch (tile) {
+            case '|', '~' -> CharColor.BLUE;     // Стены — тусклый синий
+            case '#' -> CharColor.YELLOW;        // Коридор — тусклый желтый
+            case '+' -> CharColor.MAGENTA;       // Дверь — тусклая пурпурная
+            case '.' -> -1;                      // Пол исследованных комнат не показываем
+            default -> -1;                       // Остальное не показываем
         };
     }
 
