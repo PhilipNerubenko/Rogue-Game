@@ -1,5 +1,6 @@
 package org.example;
 
+import org.example.datalayer.AutosaveService;
 import org.example.datalayer.SessionStat;
 import org.example.datalayer.Statistics;
 import org.example.domain.entity.*;
@@ -26,18 +27,40 @@ public class GameInitializer {
 
     // Упрощенный конструктор для основного использования
     public GameInitializer() {
+//        System.out.println("[GameInitializer] Initializing...");
+
         this.session = new GameSession();
-        // 2. Создаем сервисы (для GameLoop)
         this.renderer = new JCursesRenderer();
         this.inputHandler = new InputHandler();
         this.combatService = new CombatService();
         this.enemyAIService = new EnemyAIService();
         this.movementService = new MovementService();
-        // 3. LevelGenerator создаем без сессии
         this.levelGenerator = new LevelGenerator();
-        // 4. FogOfWarService
         this.fogOfWarService = new FogOfWarService(levelGenerator);
 
+//        System.out.println("[GameInitializer] All components created");
+//        System.out.println("[GameInitializer] FogOfWarService: " + (fogOfWarService != null));
+
+        // КРИТИЧЕСКИ ВАЖНО: Устанавливаем fogOfWarService в AutosaveService
+        if (this.inputHandler != null) {
+            try {
+                // Получаем доступ к autosaveService через reflection или сеттер
+                java.lang.reflect.Field autosaveField = InputHandler.class.getDeclaredField("autosaveService");
+                autosaveField.setAccessible(true);
+                AutosaveService autosaveService = (AutosaveService) autosaveField.get(this.inputHandler);
+
+                if (autosaveService != null) {
+                    autosaveService.setFogOfWarService(this.fogOfWarService);
+//                    System.out.println("[GameInitializer] FogOfWarService set in AutosaveService");
+                } else {
+//                    System.err.println("[GameInitializer] ERROR: AutosaveService is null!");
+                }
+            } catch (Exception e) {
+                System.err.println("[GameInitializer] ERROR: Failed to set FogOfWarService in AutosaveService: " + e.getMessage());
+            }
+        }
+
+//        System.out.println("[GameInitializer] Initialization complete\n");
     }
 
     public void initializeNewGame(SessionStat sessionStat) throws IOException{

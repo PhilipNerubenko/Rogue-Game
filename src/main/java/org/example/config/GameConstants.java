@@ -3,7 +3,7 @@ package org.example.config;
 public final class GameConstants {
 
     public static final class Map {
-        public static final int ROOMS  = 9;     //комнат на уровне
+        public static final int ROOMS = 9;     //комнат на уровне
         public static final int WIDTH = 80;     //ширина игрового поля
         public static final int HEIGHT = 30;    //высота игрового поля
 
@@ -65,9 +65,20 @@ public final class GameConstants {
     }
 
     public static final class Colors {
-        public static final String GREEN = "\033[92m";
-        public static final String RED = "\033[91m";
-        public static final String RESET = "\033[0m";
+        // Используем стандартные цвета JCurses (0-7)
+        public static final int BLACK = 0;
+        public static final int RED = 1;
+        public static final int GREEN = 2;
+        public static final int YELLOW = 3;
+        public static final int BLUE = 4;
+        public static final int MAGENTA = 5;
+        public static final int CYAN = 6;
+        public static final int WHITE = 7;
+
+        // ANSI escape codes для консоли (если нужно)
+        public static final String ANSI_GREEN = "\033[92m";
+        public static final String ANSI_RED = "\033[91m";
+        public static final String ANSI_RESET = "\033[0m";
     }
 
     public static final class Icons {

@@ -9,6 +9,7 @@ import org.example.domain.entity.GameSession;
 import org.example.domain.entity.ItemType;
 import org.example.domain.model.Direction;
 import org.example.domain.model.InputCommand;
+import org.example.domain.service.FogOfWarService;
 
 import java.io.IOException;
 
@@ -28,6 +29,7 @@ public class InputHandler {
 
     public InputHandler() {
         this.autosaveService = new AutosaveService();
+//        System.out.println("[InputHandler] AutosaveService created");
     }
 
     public void setGameSession(GameSession session) {
@@ -56,7 +58,7 @@ public class InputHandler {
                 try {
                     boolean saved = autosaveService.saveGame(session, sessionStat);
                     if (saved) {
-                        System.out.println("Game autosaved on ESC");
+//                        System.out.println("Game autosaved on ESC");
                     }
                 } catch (Exception e) {
                     System.err.println("Autosave failed: " + e.getMessage());
@@ -159,5 +161,15 @@ public class InputHandler {
     // Проверка наличия сохранений
     public boolean hasSavedGames() {
         return autosaveService.hasSaves();
+    }
+
+    // Добавьте этот метод
+    public void setFogOfWarService(FogOfWarService fogOfWarService) {
+        if (autosaveService != null) {
+            autosaveService.setFogOfWarService(fogOfWarService);
+//            System.out.println("[InputHandler] FogOfWarService set in AutosaveService");
+        } else {
+//            System.err.println("[InputHandler] ERROR: AutosaveService is null!");
+        }
     }
 }

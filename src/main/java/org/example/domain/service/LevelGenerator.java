@@ -224,6 +224,9 @@ public class LevelGenerator {
 
     // Методы доступа:
     public Room getRoomAt(int x, int y) {
+        if (cellToRoomMap == null) {
+            return null;
+        }
         return cellToRoomMap.get(new Position(x, y));
     }
 

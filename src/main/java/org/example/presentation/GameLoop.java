@@ -199,41 +199,148 @@ public class GameLoop {
      * Помечает всю карту как исследованную при загрузке игры
      */
     private void restoreLoadedGame() {
-        System.out.println("Restoring loaded game...");
+//        System.out.println("=== GAMELOOP: RESTORING LOADED GAME ===");
+
+        // Проверка на null
+        if (session.getCurrentMap() == null) {
+            System.err.println("[GameLoop] ERROR: Saved map is null!");
+            try {
+                generateNewLevel();
+            } catch (IOException e) {
+                System.err.println("[GameLoop] ERROR generating new level: " + e.getMessage());
+                e.printStackTrace();
+            }
+            return;
+        }
 
         // Копируем карту из сессии
         asciiMap = session.getCurrentMap();
 
-        // Восстанавливаем LevelGenerator из данных GameSession
+//        System.out.println("[GameLoop] Map dimensions: " + asciiMap.length + "x" +
+//                (asciiMap.length > 0 ? asciiMap[0].length : 0));
+
+        // Восстанавливаем LevelGenerator
         if (session.getRooms() != null) {
+//            System.out.println("[GameLoop] Restoring LevelGenerator with " + session.getRooms().size() + " rooms");
             levelGenerator.restoreFromGameState(
                     asciiMap,
                     session.getRooms(),
                     session.getCurrentLevelItems()
             );
+        } else {
+//            System.out.println("[GameLoop] WARNING: No rooms in session!");
         }
 
         // Устанавливаем позицию игрока
         Position playerPos = session.getPlayer().getPosition();
+        if (playerPos == null) {
+//            System.err.println("[GameLoop] ERROR: Player position is null!");
+            try {
+                generateNewLevel();
+            } catch (IOException e) {
+//                System.err.println("[GameLoop] ERROR generating new level: " + e.getMessage());
+                e.printStackTrace();
+            }
+            return;
+        }
+
         playerX = playerPos.getX();
         playerY = playerPos.getY();
-        symbolUnderPlayer = asciiMap[playerY][playerX];
 
-        // ВАЖНО: НЕ вызываем markAllMapAsExplored() - состояние тумана уже восстановлено
-        // Обновляем видимость для текущей позиции игрока
-        fogOfWarService.updateVisibility(playerPos, asciiMap);
+//        System.out.println("[GameLoop] Player position from save: (" + playerX + ", " + playerY + ")");
+
+        // Проверяем границы позиции
+        if (playerY < 0 || playerY >= asciiMap.length ||
+                playerX < 0 || playerX >= asciiMap[playerY].length) {
+            System.err.println("[GameLoop] ERROR: Player position out of bounds!");
+            playerX = Math.max(0, Math.min(playerX, asciiMap[0].length - 1));
+            playerY = Math.max(0, Math.min(playerY, asciiMap.length - 1));
+            session.getPlayer().setPosition(new Position(playerX, playerY));
+        }
+
+        symbolUnderPlayer = asciiMap[playerY][playerX];
+//        System.out.println("[GameLoop] Symbol under player: '" + symbolUnderPlayer + "'");
+
+        // ТЕСТ: Проверяем состояние до обновления тумана
+//        System.out.println("[GameLoop] Before fog update:");
+//        System.out.println("[GameLoop]   Explored cells in fog service: " +
+//                fogOfWarService.getAllExploredCells().size());
+//        System.out.println("[GameLoop]   Explored rooms in fog service: " +
+//                fogOfWarService.getAllExploredRooms().size());
+
+        // Обновляем туман войны для загруженной игры
+        fogOfWarService.updateForLoadedGame(playerPos, asciiMap);
+
+        // Проверяем состояние после обновления
+//        System.out.println("[GameLoop] After fog update:");
+//        System.out.println("[GameLoop]   Explored cells: " +
+//                fogOfWarService.getAllExploredCells().size());
+//        System.out.println("[GameLoop]   Current visible cells: " +
+//                fogOfWarService.getCurrentVisibleCells().size());
+
+        // Проверяем конкретные клетки
+//        System.out.println("[GameLoop] Testing specific cells:");
+
+        // Клетки вокруг игрока
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -2; dy <= 2; dy++) {
+                int testX = playerX + dx;
+                int testY = playerY + dy;
+                if (testX >= 0 && testX < asciiMap[0].length &&
+                        testY >= 0 && testY < asciiMap.length) {
+                    boolean explored = fogOfWarService.isExplored(testX, testY);
+                    boolean visible = fogOfWarService.isVisible(testX, testY);
+//                    System.out.println("[GameLoop]   Cell (" + testX + "," + testY + "): " +
+//                            "explored=" + explored + ", visible=" + visible);
+                }
+            }
+        }
+
+        // Принудительно добавляем стартовую комнату в исследованные (на случай если сохранение пустое)
+        if (fogOfWarService.getAllExploredCells().size() == 0) {
+//            System.out.println("[GameLoop] WARNING: No explored cells found! Forcing exploration of start room...");
+            if (session.getRooms() != null && !session.getRooms().isEmpty()) {
+                Room startRoom = session.getRooms().get(0);
+                for (int x = startRoom.getX1(); x <= startRoom.getX2(); x++) {
+                    for (int y = startRoom.getY1(); y <= startRoom.getY2(); y++) {
+                        fogOfWarService.markCellAsExplored(x, y);
+                    }
+                }
+//                System.out.println("[GameLoop] Added " +
+//                        ((startRoom.getX2() - startRoom.getX1() + 1) *
+//                                (startRoom.getY2() - startRoom.getY1() + 1)) +
+//                        " cells from start room");
+            }
+        }
 
         activeMessageLine1 = "Loaded game - Level " + session.getLevelNum();
         messageTimer = MESSAGE_DURATION;
 
-        System.out.println("Game restored: Level " + session.getLevelNum() +
-                ", Player at (" + playerX + "," + playerY + ")");
+//        System.out.println("=== GAMELOOP: RESTORE COMPLETE ===\n");
+    }
+
+    private void testCellVisibility() {
+//        System.out.println("[GameLoop] Testing cell visibility:");
+
+        // Проверяем несколько случайных клеток
+        Random rand = new Random();
+        for (int i = 0; i < 5; i++) {
+            int x = rand.nextInt(asciiMap[0].length);
+            int y = rand.nextInt(asciiMap.length);
+
+            boolean explored = fogOfWarService.isExplored(x, y);
+            boolean currentVisible = fogOfWarService.getCurrentVisibleCells()
+                    .contains(new Position(x, y));
+
+//            System.out.println("[GameLoop]   Cell (" + x + "," + y + "): " +
+//                    "explored=" + explored + ", currentVisible=" + currentVisible);
+        }
     }
 
     private void initPresentation() {
         sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
             renderer.shutdown();
-            System.out.println(TERMINATE);
+//            System.out.println(TERMINATE);
             System.exit(0);
         });
 
@@ -280,12 +387,22 @@ public class GameLoop {
     }
 
     private void drawMap() {
-        renderer.drawMapWithFog(
-                asciiMap,
-                session.getPlayer(),
-                fogOfWarService,
-                levelGenerator
-        );
+        if (asciiMap == null || asciiMap.length == 0) {
+            System.err.println("ERROR: asciiMap is null or empty!");
+            return;
+        }
+
+        try {
+            renderer.drawMapWithFog(
+                    asciiMap,
+                    session.getPlayer(),
+                    fogOfWarService,
+                    levelGenerator
+            );
+        } catch (Exception e) {
+            System.err.println("ERROR in drawMap: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private void drawUI() {
