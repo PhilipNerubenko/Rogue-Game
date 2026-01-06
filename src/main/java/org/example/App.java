@@ -1,6 +1,7 @@
 package org.example;
 
 import jcurses.system.CharColor;
+import jcurses.system.InputChar;
 import jcurses.system.Toolkit;
 import org.example.datalayer.SessionStat;
 import org.example.domain.model.Position;
@@ -9,6 +10,7 @@ import org.example.presentation.GameLoop;
 import org.example.presentation.JCursesRenderer;
 import sun.misc.Signal;
 
+import static jcurses.system.InputChar.KEY_UP;
 import static org.example.config.GameConstants.ScreenConfig.*;
 import static org.example.config.GameConstants.TextMessages.*;
 

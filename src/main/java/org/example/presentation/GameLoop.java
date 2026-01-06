@@ -133,10 +133,10 @@ public class GameLoop {
 
             if (messageTimer > 0) {
                 if (activeMessageLine1 != null) {
-                    renderer.drawMessage(MESSAGE_LINE_1, activeMessageLine1, CharColor.YELLOW);
+                    renderer.drawMessage(MESSAGE_LINE_1+2 , activeMessageLine1, CharColor.YELLOW);
                 }
                 if (activeMessageLine2 != null) {
-                    renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, CharColor.YELLOW);
+                    renderer.drawMessage(MESSAGE_LINE_2+2, activeMessageLine2, CharColor.YELLOW);
                 }
                 if (activeMessageLine3 != null) {
                     renderer.drawMessage(MESSAGE_LINE_3, activeMessageLine3, CharColor.CYAN);
@@ -360,8 +360,8 @@ public class GameLoop {
         }
 
         // Подсказка
-        String controls = "WASD:move | h:weapon | j:food | k:elixir | e:scroll | q:unequip | ESC:save & exit";
-        renderer.drawString(3, 29, controls, CharColor.CYAN);
+        String controls = "WASD:move | h:weapon | j:food | k:elixir | e:scroll | q:unequip | ESC:save&exit";
+        renderer.drawString(3, GameConstants.Map.HEIGHT + 1, controls, CharColor.CYAN);
 
         // Статус Бар
         renderer.drawStatusBar(
@@ -374,11 +374,12 @@ public class GameLoop {
         );
 
         // Предметы на уровне
-        int itemListY = 33;
-        renderer.drawString(3, itemListY++, "=== ITEMS ON LEVEL ===", CharColor.CYAN);
+        int itemLIstX = 84;
+        int itemListY = 20;
+        renderer.drawString(itemLIstX, itemListY++, "=== ITEMS ON LEVEL ===", CharColor.CYAN);
 
         if (session.getCurrentLevelItems().isEmpty()) {
-            renderer.drawString(5, itemListY++, "No items on this level", CharColor.WHITE);
+            renderer.drawString(itemLIstX, itemListY++, "No items on this level", CharColor.WHITE);
         } else {
             int maxToShow = Math.min(5, session.getCurrentLevelItems().size());
             for (int i = 0; i < maxToShow; i++) {
@@ -389,11 +390,11 @@ public class GameLoop {
                         item.getX(),
                         item.getY()
                 );
-                renderer.drawString(5, itemListY++, itemInfo, CharColor.WHITE);
+                renderer.drawString(itemLIstX, itemListY++, itemInfo, CharColor.WHITE);
             }
 
             if (session.getCurrentLevelItems().size() > 5) {
-                renderer.drawString(5, itemListY,
+                renderer.drawString(itemLIstX, itemListY++,
                         "... and " + (session.getCurrentLevelItems().size() - 5) + " more",
                         CharColor.YELLOW);
             }
@@ -461,7 +462,7 @@ public class GameLoop {
         fogOfWarService.updateVisibility(newPlayerPosition, asciiMap);
 
         // Сообщение игроку
-        activeMessageLine1 = "Level " + levelToGenerate;
+//        activeMessageLine1 = "Level " + levelToGenerate;
         if (levelToGenerate > 1) {
             activeMessageLine2 = "You have gone deeper...";
         }
@@ -918,8 +919,8 @@ public class GameLoop {
     }
 
     private void drawInventory() {
-        int startY = 31;
-        renderer.drawString(43, startY++, "=== INVENTORY! ===", CharColor.CYAN);
+        int startY = 0;
+        renderer.drawString(84, startY++, "=== INVENTORY! ===", CharColor.CYAN);
 
         Player player = session.getPlayer();
         Inventory inventory = player.getInventory();
@@ -936,13 +937,13 @@ public class GameLoop {
         }
 
         if (isEmpty && inventory.getTreasureValue() == 0) {
-            renderer.drawString(45, startY++, "Empty", CharColor.WHITE);
+            renderer.drawString(86, startY++, "Empty", CharColor.WHITE);
             return;
         }
 
         int treasureValue = inventory.getTreasureValue();
         if (treasureValue > 0) {
-            renderer.drawString(45, startY++,
+            renderer.drawString(86, startY++,
                     String.format("Treasure: %d gold", treasureValue),
                     CharColor.YELLOW);
         }
@@ -956,7 +957,7 @@ public class GameLoop {
                         type.name().substring(1).toLowerCase() +
                         (count > 1 ? "s" : "");
 
-                renderer.drawString(45, startY++,
+                renderer.drawString(86, startY++,
                         String.format("%s: %d", typeName, count),
                         getItemTypeColor(type));
 
@@ -965,11 +966,11 @@ public class GameLoop {
                 for (int i = 0; i < itemsToShow; i++) {
                     Item item = items.get(i);
                     String itemInfo = formatItemInfo(item);
-                    renderer.drawString(47, startY++, itemInfo, CharColor.WHITE);
+                    renderer.drawString(88, startY++, itemInfo, CharColor.WHITE);
                 }
 
                 if (items.size() > 2) {
-                    renderer.drawString(47, startY++,
+                    renderer.drawString(88, startY++,
                             String.format("... and %d more", items.size() - 2),
                             CharColor.YELLOW);
                 }
@@ -978,14 +979,14 @@ public class GameLoop {
 
         Item equipped = player.getEquippedWeapon();
         if (equipped != null && !equipped.getSubType().equals("fists")) {
-            renderer.drawString(43, startY++,
+            renderer.drawString(84, startY++,
                     String.format("Weapon Equipped: %s (STR+%d)",
                             equipped.getSubType(),
                             equipped.getStrength()),
                     CharColor.GREEN);
         }
 
-        renderer.drawString(43, startY,
+        renderer.drawString(84, startY,
                 String.format("Total items: %d", totalItems),
                 CharColor.CYAN);
     }
@@ -1012,7 +1013,7 @@ public class GameLoop {
         // Очищаем область для меню (правый верхний угол)
         int menuX = 45;
         int menuY = 5;
-        int menuWidth = 30;
+        int menuWidth = 33;
         int menuHeight = 15;
 
         // Очищаем область
@@ -1023,13 +1024,13 @@ public class GameLoop {
         }
 
         // Рисуем рамку меню
-        String border = "+" + "-".repeat(menuWidth - 2) + "+";
+        String border = "+" + "-".repeat(menuWidth ) + "+";
         renderer.drawString(menuX, menuY, border, CharColor.YELLOW);
         renderer.drawString(menuX, menuY + menuHeight - 1, border, CharColor.YELLOW);
 
-        for (int y = menuY + 1; y < menuY + menuHeight - 1; y++) {
+        for (int y = menuY + 1; y < menuY + menuHeight -1; y++) {
             renderer.drawChar(menuX, y, '|', CharColor.YELLOW);
-            renderer.drawChar(menuX + menuWidth - 1, y, '|', CharColor.YELLOW);
+            renderer.drawChar(menuX + menuWidth + 1, y, '|', CharColor.YELLOW);
         }
 
         // Заголовок

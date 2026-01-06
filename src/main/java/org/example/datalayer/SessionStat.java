@@ -134,6 +134,12 @@ public class SessionStat implements Comparable<SessionStat> {
         Statistics.saveCurrentStats(this);
     }
 
+    public void addTreasures(int count) throws IOException {
+        this.treasures += count;
+        Statistics.saveCurrentStats(this);
+    }
+
+
     /**
      * Сравнивает текущую статистику с другой для определения порядка сортировки.
      * Приоритет сравнения:

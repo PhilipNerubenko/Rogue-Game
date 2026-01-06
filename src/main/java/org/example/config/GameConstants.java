@@ -28,10 +28,12 @@ public final class GameConstants {
         public static final int MAP_HEIGHT = 25;
         public static final int UI_START_Y = 26;
         public static final int STATUS_LINE_Y = 30;
-        public static final int MESSAGE_LINE_1 = 27;
-        public static final int MESSAGE_LINE_2 = 28;
-        public static final int MESSAGE_LINE_3 = 29;
-        public static final int DEATH_MESSAGE_Y = 31;
+
+        public static final int MESSAGE_LINE_1 = Map.HEIGHT + 1;
+        public static final int MESSAGE_LINE_2 = Map.HEIGHT + 2;
+        public static final int MESSAGE_LINE_3 = Map.HEIGHT + 3;
+        public static final int DEATH_MESSAGE_Y = Map.HEIGHT + 4;
+
         public static final String HIDE_CURSOR = "\033[?25l";
         public static final String SHOW_CURSOR = "\033[?25h";
         public static final String SIGINT_STRING = "INT";

@@ -14,9 +14,9 @@ import java.util.*;
 public class LevelGenerator {
     // Константы генерации карты
     private static final int ROOMS_AT_LEVEL = GameConstants.Map.ROOMS;
-    private static final int MAX_WIDTH_ROOM_SIZE = GameConstants.Map.WIDTH / 3 - 4;
+    private static final int MAX_WIDTH_ROOM_SIZE = GameConstants.Map.WIDTH / 3 - 2;
     private static final int MIN_WIDTH_ROOM_SIZE = MAX_WIDTH_ROOM_SIZE / 4;
-    private static final int MAX_HEIGHT_ROOM_SIZE = GameConstants.Map.HEIGHT / 3 - 4;
+    private static final int MAX_HEIGHT_ROOM_SIZE = GameConstants.Map.HEIGHT / 3 - 2;
     private static final int MIN_HEIGHT_ROOM_SIZE = MAX_HEIGHT_ROOM_SIZE / 2 + 1;
 
     // Основные структуры данных
