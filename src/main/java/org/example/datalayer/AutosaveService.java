@@ -44,13 +44,22 @@ public class AutosaveService {
 
         // Регистрируем модули
         this.objectMapper.registerModule(new JavaTimeModule());
-
-        // Настраиваем игнорирование неизвестных свойств
         this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
 
-        // Создаем кастомный модуль для Color
+        // Настраиваем сериализацию и десериализацию Color
+        this.objectMapper.registerModule(createColorModule());
+
+        // Создаем директорию для автосохранений
+        createAutosaveDirectory();
+    }
+
+    /**
+     * Создает кастомный модуль для сериализации/десериализации Color
+     */
+    private SimpleModule createColorModule() {
         SimpleModule colorModule = new SimpleModule();
+
         colorModule.addSerializer(Color.class, new StdSerializer<Color>(Color.class) {
             @Override
             public void serialize(Color value, JsonGenerator gen, SerializerProvider provider) throws IOException {
@@ -69,10 +78,7 @@ public class AutosaveService {
             }
         });
 
-        this.objectMapper.registerModule(colorModule);
-
-        // Создаем директорию для автосохранений, если она не существует
-        createAutosaveDirectory();
+        return colorModule;
     }
 
     /**
@@ -85,8 +91,6 @@ public class AutosaveService {
         }
 
         try {
-//            System.out.println("=== STARTING GAME SAVE ===");
-
             // Создаем объект состояния игры
             GameState gameState = createGameState(session, sessionStat);
 
@@ -95,25 +99,11 @@ public class AutosaveService {
             String filename = AUTOSAVE_PREFIX + timestamp + AUTOSAVE_EXTENSION;
             String filepath = AUTOSAVE_DIR + "/" + filename;
 
-//            System.out.println("[Autosave] Writing to file: " + filepath);
-
             // Сохраняем в файл
             objectMapper.writeValue(new File(filepath), gameState);
 
-//            System.out.println("Game autosaved to: " + filepath);
-
-            // Проверим содержимое файла
-            File savedFile = new File(filepath);
-//            System.out.println("[Autosave] File size: " + savedFile.length() + " bytes");
-
-            if (savedFile.length() < 100) {
-                System.err.println("[Autosave] WARNING: Saved file is very small, might be corrupted!");
-            }
-
             // Очищаем старые сохранения
             cleanupOldSaves();
-
-//            System.out.println("=== GAME SAVE COMPLETED ===\n");
 
             return true;
 
@@ -206,10 +196,7 @@ public class AutosaveService {
         }
 
         return Arrays.stream(files)
-                .sorted((f1, f2) -> {
-                    // Сортируем по имени файла (timestamp в имени)
-                    return f2.getName().compareTo(f1.getName());
-                })
+                .sorted((f1, f2) -> f2.getName().compareTo(f1.getName()))
                 .collect(Collectors.toList());
     }
 
@@ -217,16 +204,36 @@ public class AutosaveService {
      * Создает GameState из текущей игровой сессии
      */
     private GameState createGameState(GameSession session, SessionStat sessionStat) {
-//        System.out.println("=== AUTOSAVE: CREATING GAME STATE ===");
-
         GameState gameState = new GameState();
 
         // Сохраняем состояние игрока
-        GameState.PlayerState playerState = new GameState.PlayerState();
-        Player player = session.getPlayer();
+        GameState.PlayerState playerState = createPlayerState(session.getPlayer());
 
-//        System.out.println("[Autosave] Player health: " + player.getHealth() + "/" + player.getMaxHealth());
-//        System.out.println("[Autosave] Player position: (" + player.getPosition().getX() + ", " + player.getPosition().getY() + ")");
+        // Сохраняем состояние уровня
+        GameState.LevelState levelState = createLevelState(session);
+
+        // Сохраняем состояние тумана войны
+        GameState.FogOfWarState fogOfWarState = createFogOfWarState();
+
+        // Устанавливаем все состояния в gameState
+        gameState.setPlayerState(playerState);
+        gameState.setLevelState(levelState);
+        gameState.setSessionStat(sessionStat);
+        gameState.setFogOfWarState(fogOfWarState);
+
+        // Создаем и устанавливаем GameSessionState
+        GameState.GameSessionState gameSessionState = new GameState.GameSessionState();
+        gameSessionState.setCurrentMap(session.getCurrentMap());
+        gameState.setGameSessionState(gameSessionState);
+
+        return gameState;
+    }
+
+    /**
+     * Создает состояние игрока для сохранения
+     */
+    private GameState.PlayerState createPlayerState(Player player) {
+        GameState.PlayerState playerState = new GameState.PlayerState();
 
         playerState.setMaxHealth(player.getMaxHealth());
         playerState.setHealth(player.getHealth());
@@ -249,8 +256,15 @@ public class AutosaveService {
         // Сохраняем экипированное оружие
         playerState.setEquippedWeapon(player.getEquippedWeapon());
 
-        // Сохраняем состояние уровня
+        return playerState;
+    }
+
+    /**
+     * Создает состояние уровня для сохранения
+     */
+    private GameState.LevelState createLevelState(GameSession session) {
         GameState.LevelState levelState = new GameState.LevelState();
+
         levelState.setLevelNumber(session.getLevelNum());
         levelState.setAsciiMap(session.getCurrentMap());
         levelState.setItems(new ArrayList<>(session.getCurrentLevelItems()));
@@ -259,28 +273,20 @@ public class AutosaveService {
         // Сохраняем комнаты из GameSession
         if (session.getRooms() != null) {
             levelState.setRooms(new ArrayList<>(session.getRooms()));
-//            System.out.println("[Autosave] Rooms to save: " + session.getRooms().size());
         }
 
-        // Сохраняем состояние тумана войны - КРИТИЧЕСКИ ВАЖНЫЙ БЛОК
+        return levelState;
+    }
+
+    /**
+     * Создает состояние тумана войны для сохранения
+     */
+    private GameState.FogOfWarState createFogOfWarState() {
         GameState.FogOfWarState fogOfWarState = new GameState.FogOfWarState();
 
         if (fogOfWarService != null) {
             Set<Position> exploredCells = fogOfWarService.getAllExploredCells();
             Set<Room> exploredRooms = fogOfWarService.getAllExploredRooms();
-
-//            System.out.println("[Autosave] FogOfWarService is available");
-//            System.out.println("[Autosave] Explored cells count: " + exploredCells.size());
-//            System.out.println("[Autosave] Explored rooms count: " + exploredRooms.size());
-
-            // Детальная информация о нескольких клетках
-//            System.out.println("[Autosave] Sample explored cells (first 5):");
-            int cellCount = 0;
-            for (Position pos : exploredCells) {
-                if (cellCount++ < 5) {
-//                    System.out.println("[Autosave]   Cell (" + pos.getX() + ", " + pos.getY() + ")");
-                }
-            }
 
             // Преобразуем в списки для сериализации
             List<Position> exploredCellsList = new ArrayList<>(exploredCells);
@@ -288,39 +294,13 @@ public class AutosaveService {
 
             fogOfWarState.setExploredCells(exploredCellsList);
             fogOfWarState.setExploredRooms(exploredRoomsList);
-
-//            System.out.println("[Autosave] FogOfWarState populated with " +
-//                    exploredCellsList.size() + " cells and " +
-//                    exploredRoomsList.size() + " rooms");
         } else {
-//            System.out.println("[Autosave] WARNING: fogOfWarService is NULL! Fog of war will not be saved.");
             // Создаем пустые списки, чтобы избежать null в JSON
             fogOfWarState.setExploredCells(new ArrayList<>());
             fogOfWarState.setExploredRooms(new ArrayList<>());
         }
 
-        // Устанавливаем все состояния в gameState
-        gameState.setPlayerState(playerState);
-        gameState.setLevelState(levelState);
-        gameState.setSessionStat(sessionStat);
-
-        // Создаем и устанавливаем GameSessionState
-        GameState.GameSessionState gameSessionState = new GameState.GameSessionState();
-        gameSessionState.setCurrentMap(session.getCurrentMap());
-        gameState.setGameSessionState(gameSessionState);
-
-        gameState.setFogOfWarState(fogOfWarState);
-
-//        System.out.println("[Autosave] GameState created successfully");
-//        System.out.println("[Autosave] FogOfWarState in GameState: " +
-//                (gameState.getFogOfWarState() != null));
-        if (gameState.getFogOfWarState() != null) {
-//            System.out.println("[Autosave] Cells in FogOfWarState: " +
-//                    gameState.getFogOfWarState().getExploredCells().size());
-        }
-//        System.out.println("=== AUTOSAVE: GAME STATE CREATED ===\n");
-
-        return gameState;
+        return fogOfWarState;
     }
 
     /**
@@ -328,19 +308,32 @@ public class AutosaveService {
      */
     private void restoreGameState(GameState gameState, GameSession session,
                                   SessionStat sessionStat, LevelGenerator levelGenerator) {
-//        System.out.println("=== AUTOSAVE: RESTORING GAME STATE ===");
-
         if (gameState == null) {
             System.err.println("[Autosave] ERROR: GameState is null!");
             return;
         }
 
-//        System.out.println("[Autosave] GameState timestamp: " + gameState.getTimestamp());
-//        System.out.println("[Autosave] Level in save: " + gameState.getLevelState().getLevelNumber());
-
         // Восстанавливаем статистику
+        restoreSessionStatistics(gameState, sessionStat);
+
+        // Восстанавливаем LevelGenerator
+        restoreLevelGenerator(gameState, levelGenerator);
+
+        // Восстанавливаем уровень
+        restoreLevelState(gameState, session);
+
+        // Восстанавливаем состояние тумана войны
+        restoreFogOfWar(gameState);
+
+        // Восстанавливаем игрока
+        restorePlayer(gameState, session);
+    }
+
+    /**
+     * Восстанавливает статистику сессии
+     */
+    private void restoreSessionStatistics(GameState gameState, SessionStat sessionStat) {
         if (gameState.getSessionStat() != null) {
-//            System.out.println("[Autosave] Restoring statistics...");
             sessionStat.setTreasures(gameState.getSessionStat().getTreasures());
             sessionStat.setLevelNum(gameState.getSessionStat().getLevelNum());
             sessionStat.setEnemies(gameState.getSessionStat().getEnemies());
@@ -351,85 +344,67 @@ public class AutosaveService {
             sessionStat.setMissed(gameState.getSessionStat().getMissed());
             sessionStat.setMoves(gameState.getSessionStat().getMoves());
         }
+    }
 
-        // Восстанавливаем LevelGenerator
+    /**
+     * Восстанавливает LevelGenerator
+     */
+    private void restoreLevelGenerator(GameState gameState, LevelGenerator levelGenerator) {
         if (levelGenerator != null && gameState.getLevelState() != null) {
-//            System.out.println("[Autosave] Restoring LevelGenerator...");
             levelGenerator.restoreFromGameState(
                     gameState.getLevelState().getAsciiMap(),
                     gameState.getLevelState().getRooms(),
                     gameState.getLevelState().getItems()
             );
         }
+    }
 
-        // Восстанавливаем уровень
+    /**
+     * Восстанавливает состояние уровня
+     */
+    private void restoreLevelState(GameState gameState, GameSession session) {
         session.setLevelNum(gameState.getLevelState().getLevelNumber());
         session.setCurrentMap(gameState.getLevelState().getAsciiMap());
-
-//        System.out.println("[Autosave] Level number: " + session.getLevelNum());
-//        System.out.println("[Autosave] Map dimensions: " +
-//                (session.getCurrentMap() != null ?
-//                        session.getCurrentMap().length + "x" + session.getCurrentMap()[0].length : "null"));
 
         // Восстанавливаем предметы и врагов
         session.getCurrentLevelItems().clear();
         if (gameState.getLevelState().getItems() != null) {
-//            System.out.println("[Autosave] Items to restore: " + gameState.getLevelState().getItems().size());
             session.getCurrentLevelItems().addAll(gameState.getLevelState().getItems());
         }
 
         session.getEnemies().clear();
         if (gameState.getLevelState().getEnemies() != null) {
-//            System.out.println("[Autosave] Enemies to restore: " + gameState.getLevelState().getEnemies().size());
             session.getEnemies().addAll(gameState.getLevelState().getEnemies());
         }
 
         // Восстанавливаем комнаты
         if (gameState.getLevelState().getRooms() != null) {
-//            System.out.println("[Autosave] Rooms to restore: " + gameState.getLevelState().getRooms().size());
             session.setRooms(new ArrayList<>(gameState.getLevelState().getRooms()));
         }
+    }
 
-        // КРИТИЧЕСКИ ВАЖНО: Восстанавливаем состояние тумана войны
-//        System.out.println("[Autosave] Checking FogOfWarState in save...");
+    /**
+     * Восстанавливает состояние тумана войны
+     */
+    private void restoreFogOfWar(GameState gameState) {
         if (gameState.getFogOfWarState() != null) {
-//            System.out.println("[Autosave] FogOfWarState found in save!");
-//            System.out.println("[Autosave] Explored cells in save: " +
-//                    gameState.getFogOfWarState().getExploredCells().size());
-//            System.out.println("[Autosave] Explored rooms in save: " +
-//                    gameState.getFogOfWarState().getExploredRooms().size());
-
-            // Проверяем несколько клеток из сохранения
             List<Position> savedCells = gameState.getFogOfWarState().getExploredCells();
-            if (savedCells != null && !savedCells.isEmpty()) {
-//                System.out.println("[Autosave] Sample cells from save (first 3):");
-                for (int i = 0; i < Math.min(3, savedCells.size()); i++) {
-                    Position pos = savedCells.get(i);
-//                    System.out.println("[Autosave]   Cell (" + pos.getX() + ", " + pos.getY() + ")");
-                }
-            }
 
             // Восстанавливаем только если fogOfWarService доступен
-            if (fogOfWarService != null) {
-//                System.out.println("[Autosave] FogOfWarService is available, restoring data...");
-
+            if (fogOfWarService != null && savedCells != null) {
                 Set<Position> cellsToRestore = new HashSet<>(savedCells);
                 Set<Room> roomsToRestore = new HashSet<>(gameState.getFogOfWarState().getExploredRooms());
 
                 fogOfWarService.restoreExploredCells(cellsToRestore);
                 fogOfWarService.restoreExploredRooms(roomsToRestore);
-
-//                System.out.println("[Autosave] Fog of war state restored successfully");
-            } else {
-//                System.err.println("[Autosave] ERROR: fogOfWarService is null! Cannot restore fog of war.");
             }
-        } else {
-//            System.out.println("[Autosave] WARNING: No FogOfWarState in save file!");
-//            System.out.println("[Autosave] This might be an old save or fog of war was not saved.");
         }
+    }
 
-        // Восстанавливаем игрока
-//        System.out.println("[Autosave] Restoring player...");
+    /**
+     * Восстанавливает игрока
+     */
+    private void restorePlayer(GameState gameState, GameSession session) {
         GameState.PlayerState playerState = gameState.getPlayerState();
 
         // Создаем игрока с загруженными характеристиками
@@ -442,16 +417,11 @@ public class AutosaveService {
                 playerState.getStrength()
         );
 
-//        System.out.println("[Autosave] Player created at position: (" +
-//                playerState.getPositionX() + ", " + playerState.getPositionY() + ")");
-//        System.out.println("[Autosave] Player health: " + playerState.getHealth() + "/" + playerState.getMaxHealth());
-
         player.setSleepTurns(playerState.isSleepTurns());
 
         // Восстанавливаем инвентарь
         Inventory inventory = new Inventory();
         if (playerState.getInventoryItems() != null) {
-//            System.out.println("[Autosave] Inventory items to restore: " + playerState.getInventoryItems().size());
             for (Item item : playerState.getInventoryItems()) {
                 inventory.add(item);
             }
@@ -459,8 +429,6 @@ public class AutosaveService {
         player.setInventory(inventory);
 
         session.setPlayer(player);
-
-//        System.out.println("=== AUTOSAVE: GAME STATE RESTORED ===\n");
     }
 
     /**
@@ -520,85 +488,16 @@ public class AutosaveService {
     }
 
     /**
-     * Сохраняет состояние тумана войны
-     */
-    public void saveFogOfWarState(FogOfWarService fog, String filename) {
-        try {
-            File fogFile = new File(AUTOSAVE_DIR + "/" + filename + "_fog.json");
-
-            // Создаем объект для сохранения состояния тумана
-            Map<String, Object> fogState = new HashMap<>();
-
-            // Сохраняем исследованные клетки
-            Set<String> exploredPositions = new HashSet<>();
-            for (Position pos : fog.getAllExploredCells()) {
-                exploredPositions.add(pos.getX() + "," + pos.getY());
-            }
-            fogState.put("exploredCells", exploredPositions);
-
-            // Сохраняем исследованные комнаты
-            List<Integer> exploredRoomIds = new ArrayList<>();
-            for (Room room : fog.getAllExploredRooms()) {
-                exploredRoomIds.add(getRoomId(room));
-            }
-            fogState.put("exploredRooms", exploredRoomIds);
-
-            // Записываем в файл
-            objectMapper.writeValue(fogFile, fogState);
-
-        } catch (IOException e) {
-            System.err.println("Failed to save fog of war state: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Загружает состояние тумана войны
-     */
-    public void loadFogOfWarState(FogOfWarService fog, String filename) {
-        try {
-            File fogFile = new File(AUTOSAVE_DIR + "/" + filename + "_fog.json");
-            if (!fogFile.exists()) {
-                return; // Файл не существует, оставляем состояние по умолчанию
-            }
-
-            // Читаем состояние
-            Map<String, Object> fogState = objectMapper.readValue(fogFile, Map.class);
-
-            // Восстанавливаем исследованные клетки
-            Set<String> exploredPositions = (Set<String>) fogState.get("exploredCells");
-            if (exploredPositions != null) {
-                for (String posStr : exploredPositions) {
-                    String[] coords = posStr.split(",");
-                    int x = Integer.parseInt(coords[0]);
-                    int y = Integer.parseInt(coords[1]);
-                    fog.markCellAsExplored(x, y);
-                }
-            }
-
-        } catch (IOException e) {
-            System.err.println("Failed to load fog of war state: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Получает ID комнаты (нужно добавить поле id в класс Room или использовать хэш)
-     */
-    private int getRoomId(Room room) {
-        // Простой способ получить уникальный ID для комнаты
-        return Objects.hash(room.getX1(), room.getY1(), room.getWidth(), room.getHeight());
-    }
-
-    /**
      * Устанавливает сервис тумана войны
      */
     public void setFogOfWarService(FogOfWarService fogOfWarService) {
         this.fogOfWarService = fogOfWarService;
     }
 
-    /**
-     * Получает сервис тумана войны
-     */
-    public FogOfWarService getFogOfWarService() {
-        return fogOfWarService;
-    }
+//    /**
+//     * Получает сервис тумана войны
+//     */
+//    public FogOfWarService getFogOfWarService() {
+//        return fogOfWarService;
+//    }
 }

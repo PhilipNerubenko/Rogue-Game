@@ -11,27 +11,32 @@ import org.example.domain.model.Direction;
 import org.example.domain.model.InputCommand;
 import org.example.domain.service.FogOfWarService;
 
-import java.io.IOException;
-
 import static org.example.config.GameConstants.control.*;
 
 /**
- * Обработчик ввода пользователя
+ * Обработчик пользовательского ввода для игрового интерфейса.
+ * Преобразует нажатия клавиш в игровые команды.
  */
 public class InputHandler {
 
+    // Флаг ожидания выбора предмета из инвентаря
     private boolean awaitingSelection = false;
+    // Тип предмета, для которого ожидается выбор
     private ItemType pendingItemType = null;
 
+    // Сервисы
     private final AutosaveService autosaveService;
     private GameSession session;
     private SessionStat sessionStat;
 
+    /**
+     * Конструктор инициализирует сервис автосохранения.
+     */
     public InputHandler() {
         this.autosaveService = new AutosaveService();
-//        System.out.println("[InputHandler] AutosaveService created");
     }
 
+    // Базовые сеттеры для игровой сессии и статистики
     public void setGameSession(GameSession session) {
         this.session = session;
     }
@@ -40,44 +45,55 @@ public class InputHandler {
         this.sessionStat = sessionStat;
     }
 
+    /**
+     * Основной метод чтения и обработки ввода пользователя.
+     * @return Команда для выполнения в игровой логике.
+     */
     public InputCommand readCommand() {
         InputChar inputChar = Toolkit.readCharacter();
         int keyCode = inputChar.getCode();
         char keyChar = inputChar.getCharacter();
 
-        // Обработка ESC для автосохранения
+        // ESC - специальная клавиша для сохранения/выхода
         if (keyCode == ESC_KEY_CODE) {
-            // Если ожидаем выбор - просто отменяем выбор
-            if (awaitingSelection) {
-                resetAwaitingState();
-                return InputCommand.none();
-            }
-
-            // Иначе сохраняем и выходим
-            if (session != null && session.getPlayer() != null && !session.getPlayer().isDead()) {
-                try {
-                    boolean saved = autosaveService.saveGame(session, sessionStat);
-                    if (saved) {
-//                        System.out.println("Game autosaved on ESC");
-                    }
-                } catch (Exception e) {
-                    System.err.println("Autosave failed: " + e.getMessage());
-                }
-            }
-            return InputCommand.quit();
+            return handleEscapeKey();
         }
 
-        // Если ожидаем выбор предмета
+        // Если ожидается выбор предмета из инвентаря
         if (awaitingSelection) {
             return handleSelectionInput(keyChar);
         }
 
-        // Обработка обычных команд
+        // Обычный ввод команд
         return handleRegularInput(keyCode, keyChar);
     }
 
+    /**
+     * Обработка нажатия ESC.
+     * Если идет выбор предмета - отмена, иначе - сохранение и выход.
+     */
+    private InputCommand handleEscapeKey() {
+        if (awaitingSelection) {
+            resetAwaitingState();
+            return InputCommand.none();
+        }
+
+        // Автосохранение перед выходом
+        if (session != null && session.getPlayer() != null && !session.getPlayer().isDead()) {
+            try {
+                autosaveService.saveGame(session, sessionStat);
+            } catch (Exception e) {
+                System.err.println("Ошибка автосохранения: " + e.getMessage());
+            }
+        }
+        return InputCommand.quit();
+    }
+
+    /**
+     * Обработка обычных игровых команд.
+     */
     private InputCommand handleRegularInput(int keyCode, char keyChar) {
-        // Движение
+        // Движение (WASD или стрелки)
         if (keyCode == KEY_W || keyChar == 'W' || keyChar == 'w') {
             return InputCommand.move(Direction.NORTH);
         }
@@ -91,49 +107,48 @@ public class InputHandler {
             return InputCommand.move(Direction.EAST);
         }
 
-        // Использование предметов (только если не ожидаем выбора)
-        if (!awaitingSelection) {
-            if (keyChar == 'h' || keyChar == 'H') {
-                return InputCommand.useItem(ItemType.WEAPON);
-            }
-            if (keyChar == 'j' || keyChar == 'J') {
-                return InputCommand.useItem(ItemType.FOOD);
-            }
-            if (keyChar == 'k' || keyChar == 'K') {
-                return InputCommand.useItem(ItemType.ELIXIR);
-            }
-            if (keyChar == 'e' || keyChar == 'E') {
-                return InputCommand.useItem(ItemType.SCROLL);
-            }
-
-            // Снятие оружия
-            if (keyChar == 'q' || keyChar == 'Q') {
-                return InputCommand.unequipWeapon();
-            }
+        // Использование предметов (горячие клавиши)
+        if (keyChar == 'h' || keyChar == 'H') {
+            return InputCommand.useItem(ItemType.WEAPON);
+        }
+        if (keyChar == 'j' || keyChar == 'J') {
+            return InputCommand.useItem(ItemType.FOOD);
+        }
+        if (keyChar == 'k' || keyChar == 'K') {
+            return InputCommand.useItem(ItemType.ELIXIR);
+        }
+        if (keyChar == 'e' || keyChar == 'E') {
+            return InputCommand.useItem(ItemType.SCROLL);
         }
 
-        // Пропуск хода
+        // Снятие оружия
+        if (keyChar == 'q' || keyChar == 'Q') {
+            return InputCommand.unequipWeapon();
+        }
+
+        // Пропуск хода (пробел или точка)
         if (keyChar == '.' || keyChar == ' ') {
             return InputCommand.none();
         }
 
+        // Неизвестная команда
         return InputCommand.none();
     }
 
+    /**
+     * Обработка ввода при выборе предмета из инвентаря.
+     */
     private InputCommand handleSelectionInput(char keyChar) {
-        // Отмена выбора ESC уже обработана выше
-
-        // Выбор цифры 0-9
+        // Выбор по цифре 0-9
         if (keyChar >= '0' && keyChar <= '9') {
             int index = Character.getNumericValue(keyChar);
             return InputCommand.selectIndex(index);
         }
-
-        // Любая другая клавиша - игнорируем
         return InputCommand.none();
     }
 
-    // Геттеры и сеттеры для состояния выбора
+    // Управление состоянием выбора предметов
+
     public boolean isAwaitingSelection() {
         return awaitingSelection;
     }
@@ -152,24 +167,20 @@ public class InputHandler {
         this.pendingItemType = null;
     }
 
-    // Метод для загрузки игры
+    // Методы для работы с сохранениями
+
+    /**
+     * Загрузка сохраненной игры.
+     */
     public boolean loadSavedGame(GameSession session, SessionStat sessionStat,
                                  org.example.domain.service.LevelGenerator levelGenerator) {
         return autosaveService.loadAndRestoreGame(session, sessionStat, levelGenerator);
     }
 
-    // Проверка наличия сохранений
+    /**
+     * Проверка наличия сохранений.
+     */
     public boolean hasSavedGames() {
         return autosaveService.hasSaves();
-    }
-
-    // Добавьте этот метод
-    public void setFogOfWarService(FogOfWarService fogOfWarService) {
-        if (autosaveService != null) {
-            autosaveService.setFogOfWarService(fogOfWarService);
-//            System.out.println("[InputHandler] FogOfWarService set in AutosaveService");
-        } else {
-//            System.err.println("[InputHandler] ERROR: AutosaveService is null!");
-        }
     }
 }

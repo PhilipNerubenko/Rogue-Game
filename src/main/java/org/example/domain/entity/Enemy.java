@@ -16,14 +16,14 @@ public class Enemy {
     private int hostility;
     private int x;
     private int y;
-    private int diagX = 1;
-    private int diagY = 1;
+    private int diagX = 1;  // Направление движения по диагонали по X
+    private int diagY = 1;  // Направление движения по диагонали по Y
 
     // Дополнительные свойства из ТЗ
     private Color color;
-    private int specialAbility;
+    private int specialAbility;  // Битовое поле специальных способностей
     private boolean isInvisible;
-    private int restTurns; // Для огра
+    private int restTurns; // Для огра - счетчик отдыха после атаки
 
     // Битовые маски способностей
     public static final int ABILITY_VAMPIRE_DRAIN = 1;    // Вампир: поглощает макс. HP
@@ -62,6 +62,7 @@ public class Enemy {
         this(' ', 0, 0, 0, 0, 0, Color.WHITE, 0);
     }
 
+    // Геттеры и сеттеры для основных свойств
     public char getType() {
         return type;
     }
@@ -82,49 +83,13 @@ public class Enemy {
         return agility;
     }
 
-//    public void setAgility(int agility) {
-//        this.agility = agility;
-//    }
-//
-//    public int getSpeed() {
-//        return speed;
-//    }
-//
-//    public void setSpeed(int speed) {
-//        this.speed = speed;
-//    }
-
     public int getStrength() {
         return strength;
     }
 
-//    public void setStrength(int strength) {
-//        this.strength = strength;
-//    }
-
     public int getHostility() {
         return hostility;
     }
-
-//    public void setHostility(int hostility) {
-//        this.hostility = hostility;
-//    }
-//
-//    public Color getColor() {
-//        return color;
-//    }
-//
-//    public void setColor(Color color) {
-//        this.color = color;
-//    }
-//
-//    public int getSpecialAbility() {
-//        return specialAbility;
-//    }
-//
-//    public void setSpecialAbility(int specialAbility) {
-//        this.specialAbility = specialAbility;
-//    }
 
     public boolean isInvisible() {
         return isInvisible;
@@ -142,6 +107,7 @@ public class Enemy {
         this.restTurns = restTurns;
     }
 
+    // Геттеры и сеттеры для координат и направления движения
     public int getX() {
         return x;
     }
@@ -174,11 +140,19 @@ public class Enemy {
         this.diagY = diagY;
     }
 
-    // Проверка, есть ли у врага определённая способность
+    /**
+     * Проверяет, есть ли у врача определённая способность
+     * @param abilityMask битовая маска способности
+     * @return true если способность присутствует
+     */
     public boolean hasAbility(int abilityMask) {
         return (specialAbility & abilityMask) == abilityMask;
     }
 
+    /**
+     * Удаляет способность у врага
+     * @param abilityMask битовая маска способности для удаления
+     */
     public void removeAbility(int abilityMask) {
         specialAbility &= ~abilityMask;
     }

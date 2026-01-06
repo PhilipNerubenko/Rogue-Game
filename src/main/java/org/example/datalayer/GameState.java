@@ -1,11 +1,10 @@
 package org.example.datalayer;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.example.domain.entity.*;
+import org.example.domain.entity.Enemy;
+import org.example.domain.entity.Item;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
-import org.example.domain.service.LevelGenerator;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -13,7 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Класс для хранения полного состояния игры для сериализации/десериализации
+ * Класс для хранения полного состояния игры для сериализации/десериализации.
+ * Содержит все необходимые данные для сохранения и загрузки игры.
  */
 public class GameState {
 
@@ -35,11 +35,17 @@ public class GameState {
     @JsonProperty("fog_of_war")
     private FogOfWarState fogOfWarState;
 
-    // Конструкторы
+    /**
+     * Конструктор по умолчанию. Устанавливает текущую дату и время как timestamp.
+     */
     public GameState() {
         this.timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
+    /**
+     * Конструктор с заданным timestamp.
+     * @param timestamp строка с временной меткой сохранения
+     */
     public GameState(String timestamp) {
         this.timestamp = timestamp;
     }
@@ -85,12 +91,18 @@ public class GameState {
         this.gameSessionState = gameSessionState;
     }
 
-    public FogOfWarState getFogOfWarState() { return fogOfWarState; }
+    public FogOfWarState getFogOfWarState() {
+        return fogOfWarState;
+    }
 
-    public void setFogOfWarState(FogOfWarState fogOfWarState) { this.fogOfWarState = fogOfWarState; }
+    public void setFogOfWarState(FogOfWarState fogOfWarState) {
+        this.fogOfWarState = fogOfWarState;
+    }
 
-    // Вложенные классы для организации данных
-
+    /**
+     * Вложенный класс для хранения состояния игрока.
+     * Содержит все характеристики, позицию и инвентарь игрока.
+     */
     public static class PlayerState {
         @JsonProperty("max_health")
         private int maxHealth;
@@ -119,7 +131,9 @@ public class GameState {
         @JsonProperty("equipped_weapon")
         private Item equippedWeapon;
 
-        // Конструктор по умолчанию
+        /**
+         * Конструктор. Инициализирует пустой инвентарь.
+         */
         public PlayerState() {
             this.inventoryItems = new ArrayList<>();
         }
@@ -198,6 +212,10 @@ public class GameState {
         }
     }
 
+    /**
+     * Вложенный класс для хранения состояния уровня.
+     * Содержит карту, предметы, врагов и информацию о комнатах.
+     */
     public static class LevelState {
         @JsonProperty("level_number")
         private int levelNumber;
@@ -211,11 +229,12 @@ public class GameState {
         @JsonProperty("enemies")
         private List<Enemy> enemies;
 
-        // Добавляем поле для комнат
         @JsonProperty("rooms")
-        private List<org.example.domain.model.Room> rooms;
+        private List<Room> rooms;
 
-        // Конструктор по умолчанию
+        /**
+         * Конструктор. Инициализирует пустые коллекции.
+         */
         public LevelState() {
             this.items = new ArrayList<>();
             this.enemies = new ArrayList<>();
@@ -255,22 +274,22 @@ public class GameState {
             this.enemies = enemies;
         }
 
-        // Геттер и сеттер для комнат
-        public List<org.example.domain.model.Room> getRooms() {
+        public List<Room> getRooms() {
             return rooms;
         }
 
-        public void setRooms(List<org.example.domain.model.Room> rooms) {
+        public void setRooms(List<Room> rooms) {
             this.rooms = rooms;
         }
     }
 
+    /**
+     * Вложенный класс для хранения состояния игровой сессии.
+     * Содержит текущую карту, отображаемую игроку.
+     */
     public static class GameSessionState {
         @JsonProperty("current_map")
         private char[][] currentMap;
-
-        // Конструктор по умолчанию
-        public GameSessionState() {}
 
         public char[][] getCurrentMap() {
             return currentMap;
@@ -281,6 +300,10 @@ public class GameState {
         }
     }
 
+    /**
+     * Вложенный класс для хранения состояния "тумана войны".
+     * Отслеживает исследованные клетки и комнаты.
+     */
     public static class FogOfWarState {
         @JsonProperty("explored_cells")
         private List<Position> exploredCells;
@@ -288,16 +311,29 @@ public class GameState {
         @JsonProperty("explored_rooms")
         private List<Room> exploredRooms;
 
+        /**
+         * Конструктор. Инициализирует пустые коллекции исследованных областей.
+         */
         public FogOfWarState() {
             this.exploredCells = new ArrayList<>();
             this.exploredRooms = new ArrayList<>();
         }
 
         // Геттеры и сеттеры
-        public List<Position> getExploredCells() { return exploredCells; }
-        public void setExploredCells(List<Position> exploredCells) { this.exploredCells = exploredCells; }
+        public List<Position> getExploredCells() {
+            return exploredCells;
+        }
 
-        public List<Room> getExploredRooms() { return exploredRooms; }
-        public void setExploredRooms(List<Room> exploredRooms) { this.exploredRooms = exploredRooms; }
+        public void setExploredCells(List<Position> exploredCells) {
+            this.exploredCells = exploredCells;
+        }
+
+        public List<Room> getExploredRooms() {
+            return exploredRooms;
+        }
+
+        public void setExploredRooms(List<Room> exploredRooms) {
+            this.exploredRooms = exploredRooms;
+        }
     }
 }

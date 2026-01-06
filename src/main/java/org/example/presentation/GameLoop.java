@@ -33,7 +33,6 @@ public class GameLoop {
     // Сервисы бизнес-логики
     private final CombatService combatService;
     private final EnemyAIService enemyAIService;
-    private final MovementService movementService;
     private final FogOfWarService fogOfWarService;
     private final LevelGenerator levelGenerator;
     private char[][] asciiMap;
@@ -54,8 +53,6 @@ public class GameLoop {
     // Статистика текущей сессии
     private SessionStat currentSessionStat;
 
-    // Флаг загрузки игры
-    private boolean isLoadingGame = false;
 
     public GameLoop(GameInitializer initializer) {
         this.session = initializer.getSession();
@@ -63,7 +60,6 @@ public class GameLoop {
         this.renderer = initializer.getRenderer();
         this.combatService = initializer.getCombatService();
         this.enemyAIService = initializer.getEnemyAIService();
-        this.movementService = initializer.getMovementService();
         this.fogOfWarService = initializer.getFogOfWarService();
         this.levelGenerator = initializer.getLevelGenerator();
         this.asciiMap = new char[GameConstants.Map.HEIGHT][GameConstants.Map.WIDTH];
@@ -199,8 +195,6 @@ public class GameLoop {
      * Помечает всю карту как исследованную при загрузке игры
      */
     private void restoreLoadedGame() {
-//        System.out.println("=== GAMELOOP: RESTORING LOADED GAME ===");
-
         // Проверка на null
         if (session.getCurrentMap() == null) {
             System.err.println("[GameLoop] ERROR: Saved map is null!");
@@ -216,29 +210,22 @@ public class GameLoop {
         // Копируем карту из сессии
         asciiMap = session.getCurrentMap();
 
-//        System.out.println("[GameLoop] Map dimensions: " + asciiMap.length + "x" +
-//                (asciiMap.length > 0 ? asciiMap[0].length : 0));
-
         // Восстанавливаем LevelGenerator
         if (session.getRooms() != null) {
-//            System.out.println("[GameLoop] Restoring LevelGenerator with " + session.getRooms().size() + " rooms");
             levelGenerator.restoreFromGameState(
                     asciiMap,
                     session.getRooms(),
                     session.getCurrentLevelItems()
             );
-        } else {
-//            System.out.println("[GameLoop] WARNING: No rooms in session!");
         }
 
         // Устанавливаем позицию игрока
         Position playerPos = session.getPlayer().getPosition();
         if (playerPos == null) {
-//            System.err.println("[GameLoop] ERROR: Player position is null!");
             try {
                 generateNewLevel();
             } catch (IOException e) {
-//                System.err.println("[GameLoop] ERROR generating new level: " + e.getMessage());
+                System.err.println("[GameLoop] ERROR generating new level: " + e.getMessage());
                 e.printStackTrace();
             }
             return;
@@ -246,8 +233,6 @@ public class GameLoop {
 
         playerX = playerPos.getX();
         playerY = playerPos.getY();
-
-//        System.out.println("[GameLoop] Player position from save: (" + playerX + ", " + playerY + ")");
 
         // Проверяем границы позиции
         if (playerY < 0 || playerY >= asciiMap.length ||
@@ -259,46 +244,12 @@ public class GameLoop {
         }
 
         symbolUnderPlayer = asciiMap[playerY][playerX];
-//        System.out.println("[GameLoop] Symbol under player: '" + symbolUnderPlayer + "'");
-
-        // ТЕСТ: Проверяем состояние до обновления тумана
-//        System.out.println("[GameLoop] Before fog update:");
-//        System.out.println("[GameLoop]   Explored cells in fog service: " +
-//                fogOfWarService.getAllExploredCells().size());
-//        System.out.println("[GameLoop]   Explored rooms in fog service: " +
-//                fogOfWarService.getAllExploredRooms().size());
 
         // Обновляем туман войны для загруженной игры
         fogOfWarService.updateForLoadedGame(playerPos, asciiMap);
 
-        // Проверяем состояние после обновления
-//        System.out.println("[GameLoop] After fog update:");
-//        System.out.println("[GameLoop]   Explored cells: " +
-//                fogOfWarService.getAllExploredCells().size());
-//        System.out.println("[GameLoop]   Current visible cells: " +
-//                fogOfWarService.getCurrentVisibleCells().size());
-
-        // Проверяем конкретные клетки
-//        System.out.println("[GameLoop] Testing specific cells:");
-
-        // Клетки вокруг игрока
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dy = -2; dy <= 2; dy++) {
-                int testX = playerX + dx;
-                int testY = playerY + dy;
-                if (testX >= 0 && testX < asciiMap[0].length &&
-                        testY >= 0 && testY < asciiMap.length) {
-                    boolean explored = fogOfWarService.isExplored(testX, testY);
-                    boolean visible = fogOfWarService.isVisible(testX, testY);
-//                    System.out.println("[GameLoop]   Cell (" + testX + "," + testY + "): " +
-//                            "explored=" + explored + ", visible=" + visible);
-                }
-            }
-        }
-
         // Принудительно добавляем стартовую комнату в исследованные (на случай если сохранение пустое)
         if (fogOfWarService.getAllExploredCells().size() == 0) {
-//            System.out.println("[GameLoop] WARNING: No explored cells found! Forcing exploration of start room...");
             if (session.getRooms() != null && !session.getRooms().isEmpty()) {
                 Room startRoom = session.getRooms().get(0);
                 for (int x = startRoom.getX1(); x <= startRoom.getX2(); x++) {
@@ -306,41 +257,16 @@ public class GameLoop {
                         fogOfWarService.markCellAsExplored(x, y);
                     }
                 }
-//                System.out.println("[GameLoop] Added " +
-//                        ((startRoom.getX2() - startRoom.getX1() + 1) *
-//                                (startRoom.getY2() - startRoom.getY1() + 1)) +
-//                        " cells from start room");
             }
         }
 
         activeMessageLine1 = "Loaded game - Level " + session.getLevelNum();
         messageTimer = MESSAGE_DURATION;
-
-//        System.out.println("=== GAMELOOP: RESTORE COMPLETE ===\n");
-    }
-
-    private void testCellVisibility() {
-//        System.out.println("[GameLoop] Testing cell visibility:");
-
-        // Проверяем несколько случайных клеток
-        Random rand = new Random();
-        for (int i = 0; i < 5; i++) {
-            int x = rand.nextInt(asciiMap[0].length);
-            int y = rand.nextInt(asciiMap.length);
-
-            boolean explored = fogOfWarService.isExplored(x, y);
-            boolean currentVisible = fogOfWarService.getCurrentVisibleCells()
-                    .contains(new Position(x, y));
-
-//            System.out.println("[GameLoop]   Cell (" + x + "," + y + "): " +
-//                    "explored=" + explored + ", currentVisible=" + currentVisible);
-        }
     }
 
     private void initPresentation() {
         sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
             renderer.shutdown();
-//            System.out.println(TERMINATE);
             System.exit(0);
         });
 
@@ -641,14 +567,20 @@ public class GameLoop {
             // Проверяем, есть ли враг
             Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
             if (enemyAtPosition != null) {
-                String message = combatService.attackEnemy(session, enemyAtPosition, currentSessionStat);
+                // Блок try-catch для обработки IOException
+                try {
+                    String message = combatService.attackEnemy(session, enemyAtPosition, currentSessionStat);
+                    activeMessageLine1 = message;
+                    messageTimer = MESSAGE_DURATION;
 
-                activeMessageLine1 = message;
-                messageTimer = MESSAGE_DURATION;
-
-                if (enemyAtPosition.getHealth() <= 0) {
-                    combatService.removeEnemy(session, enemyAtPosition, asciiMap);
-                    currentSessionStat.incrementEnemies();
+                    if (enemyAtPosition.getHealth() <= 0) {
+                        combatService.removeEnemy(session, enemyAtPosition, asciiMap);
+                        currentSessionStat.incrementEnemies();
+                    }
+                } catch (IOException e) {
+                    System.err.println("ERROR updating enemy stats: " + e.getMessage());
+                    activeMessageLine1 = "Error in combat!";
+                    messageTimer = MESSAGE_DURATION;
                 }
             } else if (canMoveTo(newX, newY)) {
 
@@ -673,7 +605,11 @@ public class GameLoop {
 
                         // Обновляем позицию в entity
                         session.getPlayer().move(dir);
-                        currentSessionStat.incrementMoves();
+                        try {
+                            currentSessionStat.incrementMoves();
+                        } catch (IOException e) {
+                            System.err.println("ERROR updating move stats: " + e.getMessage());
+                        }
                         return;
                     }
                 }
@@ -681,7 +617,11 @@ public class GameLoop {
                 // ВТОРОЕ: Проверяем выход
                 if (symbolAtNewPosition == 'E' || symbolAtNewPosition == EXIT) {
                     generateNewLevel();
-                    currentSessionStat.incrementMoves();
+                    try {
+                        currentSessionStat.incrementMoves();
+                    } catch (IOException e) {
+                        System.err.println("ERROR updating move stats: " + e.getMessage());
+                    }
                     return;
                 }
 
@@ -699,7 +639,11 @@ public class GameLoop {
 
                 // Синхронизируем с Player entity
                 session.getPlayer().move(dir);
-                currentSessionStat.incrementMoves();
+                try {
+                    currentSessionStat.incrementMoves();
+                } catch (IOException e) {
+                    System.err.println("ERROR updating move stats: " + e.getMessage());
+                }
             }
         } catch (Exception e) {
             System.err.println("ERROR in handleMovement: " + e.getMessage());
@@ -790,12 +734,16 @@ public class GameLoop {
             }
 
             if (success) {
-                // Обновляем статистику
-                switch (type) {
-                    case FOOD -> safeIncrement(() -> currentSessionStat.incrementFood());
-                    case ELIXIR -> safeIncrement(() -> currentSessionStat.incrementElixirs());
-                    case SCROLL -> safeIncrement(() -> currentSessionStat.incrementScrolls());
-                    default -> {}
+                // Обновляем статистику с обработкой исключений
+                try {
+                    switch (type) {
+                        case FOOD -> currentSessionStat.incrementFood();
+                        case ELIXIR -> currentSessionStat.incrementElixirs();
+                        case SCROLL -> currentSessionStat.incrementScrolls();
+                        default -> {}
+                    }
+                } catch (IOException e) {
+                    System.err.println("Statistics update failed: " + e.getMessage());
                 }
 
                 // Обновляем статус игрока
@@ -1045,7 +993,7 @@ public class GameLoop {
     private String formatItemInfo(Item item) {
         List<String> effects = new ArrayList<>();
 
-        if (item.getHealth() > 0) effects.add("HP.+" + item.getHealth());
+        if (item.getHealth() > 0) effects.add("HP+" + item.getHealth());
         if (item.getMaxHealth() > 0) effects.add("MaxHP+" + item.getMaxHealth());
         if (item.getAgility() > 0) effects.add("AGI+" + item.getAgility());
         if (item.getStrength() > 0) effects.add("STR+" + item.getStrength());
@@ -1145,7 +1093,7 @@ public class GameLoop {
     private String formatItemForSelection(Item item) {
         List<String> effects = new ArrayList<>();
 
-        if (item.getHealth() > 0) effects.add("HP,+" + item.getHealth());
+        if (item.getHealth() > 0) effects.add("HP+" + item.getHealth());
         if (item.getMaxHealth() > 0) effects.add("MaxHP+" + item.getMaxHealth());
         if (item.getAgility() > 0) effects.add("AGI+" + item.getAgility());
         if (item.getStrength() > 0 && !item.getType().equals("weapon")) {
@@ -1169,18 +1117,5 @@ public class GameLoop {
                 session.getLevelNum(),
                 player.getTreasureValue()
         );
-    }
-
-    private void safeIncrement(ThrowingRunnable incrementAction) {
-        try {
-            incrementAction.run();
-        } catch (IOException e) {
-            System.err.println("Statistics update failed: " + e.getMessage());
-        }
-    }
-
-    @FunctionalInterface
-    interface ThrowingRunnable {
-        void run() throws IOException;
     }
 }

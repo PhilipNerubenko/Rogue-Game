@@ -7,43 +7,79 @@ import org.example.domain.model.Position;
 
 import java.util.*;
 
+/**
+ * Генератор уровней для игры.
+ * Создает карту с комнатами, коридорами и предметами.
+ */
 public class LevelGenerator {
+    // Константы генерации карты
     private static final int ROOMS_AT_LEVEL = GameConstants.Map.ROOMS;
-    private static final int MAX_WIDTH_ROOM_SIZE = GameConstants.Map.WIDTH/3-4;
-    private static final int MIN_WIDTH_ROOM_SIZE = MAX_WIDTH_ROOM_SIZE/4;
-    private static final int MAX_HEIGHT_ROOM_SIZE = GameConstants.Map.HEIGHT/3-4;
-    private static final int MIN_HEIGHT_ROOM_SIZE = MAX_HEIGHT_ROOM_SIZE/2+1;
+    private static final int MAX_WIDTH_ROOM_SIZE = GameConstants.Map.WIDTH / 3 - 4;
+    private static final int MIN_WIDTH_ROOM_SIZE = MAX_WIDTH_ROOM_SIZE / 4;
+    private static final int MAX_HEIGHT_ROOM_SIZE = GameConstants.Map.HEIGHT / 3 - 4;
+    private static final int MIN_HEIGHT_ROOM_SIZE = MAX_HEIGHT_ROOM_SIZE / 2 + 1;
+
+    // Основные структуры данных
     private List<Room> rooms;
     private Random rand;
-
-    // НОВЫЕ ПОЛЯ: карта клеток -> комната
-    private final Map<Position, Room> cellToRoomMap = new HashMap<>();
-    // Набор клеток коридоров
-    private final Set<Position> corridorCells = new HashSet<>();
-    // Тип клетки для быстрого доступа
-    private final Map<Position, Character> cellTypeMap = new HashMap<>();
-
     private List<Item> items = new ArrayList<>();
 
+    // Внутренние карты для быстрого доступа
+    private final Map<Position, Room> cellToRoomMap = new HashMap<>();    // Клетка -> комната
+    private final Set<Position> corridorCells = new HashSet<>();          // Клетки коридоров
+    private final Map<Position, Character> cellTypeMap = new HashMap<>(); // Тип клетки (символ)
+
+    /**
+     * Конструктор генератора уровней.
+     */
     public LevelGenerator() {
-        this.rand = new Random();  // Или new Random(seed), если нужен фиксированный seed для воспроизводимости
+        this.rand = new Random();
     }
 
+    /**
+     * Создает ASCII-карту для указанного уровня.
+     * @param levelNumber номер уровня
+     * @return двумерный массив символов, представляющий карту
+     */
     public char[][] createAsciiMap(int levelNumber) {
+        // Инициализация пустой карты
         char[][] asciiMap = new char[GameConstants.Map.HEIGHT][GameConstants.Map.WIDTH];
-        //заполняем пробелами
+        initializeEmptyMap(asciiMap);
+
+        // Генерация и размещение комнат
+        rooms = createRooms(levelNumber);
+        addRoomsOnAsciiMap(asciiMap);
+
+        // Генерация коридоров
+        addCorridorsOnAsciiMap(asciiMap);
+
+        // Генерация и размещение предметов
+        generateAndPlaceItems(asciiMap, levelNumber);
+
+        // Добавление выхода из уровня
+        placeExitOnMap(asciiMap);
+
+        // Обновление внутренних структур
+        rebuildInternalMaps(asciiMap);
+
+        return asciiMap;
+    }
+
+    /**
+     * Инициализирует карту пустыми клетками (пробелами).
+     */
+    private void initializeEmptyMap(char[][] asciiMap) {
         for (int y = 0; y < GameConstants.Map.HEIGHT; y++) {
             for (int x = 0; x < GameConstants.Map.WIDTH; x++) {
                 asciiMap[y][x] = ' ';
             }
         }
+    }
 
-        rooms = new ArrayList<>();
-        rooms = createRooms(levelNumber);
-        addRoomsOnAsciiMap(asciiMap);
-        addCorridorsOnAsciiMap(asciiMap);
-
-        // === ГЕНЕРАЦИЯ И РАЗМЕЩЕНИЕ ПРЕДМЕТОВ ===
+    /**
+     * Генерирует и размещает предметы на карте.
+     */
+    private void generateAndPlaceItems(char[][] asciiMap, int levelNumber) {
         items = ItemGenerator.generateForLevel(levelNumber);
         Random randomItem = new Random();
 
@@ -51,102 +87,142 @@ public class LevelGenerator {
             boolean placed = false;
             int attempts = 0;
 
+            // Пытаемся разместить предмет в случайной позиции внутри комнаты
             while (!placed && attempts < 100) {
                 Room room = rooms.get(randomItem.nextInt(rooms.size()));
                 int rx = room.getX1() + 1 + randomItem.nextInt(room.getWidth() - 2);
                 int ry = room.getY1() + 1 + randomItem.nextInt(room.getHeight() - 2);
 
+                // Размещаем только на свободном полу
                 if (asciiMap[ry][rx] == '.') {
                     item.setPosition(rx, ry);
-
-                    char symbol = switch (item.getType()) {
-                        case "food"     -> ',';
-                        case "elixir"   -> '!';
-                        case "scroll"   -> '?';
-                        case "weapon"   -> ')';
-                        case "treasure" -> '$';
-                        default         -> '*';
-                    };
-
-                    asciiMap[ry][rx] = symbol;
+                    asciiMap[ry][rx] = getItemSymbol(item.getType());
                     placed = true;
                 }
                 attempts++;
             }
         }
+    }
 
-        //добавляем выход если комната isExitRoom
-        for(int i = 0; i < ROOMS_AT_LEVEL; i++){
-            Room curentRoom = rooms.get(i);
-            if (curentRoom.isExitRoom()){
-                asciiMap[curentRoom.getY2() - 2][curentRoom.getX2() -2] = 'E';
+    /**
+     * Возвращает символ для типа предмета.
+     */
+    private char getItemSymbol(String itemType) {
+        return switch (itemType) {
+            case "food" -> ',';
+            case "elixir" -> '!';
+            case "scroll" -> '?';
+            case "weapon" -> ')';
+            case "treasure" -> '$';
+            default -> '*';
+        };
+    }
+
+    /**
+     * Размещает выход из уровня в соответствующей комнате.
+     */
+    private void placeExitOnMap(char[][] asciiMap) {
+        for (Room room : rooms) {
+            if (room.isExitRoom()) {
+                asciiMap[room.getY2() - 2][room.getX2() - 2] = 'E';
             }
         }
-
-        // После генерации карты, заполняем внутренние структуры
-        rebuildInternalMaps(asciiMap);
-
-        return asciiMap;
     }
 
-    public List<Room> getRooms() {
-        return rooms;
-    }
-
-    public Random getRand() {
-        return rand;
-    }
-
+    /**
+     * Создает комнаты для уровня.
+     * @return список комнат
+     */
     private List<Room> createRooms(int levelNumber) {
-        // Генерируем 9 комнат в 3x3 сетке
+        List<Room> rooms = new ArrayList<>();
+
         for (int i = 0; i < ROOMS_AT_LEVEL; i++) {
             Room room = generateRandomRoom(i);
-            if (i == 0) room.setStartRoom(true);                      // Первая комната = старт
-            if (i == ROOMS_AT_LEVEL - 1) room.setExitRoom(true);      // Последняя = выход
+            // Первая комната - стартовая, последняя - с выходом
+            if (i == 0) room.setStartRoom(true);
+            if (i == ROOMS_AT_LEVEL - 1) room.setExitRoom(true);
             rooms.add(room);
         }
         return rooms;
     }
 
+    /**
+     * Генерирует случайную комнату.
+     */
     private Room generateRandomRoom(int index) {
-        int width = MIN_WIDTH_ROOM_SIZE + (int)(Math.random() * (MAX_WIDTH_ROOM_SIZE - MIN_WIDTH_ROOM_SIZE));
-        int height = MIN_HEIGHT_ROOM_SIZE + (int)(Math.random() * (MAX_HEIGHT_ROOM_SIZE - MIN_HEIGHT_ROOM_SIZE));
+        int width = MIN_WIDTH_ROOM_SIZE + rand.nextInt(MAX_WIDTH_ROOM_SIZE - MIN_WIDTH_ROOM_SIZE);
+        int height = MIN_HEIGHT_ROOM_SIZE + rand.nextInt(MAX_HEIGHT_ROOM_SIZE - MIN_HEIGHT_ROOM_SIZE);
 
-        // Позиция в "сетке" 3x3
+        // Распределение комнат в сетке 3x3
         int gridX = (index % 3) * (MAX_WIDTH_ROOM_SIZE + 3);
         int gridY = (index / 3) * (MAX_HEIGHT_ROOM_SIZE + 3);
+
         return new Room(index, new Position(gridX, gridY), width, height);
     }
 
+    /**
+     * Добавляет комнаты на карту.
+     */
     private void addRoomsOnAsciiMap(char[][] asciiMap) {
-        cellToRoomMap.clear(); // Очистка перед генерацией
-        for (int i = 0; i < 9; i++) {
-            Room room = rooms.get(i);
-            // Заполняем границы
-            for (int x = room.getX1(); x <= room.getX2(); x++) {
-                // Верхняя и нижняя стена
-                setCell(asciiMap, x, room.getY1(), '~', room);
-                setCell(asciiMap, x, room.getY2(), '~', room);
-            }
-            for (int y = room.getY1(); y <= room.getY2(); y++) {
-                // Левая и правая стена
-                setCell(asciiMap, room.getX1(), y, '|', room);
-                setCell(asciiMap, room.getX2(), y, '|', room);
-            }
+        cellToRoomMap.clear();
+
+        // Рисуем стены комнат
+        for (Room room : rooms) {
+            drawRoomWalls(asciiMap, room);
         }
 
-        // Заполняем внутренности комнат
-        for (int i = 0; i < 9; i++) {
-            Room room = rooms.get(i);
-            for (int x = room.getX1() + 1; x < room.getX2(); x++) {
-                for (int y = room.getY1() + 1; y < room.getY2(); y++) {
-                    setCell(asciiMap, x, y, '.', room); // Пол
-                }
+        // Заполняем внутренности комнат полом
+        for (Room room : rooms) {
+            fillRoomFloor(asciiMap, room);
+        }
+    }
+
+    /**
+     * Рисует стены комнаты.
+     */
+    private void drawRoomWalls(char[][] asciiMap, Room room) {
+        // Горизонтальные стены
+        for (int x = room.getX1(); x <= room.getX2(); x++) {
+            setCell(asciiMap, x, room.getY1(), '~', room); // Верхняя стена
+            setCell(asciiMap, x, room.getY2(), '~', room); // Нижняя стена
+        }
+
+        // Вертикальные стены
+        for (int y = room.getY1(); y <= room.getY2(); y++) {
+            setCell(asciiMap, room.getX1(), y, '|', room); // Левая стена
+            setCell(asciiMap, room.getX2(), y, '|', room); // Правая стена
+        }
+    }
+
+    /**
+     * Заполняет комнату полом (точками).
+     */
+    private void fillRoomFloor(char[][] asciiMap, Room room) {
+        for (int x = room.getX1() + 1; x < room.getX2(); x++) {
+            for (int y = room.getY1() + 1; y < room.getY2(); y++) {
+                setCell(asciiMap, x, y, '.', room);
             }
         }
     }
 
+    /**
+     * Устанавливает символ в клетке и обновляет внутренние структуры.
+     */
+    private void setCell(char[][] asciiMap, int x, int y, char symbol, Room room) {
+        asciiMap[y][x] = symbol;
+        Position pos = new Position(x, y);
+        cellTypeMap.put(pos, symbol);
+
+        if (room != null) {
+            cellToRoomMap.put(pos, room);
+        }
+    }
+
+    /**
+     * Добавляет коридоры, соединяющие комнаты.
+     */
     private void addCorridorsOnAsciiMap(char[][] asciiMap) {
+        // Соединяем комнаты по сетке 3x3
         for (int yRoom = 0; yRoom < 3; yRoom++) {
             for (int xRoom = 0; xRoom < 3; xRoom++) {
                 if (xRoom < 2) {
@@ -159,116 +235,141 @@ public class LevelGenerator {
         }
     }
 
+    /**
+     * Добавляет горизонтальный коридор между двумя комнатами.
+     */
     private void addHorizontalCorridor(char[][] asciiMap, int xRoom, int yRoom) {
         int first = yRoom * 3 + xRoom;
         int second = first + 1;
-        int xStart = rooms.get(first).getX2();
-        int yStart = rand.nextInt(rooms.get(first).getY2() - rooms.get(first).getY1() - 1) + rooms.get(first).getY1() + 1;
-        int xEnd = rooms.get(second).getX1();
-        int yEnd = rand.nextInt(rooms.get(second).getY2() - rooms.get(second).getY1() - 1) + rooms.get(second).getY1() + 1;
-        int crossLine = rand.nextInt(xEnd - xStart - 1) + xStart + 1;
+
+        Room room1 = rooms.get(first);
+        Room room2 = rooms.get(second);
+
+        // Случайные точки входа/выхода из комнат
+        int xStart = room1.getX2();
+        int yStart = room1.getY1() + 1 + rand.nextInt(room1.getHeight() - 2);
+        int xEnd = room2.getX1();
+        int yEnd = room2.getY1() + 1 + rand.nextInt(room2.getHeight() - 2);
+
+        // Точка излома коридора
+        int crossLine = xStart + 1 + rand.nextInt(xEnd - xStart - 1);
+
+        // Отмечаем входы/выходы
         asciiMap[yStart][xStart] = '+';
         asciiMap[yEnd][xEnd] = '+';
+
+        // Рисуем три сегмента коридора
         addHorizontalLine(asciiMap, xStart + 1, crossLine + 1, yStart);
         addVerticalLine(asciiMap, yStart, yEnd, crossLine);
         addHorizontalLine(asciiMap, crossLine, xEnd, yEnd);
-        // После генерации corridor cells:
-        for (int x = Math.min(xStart, xEnd); x <= Math.max(xStart, xEnd); x++) {
-            for (int y = Math.min(yStart, yEnd); y <= Math.max(yStart, yEnd); y++) {
-                corridorCells.add(new Position(x, y));
-                cellTypeMap.put(new Position(x, y), '#');
-            }
-        }
+
+        // Обновляем структуры данных
+        updateCorridorCells(xStart, xEnd, yStart, yEnd);
     }
 
-    // Вспомогательный метод для установки клетки
-    private void setCell(char[][] asciiMap, int x, int y, char symbol, Room room) {
-        asciiMap[y][x] = symbol;
-        Position pos = new Position(x, y);
-        cellTypeMap.put(pos, symbol);
-        if (room != null) {
-            cellToRoomMap.put(pos, room);
-        }
-    }
-
+    /**
+     * Добавляет вертикальный коридор между двумя комнатами.
+     */
     private void addVerticalCorridor(char[][] asciiMap, int xRoom, int yRoom) {
         int first = yRoom * 3 + xRoom;
         int second = first + 3;
-        int xStart = rand.nextInt(rooms.get(first).getX2() - rooms.get(first).getX1() - 1) + rooms.get(first).getX1() + 1;
-        int yStart = rooms.get(first).getY2();
-        int xEnd = rand.nextInt(rooms.get(second).getX2() - rooms.get(second).getX1() - 1) + rooms.get(second).getX1() + 1;
-        int yEnd = rooms.get(second).getY1();
-        int crossLine = rand.nextInt(yEnd - yStart - 1) + yStart + 1;
+
+        Room room1 = rooms.get(first);
+        Room room2 = rooms.get(second);
+
+        // Случайные точки входа/выхода
+        int xStart = room1.getX1() + 1 + rand.nextInt(room1.getWidth() - 2);
+        int yStart = room1.getY2();
+        int xEnd = room2.getX1() + 1 + rand.nextInt(room2.getWidth() - 2);
+        int yEnd = room2.getY1();
+
+        // Точка излома коридора
+        int crossLine = yStart + 1 + rand.nextInt(yEnd - yStart - 1);
+
+        // Отмечаем входы/выходы
         asciiMap[yStart][xStart] = '+';
         asciiMap[yEnd][xEnd] = '+';
+
+        // Рисуем три сегмента коридора
         addVerticalLine(asciiMap, yStart + 1, crossLine + 1, xStart);
         addHorizontalLine(asciiMap, xStart, xEnd, crossLine);
         addVerticalLine(asciiMap, crossLine, yEnd, xEnd);
     }
 
-    private void addHorizontalLine(char[][] asciiMap, int from, int where, int y) {
-        int start = Math.min(from, where);
-        int end = Math.max(from, where);
+    /**
+     * Обновляет клетки коридоров во внутренних структурах.
+     */
+    private void updateCorridorCells(int x1, int x2, int y1, int y2) {
+        int minX = Math.min(x1, x2);
+        int maxX = Math.max(x1, x2);
+        int minY = Math.min(y1, y2);
+        int maxY = Math.max(y1, y2);
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                Position pos = new Position(x, y);
+                corridorCells.add(pos);
+                cellTypeMap.put(pos, '#');
+            }
+        }
+    }
+
+    /**
+     * Рисует горизонтальную линию символов.
+     */
+    private void addHorizontalLine(char[][] asciiMap, int from, int to, int y) {
+        int start = Math.min(from, to);
+        int end = Math.max(from, to);
+
         for (int x = start; x < end; x++) {
             asciiMap[y][x] = '#';
         }
     }
 
-    private void addVerticalLine(char[][] asciiMap, int from, int where, int x) {
-        int start = Math.min(from, where);
-        int end = Math.max(from, where);
+    /**
+     * Рисует вертикальную линию символов.
+     */
+    private void addVerticalLine(char[][] asciiMap, int from, int to, int x) {
+        int start = Math.min(from, to);
+        int end = Math.max(from, to);
+
         for (int y = start; y < end; y++) {
             asciiMap[y][x] = '#';
         }
     }
 
-    // Методы доступа:
-    public Room getRoomAt(int x, int y) {
-        if (cellToRoomMap == null) {
-            return null;
-        }
-        return cellToRoomMap.get(new Position(x, y));
-    }
-
-    public List<Item> getItems() {
-        return items;
-    }
-
-    // Метод для восстановления состояния из сохранения
+    /**
+     * Восстанавливает состояние из сохраненной игры.
+     */
     public void restoreFromGameState(char[][] savedMap, List<Room> savedRooms, List<Item> savedItems) {
-        if (savedMap == null) {
-            return;
-        }
+        if (savedMap == null) return;
 
-        // Восстанавливаем комнаты
         if (savedRooms != null) {
             this.rooms = new ArrayList<>(savedRooms);
         }
 
-        // Восстанавливаем предметы
         if (savedItems != null) {
             this.items = new ArrayList<>(savedItems);
         }
 
-        // Перестраиваем внутренние структуры на основе сохраненной карты
         rebuildInternalMaps(savedMap);
     }
 
-    // Перестраиваем внутренние структуры на основе карты
+    /**
+     * Перестраивает внутренние структуры данных на основе карты.
+     */
     private void rebuildInternalMaps(char[][] map) {
         cellToRoomMap.clear();
         corridorCells.clear();
         cellTypeMap.clear();
 
-        if (map == null || rooms == null) {
-            return;
-        }
+        if (map == null || rooms == null) return;
 
-        // Заполняем cellTypeMap и находим коридоры
+        // Заполняем карту типов клеток
         for (int y = 0; y < map.length; y++) {
             for (int x = 0; x < map[y].length; x++) {
-                char tile = map[y][x];
                 Position pos = new Position(x, y);
+                char tile = map[y][x];
                 cellTypeMap.put(pos, tile);
 
                 if (tile == '#') {
@@ -277,45 +378,58 @@ public class LevelGenerator {
             }
         }
 
-        // Заполняем cellToRoomMap
+        // Заполняем карту клетка->комната
         for (Room room : rooms) {
             for (int x = room.getX1(); x <= room.getX2(); x++) {
                 for (int y = room.getY1(); y <= room.getY2(); y++) {
-                    Position pos = new Position(x, y);
-                    cellToRoomMap.put(pos, room);
+                    cellToRoomMap.put(new Position(x, y), room);
                 }
             }
         }
 
-        // Также добавляем клетки коридоров в cellToRoomMap (если они примыкают к комнатам)
+        // Привязываем клетки коридоров к ближайшим комнатам
         for (Position corridorPos : corridorCells) {
-            // Проверяем соседние клетки для нахождения ближайшей комнаты
-            int x = corridorPos.getX();
-            int y = corridorPos.getY();
+            assignCorridorToRoom(corridorPos);
+        }
+    }
 
-            // Проверяем все направления
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    if (dx == 0 && dy == 0) continue;
+    /**
+     * Привязывает клетку коридора к ближайшей комнате.
+     */
+    private void assignCorridorToRoom(Position corridorPos) {
+        int x = corridorPos.getX();
+        int y = corridorPos.getY();
 
-                    Position checkPos = new Position(x + dx, y + dy);
-                    Room adjacentRoom = cellToRoomMap.get(checkPos);
-                    if (adjacentRoom != null) {
-                        cellToRoomMap.put(corridorPos, adjacentRoom);
-                        break;
-                    }
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (dx == 0 && dy == 0) continue;
+
+                Position adjacentPos = new Position(x + dx, y + dy);
+                Room adjacentRoom = cellToRoomMap.get(adjacentPos);
+
+                if (adjacentRoom != null) {
+                    cellToRoomMap.put(corridorPos, adjacentRoom);
+                    return;
                 }
             }
         }
     }
 
-    // Геттер для cellTypeMap (может понадобиться для отладки)
-    public Map<Position, Character> getCellTypeMap() {
-        return Collections.unmodifiableMap(cellTypeMap);
+    // ================= ГЕТТЕРЫ =================
+
+    public List<Room> getRooms() {
+        return rooms;
     }
 
-    // Метод для проверки, является ли клетка частью коридора
-    public boolean isCorridor(int x, int y) {
-        return corridorCells.contains(new Position(x, y));
+    public Random getRand() {
+        return rand;
+    }
+
+    public List<Item> getItems() {
+        return items;
+    }
+
+    public Room getRoomAt(int x, int y) {
+        return cellToRoomMap.get(new Position(x, y));
     }
 }

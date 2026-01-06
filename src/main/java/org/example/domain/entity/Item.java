@@ -4,23 +4,33 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * Сущность предмета в игре.
+ * Содержит информацию о типе предмета, его характеристиках и положении на карте.
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Item {
-    private String type;
-    private String subType;
-    private int health;
-    private int maxHealth;
-    private int agility;
-    private int strength;
-    private int value;
+    // Основные характеристики предмета
+    private String type;        // Тип предмета (оружие, сокровище и т.д.)
+    private String subType;     // Подтип (конкретный вид предмета)
+    private int health;         // Влияние на здоровье при использовании
+    private int maxHealth;      // Влияние на максимальное здоровье
+    private int agility;        // Влияние на ловкость
+    private int strength;       // Влияние на силу/урон
+    private int value;          // Ценность предмета (для сокровищ)
 
+    // Координаты на игровой карте (-1 означает отсутствие позиции)
     private int x = -1;
     private int y = -1;
 
-    // КОНСТАНТА для кулаков
+    // Константы
+    /** Базовая сила кулаков (используется когда у персонажа нет оружия) */
     public static final int FISTS_STRENGTH = 3;
 
-    // Конструктор для Jackson
+    /**
+     * Основной конструктор для десериализации JSON.
+     * Используется Jackson для создания объектов из JSON данных.
+     */
     @JsonCreator
     public Item(
             @JsonProperty("type") String type,
@@ -39,32 +49,41 @@ public class Item {
         this.value = value;
     }
 
-    // Конструктор по умолчанию для Jackson
+    /** Конструктор по умолчанию для Jackson */
     public Item() {
         this("", "", 0, 0, 0, 0, 0);
     }
 
-    // ФАБРИЧНЫЙ МЕТОД для создания кулаков
+    /**
+     * Создает предмет "Кулаки".
+     * Используется как оружие по умолчанию, когда у персонажа нет другого оружия.
+     * @return Объект Item, представляющий кулаки
+     */
     public static Item createFists() {
         return new Item(
                 ItemType.WEAPON.name().toLowerCase(), // "weapon"
                 "fists",                              // подтип
-                0, 0, 0,                              // нет эффектов
-                FISTS_STRENGTH,                       // базовый урон 3
+                0, 0, 0,                              // нет бонусов к характеристикам
+                FISTS_STRENGTH,                       // базовый урон
                 0                                     // нет стоимости
         );
     }
 
-    // В конструкторе или фабричных методах:
+    /**
+     * Создает сокровище с указанной ценностью.
+     * @param value Ценность сокровища
+     * @return Объект Item, представляющий сокровище
+     */
     public static Item createTreasure(int value) {
         return new Item(
                 ItemType.TREASURE.name().toLowerCase(), // "treasure"
-                "gold",
-                0, 0, 0, 0, // нет эффектов
-                value
+                "gold",                                // подтип
+                0, 0, 0, 0,                           // нет влияния на характеристики
+                value                                 // ценность сокровища
         );
     }
 
+    // Геттеры и сеттеры
     public String getType() {
         return type;
     }
@@ -123,6 +142,12 @@ public class Item {
 
     public int getX() { return x; }
     public int getY() { return y; }
+
+    /**
+     * Устанавливает позицию предмета на карте.
+     * @param x Координата X
+     * @param y Координата Y
+     */
     public void setPosition(int x, int y) {
         this.x = x;
         this.y = y;

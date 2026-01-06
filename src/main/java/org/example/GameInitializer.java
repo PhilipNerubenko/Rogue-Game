@@ -12,86 +12,129 @@ import org.example.presentation.Renderer;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import static org.example.config.GameConstants.Map.MAP_LEVEL;
-
-
+/**
+ * Класс-инициализатор игры. Отвечает за создание и настройку всех компонентов игровой сессии.
+ * Следует паттерну "Фабрика" или "Строитель" для инициализации сложного объекта GameSession.
+ */
 public class GameInitializer {
-    private GameSession session;
-    private Renderer renderer;
-    private InputHandler inputHandler;
-    private CombatService combatService;
-    private EnemyAIService enemyAIService;
-    private MovementService movementService;
-    private FogOfWarService fogOfWarService;
-    private LevelGenerator levelGenerator;
+    // Основные компоненты игровой сессии
+    private final GameSession session;
+    private final Renderer renderer;
+    private final InputHandler inputHandler;
 
-    // Упрощенный конструктор для основного использования
+    // Сервисы игровых механик
+    private final CombatService combatService;
+    private final EnemyAIService enemyAIService;
+    private final FogOfWarService fogOfWarService;
+    private final LevelGenerator levelGenerator;
+
+    /**
+     * Конструктор по умолчанию. Инициализирует все компоненты игры.
+     * Выполняет настройку зависимостей между сервисами.
+     */
     public GameInitializer() {
-//        System.out.println("[GameInitializer] Initializing...");
-
+        // Создание основных объектов игры
         this.session = new GameSession();
-        this.renderer = new JCursesRenderer();
+        this.renderer = new JCursesRenderer(); // Реализация рендерера на основе JCurses
         this.inputHandler = new InputHandler();
+
+        // Инициализация игровых сервисов
         this.combatService = new CombatService();
         this.enemyAIService = new EnemyAIService();
-        this.movementService = new MovementService();
         this.levelGenerator = new LevelGenerator();
+
+        // FogOfWarService зависит от LevelGenerator для работы с картой
         this.fogOfWarService = new FogOfWarService(levelGenerator);
 
-//        System.out.println("[GameInitializer] All components created");
-//        System.out.println("[GameInitializer] FogOfWarService: " + (fogOfWarService != null));
-
-        // КРИТИЧЕСКИ ВАЖНО: Устанавливаем fogOfWarService в AutosaveService
-        if (this.inputHandler != null) {
-            try {
-                // Получаем доступ к autosaveService через reflection или сеттер
-                java.lang.reflect.Field autosaveField = InputHandler.class.getDeclaredField("autosaveService");
-                autosaveField.setAccessible(true);
-                AutosaveService autosaveService = (AutosaveService) autosaveField.get(this.inputHandler);
-
-                if (autosaveService != null) {
-                    autosaveService.setFogOfWarService(this.fogOfWarService);
-//                    System.out.println("[GameInitializer] FogOfWarService set in AutosaveService");
-                } else {
-//                    System.err.println("[GameInitializer] ERROR: AutosaveService is null!");
-                }
-            } catch (Exception e) {
-                System.err.println("[GameInitializer] ERROR: Failed to set FogOfWarService in AutosaveService: " + e.getMessage());
-            }
-        }
-
-//        System.out.println("[GameInitializer] Initialization complete\n");
+        // Настройка дополнительных сервисов (автосохранение)
+        configureAutosaveService();
     }
 
-    public void initializeNewGame(SessionStat sessionStat) throws IOException{
-        // 1. Создаем игрока (позиция игрока будет записана в в GameLoop)
-        Player player =  new Player();
-        session.setPlayer(player);
+    /**
+     * Настраивает AutosaveService с помощью рефлексии.
+     * Приватный метод, который инъектирует зависимость FogOfWarService в AutosaveService.
+     * Использует рефлексию для доступа к приватному полю, что может быть необходимо
+     * для интеграции с существующей архитектурой.
+     */
+    private void configureAutosaveService() {
+        try {
+            // Получаем доступ к приватному полю autosaveService в классе InputHandler
+            var autosaveField = InputHandler.class.getDeclaredField("autosaveService");
+            autosaveField.setAccessible(true); // Разрешаем доступ к приватному полю
 
-        // 2. Устанавливаем начальный уровень = 1
+            // Получаем экземпляр AutosaveService из InputHandler
+            var autosaveService = (AutosaveService) autosaveField.get(inputHandler);
+
+            // Если сервис существует, настраиваем его
+            if (autosaveService != null) {
+                autosaveService.setFogOfWarService(fogOfWarService);
+            }
+        } catch (Exception e) {
+            // Логируем ошибку, но не прерываем выполнение, так как автосохранение - вторичная функция
+            System.err.println("Failed to configure AutosaveService: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Инициализирует новую игровую сессию с нуля.
+     * Сбрасывает все состояния и создает нового игрока.
+     *
+     * @param sessionStat объект для хранения статистики сессии
+     * @throws IOException если возникли ошибки ввода-вывода при инициализации
+     */
+    public void initializeNewGame(SessionStat sessionStat) throws IOException {
+        // Создание и настройка игрока
+        session.setPlayer(new Player());
+
+        // Установка начального уровня
         session.setLevelNum(1);
 
-        // 3. Инициализируем пустые списки
+        // Инициализация пустых списков врагов и предметов
         session.setEnemies(new ArrayList<>());
         session.setCurrentLevelItems(new ArrayList<>());
 
-        // 4. Карта будет создана позже в GameLoop
+        // Сброс текущей карты (будет сгенерирована позже)
         session.setCurrentMap(null);
 
-        // 5. Сбрасываем статистику
+        // Сброс статистики до начальных значений
         Statistics.resetStatistics(sessionStat);
-
     }
 
-    // Геттеры для всех компонентов
+    // ==================== ГЕТТЕРЫ ====================
+    // Предоставляют доступ к компонентам игры извне
+
+    /**
+     * @return текущая игровая сессия
+     */
     public GameSession getSession() { return session; }
+
+    /**
+     * @return рендерер для отображения игры
+     */
     public Renderer getRenderer() { return renderer; }
+
+    /**
+     * @return обработчик пользовательского ввода
+     */
     public InputHandler getInputHandler() { return inputHandler; }
+
+    /**
+     * @return сервис боевой системы
+     */
     public CombatService getCombatService() { return combatService; }
+
+    /**
+     * @return ИИ для управления врагами
+     */
     public EnemyAIService getEnemyAIService() { return enemyAIService; }
-    public MovementService getMovementService() { return movementService; }
+
+    /**
+     * @return сервис "тумана войны" (ограниченной видимости)
+     */
     public FogOfWarService getFogOfWarService() { return fogOfWarService; }
+
+    /**
+     * @return генератор уровней/карт
+     */
     public LevelGenerator getLevelGenerator() { return levelGenerator; }
-
-
 }
