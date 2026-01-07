@@ -1,11 +1,11 @@
 {
   "treasures" : 0,
-  "levelNum" : 3,
-  "enemies" : 4,
+  "levelNum" : 21,
+  "enemies" : 8,
   "food" : 4,
   "elixirs" : 2,
   "scrolls" : 1,
-  "attacks" : 9,
-  "missed" : 9,
-  "moves" : 418
+  "attacks" : 14,
+  "missed" : 8,
+  "moves" : 888
 }

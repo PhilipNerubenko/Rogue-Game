@@ -284,6 +284,11 @@ public class GameLoop {
     private void handleVictory() throws IOException {
         renderer.drawMessage(DEATH_MESSAGE_Y, VICTORY, CharColor.GREEN);
         // Передаем gameSession в updateScoreBoard
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         Statistics.updateScoreBoard(session, currentSessionStat);
     }
 

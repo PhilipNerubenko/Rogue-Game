@@ -3,6 +3,7 @@ package org.example;
 import jcurses.system.CharColor;
 import jcurses.system.InputChar;
 import jcurses.system.Toolkit;
+import org.example.config.GameConstants;
 import org.example.datalayer.SessionStat;
 import org.example.domain.model.Position;
 import org.example.domain.service.FogOfWarService;
@@ -154,7 +155,7 @@ public class App {
         });
 
         System.out.print(HIDE_CURSOR);
-        System.out.print("\033[8;40;120t");
+        System.out.print("\033[8;"+GameConstants.Map.TERMINAL_HEIGHT+";"+GameConstants.Map.TERMINAL_WIDTH+"t");
         System.out.flush();
     }
 }
