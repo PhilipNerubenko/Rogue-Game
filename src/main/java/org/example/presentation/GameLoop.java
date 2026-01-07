@@ -277,12 +277,14 @@ public class GameLoop {
 
     private void handleDeath() throws IOException {
         renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
-        Statistics.updateScoreBoard(currentSessionStat);
+        // Передаем gameSession в updateScoreBoard
+        Statistics.updateScoreBoard(session, currentSessionStat);
     }
 
     private void handleVictory() throws IOException {
         renderer.drawMessage(DEATH_MESSAGE_Y, VICTORY, CharColor.GREEN);
-        Statistics.updateScoreBoard(currentSessionStat);
+        // Передаем gameSession в updateScoreBoard
+        Statistics.updateScoreBoard(session, currentSessionStat);
     }
 
     private boolean canMoveTo(int x, int y) {

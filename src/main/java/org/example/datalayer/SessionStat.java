@@ -1,20 +1,38 @@
 package org.example.datalayer;
 
 import java.io.IOException;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Класс для хранения и управления статистикой игровой сессии.
  * Реализует Comparable для сравнения статистик (например, для таблицы рекордов).
  */
 public class SessionStat implements Comparable<SessionStat> {
+    @JsonProperty("treasures")
     private int treasures;   // Количество найденных сокровищ
+
+    @JsonProperty("levelNum")
     private int levelNum;    // Текущий номер уровня
+
+    @JsonProperty("enemies")
     private int enemies;     // Количество побежденных врагов
+
+    @JsonProperty("food")
     private int food;        // Количество съеденной еды
+
+    @JsonProperty("elixirs")
     private int elixirs;     // Количество использованных эликсиров
+
+    @JsonProperty("scrolls")
     private int scrolls;     // Количество использованных свитков
+
+    @JsonProperty("attacks")
     private int attacks;     // Количество атак
+
+    @JsonProperty("missed")
     private int missed;      // Количество промахов
+
+    @JsonProperty("moves")
     private int moves;       // Количество ходов
 
     /**
