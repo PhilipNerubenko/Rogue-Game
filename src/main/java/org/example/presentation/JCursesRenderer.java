@@ -15,6 +15,7 @@ import org.example.domain.service.LevelGenerator;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -89,7 +90,7 @@ public class JCursesRenderer implements Renderer {
 
                 if (!isExplored) {
                     // Не исследовано - черная клетка
-                    drawChar(x, y, ' ', COLOR_BLACK);
+                    drawChar(x, y, 'b', COLOR_WHITE);
                 } else if (isCurrentlyVisible) {
                     // Видно сейчас - яркие цвета
                     short color = getBrightTileColor(tile);
@@ -238,7 +239,7 @@ public class JCursesRenderer implements Renderer {
                 "HP: %d/%d | Position: %d,%d | Level: %d | Treasures: %d",
                 playerHealth, maxHealth, pX, pY, level, treasures
         );
-        drawString(3, GameConstants.Map.HEIGHT + 2, status, COLOR_CYAN);
+        drawString(3, GameConstants.Map.HEIGHT + 5, status, COLOR_CYAN);
     }
 
     /**
@@ -274,7 +275,7 @@ public class JCursesRenderer implements Renderer {
     public void drawMessage(int line, String message, int color) {
         clearLine(line);
         short safeColor = (short) Math.max(COLOR_BLACK, Math.min(color, COLOR_WHITE));
-        drawString(3, line, message, safeColor);
+        drawString(3, line, "> " + message, safeColor);
     }
 
     /**
@@ -321,123 +322,143 @@ public class JCursesRenderer implements Renderer {
         Toolkit.printString(">>>", shiftX + 24, optionRow, pointerColor);
     }
 
-    /**
-     * Отрисовывает таблицу рекордов.
-     */
     @Override
     public void drawScoreboard() {
         clearScreen();
 
         List<SessionStat> stats = loadScoreboardStats();
-        if (stats == null) {
-            return; // Ошибка уже обработана в loadScoreboardStats()
+
+        if (stats.isEmpty()) {
+            drawString(5, 10, "Scoreboard is empty or file not found", CharColor.YELLOW);
+            drawString(5, 11, "Play a game first to create it", CharColor.WHITE);
+            drawString(5, 13, "Press any key to return...", CharColor.YELLOW);
+            refresh();
+            Toolkit.readCharacter();
+            return;
         }
 
-        String[] headers = {"treasures", "level", "enemies", "food", "elixirs", "scrolls", "attacks", "missed", "moves"};
-        int startX = 0;
-        int startY = 1;
-        int columnCount = headers.length;
+        drawTable(stats);
 
-        // Формирование границ таблицы
-        String border = "-".repeat(10 * columnCount + (columnCount + 1));
-        String separatorTemplate = "|" + "         |".repeat(columnCount);
-
-        int currentY = startY;
-
-        // Заголовок таблицы
-        drawString(startX, currentY++, border, COLOR_WHITE);
-
-        StringBuilder headerLine = new StringBuilder("|");
-        for (String header : headers) {
-            headerLine.append(String.format("%-9s", header)).append("|");
-        }
-        drawString(startX, currentY++, headerLine.toString(), COLOR_WHITE);
-        drawString(startX, currentY++, border, COLOR_WHITE);
-
-        // Данные таблицы (максимум 10 записей)
-        for (int i = 0; i < Math.min(stats.size(), 10); i++) {
-            SessionStat stat = stats.get(i);
-
-            drawString(startX, currentY, separatorTemplate, COLOR_WHITE);
-
-            // Отображение данных с выравниванием
-            int dataX = startX + 1;
-            drawString(dataX + 0, currentY, String.format("%9d", stat.getTreasures()), COLOR_CYAN);
-            drawString(dataX + 10, currentY, String.format("%9d", stat.getLevelNum()), COLOR_CYAN);
-            drawString(dataX + 20, currentY, String.format("%9d", stat.getEnemies()), COLOR_CYAN);
-            drawString(dataX + 30, currentY, String.format("%9d", stat.getFood()), COLOR_CYAN);
-            drawString(dataX + 40, currentY, String.format("%9d", stat.getElixirs()), COLOR_CYAN);
-            drawString(dataX + 50, currentY, String.format("%9d", stat.getScrolls()), COLOR_CYAN);
-            drawString(dataX + 60, currentY, String.format("%9d", stat.getAttacks()), COLOR_CYAN);
-            drawString(dataX + 70, currentY, String.format("%9d", stat.getMissed()), COLOR_CYAN);
-            drawString(dataX + 80, currentY, String.format("%9d", stat.getMoves()), COLOR_CYAN);
-
-            currentY++;
-            drawString(startX, currentY++, border, COLOR_WHITE);
-        }
-
-        // Инструкция для возврата
-        String message = "Press ESC to return...";
-        int messageX = startX + (border.length() - message.length()) / 2;
-        drawString(messageX, currentY + 1, message, COLOR_YELLOW);
+        Toolkit.readCharacter();
 
         refresh();
     }
 
-    /**
-     * Загружает статистику из файла scoreboard.
-     *
-     * @return список статистик или null при ошибке
-     */
-    private List<SessionStat> loadScoreboardStats() {
-        ObjectMapper mapper = new ObjectMapper();
-        File file = new File(SCOREBOARD_PATH);
+    private void drawTable(List<SessionStat> stats) {
+        // Получаем размеры терминала
+        int screenWidth = Toolkit.getScreenWidth();
+        int screenHeight = Toolkit.getScreenHeight();
 
-        // Проверка существования файла
-        if (!file.exists()) {
-            showFileNotFoundMessage();
-            return List.of();
+        String[] headers = {
+                "treasures", "level", "enemies", "food",
+                "elixirs", "scrolls", "attacks", "missed", "moves"
+        };
+
+        int cellWidth = 10;
+        int tableWidth = headers.length * (cellWidth + 1) + 1; // 9*(10+1)+1 = 100
+
+        // Вычисляем высоту таблицы
+        int tableRows = Math.min(stats.size(), 10);
+        int tableHeight = 3 + tableRows * 2; // 3 строки заголовков + 2 строки на каждую запись
+
+        // Добавляем место для заголовка (1 строка + 1 пустая строка)
+        int titleBlockHeight = 2; // заголовок + отступ
+        int totalBlockHeight = titleBlockHeight + tableHeight;
+
+        // Вычисляем начальные координаты для центрирования
+        int startX = (screenWidth - tableWidth) / 2 - MAP_OFFSET_X;
+        int startY = (screenHeight - totalBlockHeight) / 2 - MAP_OFFSET_Y;
+
+        // Защита от отрицательных значений
+        if (startX < 0) startX = 0;
+        if (startY < 0) startY = 0;
+
+        // Отрисовка заголовка
+        String title = "SCOREBOARD";
+        int titleX = startX + (tableWidth - title.length()) / 2;
+        drawString(titleX, startY, title, CharColor.YELLOW);
+
+        // Пустая строка после заголовка
+        int currentY = startY + 2;
+
+        // Граница таблицы
+        String border = "+" + "-".repeat(tableWidth - 2) + "+";
+
+        // Верхняя граница
+        drawString(startX, currentY++, border, CharColor.WHITE);
+
+        // Заголовок (левое выравнивание, 10 символов)
+        StringBuilder headerLine = new StringBuilder("|");
+        for (String header : headers) {
+            headerLine.append(String.format("%-10s", header)).append("|");
+        }
+        drawString(startX, currentY++, headerLine.toString(), CharColor.WHITE);
+
+        // Граница под заголовком
+        drawString(startX, currentY++, border, CharColor.WHITE);
+
+        // Данные
+        for (int i = 0; i < tableRows; i++) {
+            SessionStat s = stats.get(i);
+
+            // Рисуем строку с данными
+            String dataLine = "|" + String.format("%10d|", s.getTreasures()) +
+                    String.format("%10d|", s.getLevelNum()) +
+                    String.format("%10d|", s.getEnemies()) +
+                    String.format("%10d|", s.getFood()) +
+                    String.format("%10d|", s.getElixirs()) +
+                    String.format("%10d|", s.getScrolls()) +
+                    String.format("%10d|", s.getAttacks()) +
+                    String.format("%10d|", s.getMissed()) +
+                    String.format("%10d|", s.getMoves());
+            drawString(startX, currentY++, dataLine, CharColor.WHITE);
+
+            // Граница под строкой
+            drawString(startX, currentY++, border, CharColor.WHITE);
         }
 
+        // Сообщение (центрировано по экрану)
+        String message = "Press any key to return...";
+        int messageX = (screenWidth - message.length()) / 2 - MAP_OFFSET_X;
+        // Если messageX отрицательный, устанавливаем в 0
+        if (messageX < 0) messageX = 0;
+
+        drawString(messageX, currentY + 1, message, CharColor.YELLOW);
+    }
+
+    private List<SessionStat> loadScoreboardStats() {
+        List<SessionStat> stats = new ArrayList<>();
+        ObjectMapper mapper = new ObjectMapper();
+
         try {
+            File file = new File(SCOREBOARD_PATH);
+            if (!file.exists()) {
+                return stats;
+            }
+
             JsonNode root = mapper.readTree(file);
             JsonNode sessionNode = root.get("sessionStats");
 
             if (sessionNode != null && sessionNode.isArray()) {
                 SessionStat[] statArray = mapper.treeToValue(sessionNode, SessionStat[].class);
-                return Arrays.asList(statArray);
+                stats = Arrays.asList(statArray);
             }
-            return List.of();
-
         } catch (IOException e) {
-            showFileLoadError(e);
-            return null;
+            System.err.println("Error loading scoreboard from: " + SCOREBOARD_PATH);
+            e.printStackTrace();
+
+            // Очищаем экран и показываем сообщение об ошибке
+            clearScreen();
+            drawString(5, 10, "Error loading scoreboard!", CharColor.RED);
+            drawString(5, 11, "File: " + SCOREBOARD_PATH, CharColor.RED);
+            drawString(5, 13, "Press any key to continue...", CharColor.YELLOW);
+            refresh();
+            Toolkit.readCharacter();
+
+            return new ArrayList<>();
         }
-    }
 
-    /**
-     * Показывает сообщение об отсутствии файла статистики.
-     */
-    private void showFileNotFoundMessage() {
-        drawString(5, 10, "Scoreboard file not found!", COLOR_YELLOW);
-        drawString(5, 11, "Play a game first to create it.", COLOR_WHITE);
-        drawString(5, 13, "Press any key...", COLOR_YELLOW);
-        refresh();
-        Toolkit.readCharacter();
-    }
-
-    /**
-     * Показывает сообщение об ошибке загрузки файла.
-     */
-    private void showFileLoadError(Exception e) {
-        System.err.println("Error loading scoreboard from: " + SCOREBOARD_PATH);
-        e.printStackTrace();
-
-        drawString(5, 10, "Error loading scoreboard!", COLOR_RED);
-        drawString(5, 11, "File: " + SCOREBOARD_PATH, COLOR_RED);
-        drawString(5, 13, "Press any key to continue...", COLOR_YELLOW);
-        refresh();
-        Toolkit.readCharacter();
+        return stats;
     }
 
     /**

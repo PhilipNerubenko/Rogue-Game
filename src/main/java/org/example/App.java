@@ -42,39 +42,34 @@ public class App {
             while (runningMenu) {
                 renderer.drawMenuScreen(currentOption);
 
-                char key = Toolkit.readCharacter().getCharacter();
+                InputChar inputChar = Toolkit.readCharacter();
+                int keyCode = inputChar.getCode();
 
-                switch (key) {
-                    case '\n':  // Enter
-                        switch (currentOption) {
-                            case 0: // NEW GAME
-                                GameInitializer initializer = new GameInitializer();
-                                initializer.initializeNewGame(sessionStat);
-                                GameLoop gameLoop = new GameLoop(initializer);
-                                gameLoop.start(sessionStat);
-                                break;
-                            case 1: // LOAD GAME
-                                handleLoadGame(renderer, sessionStat);
-                                break;
-                            case 2: // SCOREBOARD
-                                renderer.drawScoreboard();
-                                while (Toolkit.readCharacter().getCharacter() != 27);
-                                break;
-                            case 3: // EXIT GAME
-                                runningMenu = false;
-                                break;
-                        }
-                        break;
-
-                    case 'W':
-                    case 'w':
-                        currentOption = Math.max(0, currentOption - 1);
-                        break;
-
-                    case 'S':
-                    case 's':
-                        currentOption = Math.min(3, currentOption + 1);
-                        break;
+                if (keyCode == InputChar.KEY_UP || keyCode == 'W' || keyCode == 'w') {
+                    currentOption = Math.max(0, currentOption - 1);
+                } else if (keyCode == InputChar.KEY_DOWN || keyCode == 'S' || keyCode == 's') {
+                    currentOption = Math.min(3, currentOption + 1);
+                } else if (keyCode == '\n' || keyCode == '\r') {  // Enter
+                    switch (currentOption) {
+                        case 0: // NEW GAME
+                            GameInitializer initializer = new GameInitializer();
+                            initializer.initializeNewGame(sessionStat);
+                            GameLoop gameLoop = new GameLoop(initializer);
+                            gameLoop.start(sessionStat);
+                            break;
+                        case 1: // LOAD GAME
+                            handleLoadGame(renderer, sessionStat);
+                            break;
+                        case 2: // SCOREBOARD
+                            renderer.drawScoreboard();
+                            break;
+                        case 3: // EXIT GAME
+                            runningMenu = false;
+                            break;
+                    }
+                } else if (keyCode == 27) {
+                    // ESC тоже выходит из игры
+                    runningMenu = false;
                 }
             }
 

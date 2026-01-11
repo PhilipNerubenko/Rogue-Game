@@ -133,13 +133,13 @@ public class GameLoop {
 
             if (messageTimer > 0) {
                 if (activeMessageLine1 != null) {
-                    renderer.drawMessage(MESSAGE_LINE_1+2 , activeMessageLine1, CharColor.YELLOW);
+                    renderer.drawMessage(MESSAGE_LINE_1 , activeMessageLine1, CharColor.YELLOW);
                 }
                 if (activeMessageLine2 != null) {
-                    renderer.drawMessage(MESSAGE_LINE_2+2, activeMessageLine2, CharColor.YELLOW);
+                    renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, CharColor.YELLOW);
                 }
                 if (activeMessageLine3 != null) {
-                    renderer.drawMessage(MESSAGE_LINE_3, activeMessageLine3, CharColor.CYAN);
+                    renderer.drawMessage(MESSAGE_LINE_3, activeMessageLine3, CharColor.YELLOW);
                 }
             }
 
@@ -368,7 +368,7 @@ public class GameLoop {
 
         // Подсказка
         String controls = "WASD:move | h:weapon | j:food | k:elixir | e:scroll | q:unequip | ESC:save&exit";
-        renderer.drawString(3, GameConstants.Map.HEIGHT + 1, controls, CharColor.CYAN);
+        renderer.drawString(3, GameConstants.Map.HEIGHT + 4, controls, CharColor.CYAN);
 
         // Статус Бар
         renderer.drawStatusBar(
@@ -927,7 +927,7 @@ public class GameLoop {
 
     private void drawInventory() {
         int startY = 0;
-        renderer.drawString(84, startY++, "=== INVENTORY! ===", CharColor.CYAN);
+        renderer.drawString(84, startY++, "=== INVENTORY ===", CharColor.CYAN);
 
         Player player = session.getPlayer();
         Inventory inventory = player.getInventory();
