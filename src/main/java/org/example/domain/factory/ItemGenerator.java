@@ -1,4 +1,4 @@
-package org.example.domain.service;
+package org.example.domain.factory;
 
 import org.example.domain.entity.Item;
 import java.util.ArrayList;

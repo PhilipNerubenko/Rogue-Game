@@ -3,7 +3,7 @@ package org.example.presentation;
 import org.example.domain.entity.Inventory;
 import org.example.domain.entity.Player;
 import org.example.domain.service.FogOfWarService;
-import org.example.domain.service.LevelGenerator;
+import org.example.domain.factory.LevelGenerator;
 
 /**
  * Интерфейс рендерера (контракт для отрисовки игрового интерфейса).

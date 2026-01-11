@@ -1,9 +1,14 @@
-package org.example;
+package org.example.application;
 
+import org.example.application.impl.AutosaveGameUseCase;
+import org.example.application.input.GameInputMapper;
+import org.example.application.input.InputMapper;
+import org.example.application.input.InputStateManager;
 import org.example.datalayer.AutosaveService;
 import org.example.datalayer.SessionStat;
 import org.example.datalayer.Statistics;
 import org.example.domain.entity.*;
+import org.example.domain.factory.LevelGenerator;
 import org.example.domain.service.*;
 import org.example.presentation.InputHandler;
 import org.example.presentation.JCursesRenderer;
@@ -21,68 +26,51 @@ public class GameInitializer {
     private final GameSession session;
     private final Renderer renderer;
     private final InputHandler inputHandler;
+    private final InputStateManager inputStateManager;
+    private final SessionStat sessionStat;
 
     // Сервисы игровых механик
     private final CombatService combatService;
     private final EnemyAIService enemyAIService;
     private final FogOfWarService fogOfWarService;
     private final LevelGenerator levelGenerator;
+    private final SaveGameUseCase saveGameUseCase;
 
     /**
      * Конструктор по умолчанию. Инициализирует все компоненты игры.
      * Выполняет настройку зависимостей между сервисами.
      */
-    public GameInitializer() {
-        // Создание основных объектов игры
-        this.session = new GameSession();
-        this.renderer = new JCursesRenderer(); // Реализация рендерера на основе JCurses
-        this.inputHandler = new InputHandler();
+    public GameInitializer(SessionStat sessionStat) {
+        this.sessionStat = sessionStat;
 
-        // Инициализация игровых сервисов
+        // domain
+        this.session = new GameSession();
         this.combatService = new CombatService();
         this.enemyAIService = new EnemyAIService();
         this.levelGenerator = new LevelGenerator();
-
-        // FogOfWarService зависит от LevelGenerator для работы с картой
         this.fogOfWarService = new FogOfWarService(levelGenerator);
 
-        // Настройка дополнительных сервисов (автосохранение)
-        configureAutosaveService();
-    }
+        // datalayer
+        AutosaveService autosaveService = new AutosaveService();
+        autosaveService.setFogOfWarService(fogOfWarService); // Установка зависимости FogOfWarService
 
-    /**
-     * Настраивает AutosaveService с помощью рефлексии.
-     * Приватный метод, который инъектирует зависимость FogOfWarService в AutosaveService.
-     * Использует рефлексию для доступа к приватному полю, что может быть необходимо
-     * для интеграции с существующей архитектурой.
-     */
-    private void configureAutosaveService() {
-        try {
-            // Получаем доступ к приватному полю autosaveService в классе InputHandler
-            var autosaveField = InputHandler.class.getDeclaredField("autosaveService");
-            autosaveField.setAccessible(true); // Разрешаем доступ к приватному полю
+        // application
+        this.inputStateManager = new InputStateManager();
+        this.saveGameUseCase = new AutosaveGameUseCase(autosaveService, levelGenerator);
+        InputMapper inputMapper = new GameInputMapper(inputStateManager);
 
-            // Получаем экземпляр AutosaveService из InputHandler
-            var autosaveService = (AutosaveService) autosaveField.get(inputHandler);
-
-            // Если сервис существует, настраиваем его
-            if (autosaveService != null) {
-                autosaveService.setFogOfWarService(fogOfWarService);
-            }
-        } catch (Exception e) {
-            // Логируем ошибку, но не прерываем выполнение, так как автосохранение - вторичная функция
-            System.err.println("Failed to configure AutosaveService: " + e.getMessage());
-        }
+        // presentation
+        this.inputHandler = new InputHandler(inputMapper);
+        this.renderer = new JCursesRenderer(); // Реализация рендерера на основе JCurses
     }
 
     /**
      * Инициализирует новую игровую сессию с нуля.
      * Сбрасывает все состояния и создает нового игрока.
      *
-     * @param sessionStat объект для хранения статистики сессии
      * @throws IOException если возникли ошибки ввода-вывода при инициализации
      */
-    public void initializeNewGame(SessionStat sessionStat) throws IOException {
+    public void initializeNewGame() throws IOException {
         // Создание и настройка игрока
         session.setPlayer(new Player());
 
@@ -137,4 +125,10 @@ public class GameInitializer {
      * @return генератор уровней/карт
      */
     public LevelGenerator getLevelGenerator() { return levelGenerator; }
+    public SaveGameUseCase getSaveGameUseCase() { return saveGameUseCase; }
+    public SessionStat getSessionStat() { return sessionStat; }
+
+    public InputStateManager getInputStateManager() {
+        return inputStateManager;
+    }
 }

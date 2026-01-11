@@ -1,5 +1,7 @@
 package org.example.domain.entity;
 
+import org.example.domain.enums.ItemType;
+
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;

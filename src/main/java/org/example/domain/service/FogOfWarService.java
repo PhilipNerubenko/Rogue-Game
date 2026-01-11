@@ -1,6 +1,7 @@
 package org.example.domain.service;
 
 import org.example.config.GameConstants;
+import org.example.domain.factory.LevelGenerator;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
 

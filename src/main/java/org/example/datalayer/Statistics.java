@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.example.config.GameConstants;
 import org.example.domain.entity.GameSession;
 import org.example.domain.entity.Inventory;
-import org.example.domain.entity.ItemType;
+import org.example.domain.enums.ItemType;
 import org.example.domain.entity.Player;
 
 import java.io.File;

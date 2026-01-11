@@ -1,43 +1,13 @@
 {
   "sessionStats" : [ {
-    "treasures" : 0,
     "levelNum" : 1,
     "enemies" : 0,
+    "attacks" : 4,
+    "missed" : 1,
+    "moves" : 46,
+    "treasures" : 0,
     "food" : 0,
     "elixirs" : 0,
-    "scrolls" : 0,
-    "attacks" : 0,
-    "missed" : 0,
-    "moves" : 0
-  }, {
-    "levelNum" : 1,
-    "enemies" : 0,
-    "attacks" : 0,
-    "missed" : 2,
-    "moves" : 36,
-    "treasures" : 0,
-    "food" : 0,
-    "elixirs" : 1,
-    "scrolls" : 0
-  }, {
-    "levelNum" : 21,
-    "enemies" : 5,
-    "attacks" : 11,
-    "missed" : 8,
-    "moves" : 615,
-    "treasures" : 732,
-    "food" : 7,
-    "elixirs" : 10,
-    "scrolls" : 7
-  }, {
-    "levelNum" : 21,
-    "enemies" : 8,
-    "attacks" : 14,
-    "missed" : 8,
-    "moves" : 887,
-    "treasures" : 825,
-    "food" : 10,
-    "elixirs" : 11,
-    "scrolls" : 10
+    "scrolls" : 1
   } ]
 }

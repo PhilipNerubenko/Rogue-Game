@@ -7,11 +7,11 @@ import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
 import org.example.datalayer.SessionStat;
 import org.example.domain.entity.Inventory;
-import org.example.domain.entity.ItemType;
+import org.example.domain.enums.ItemType;
 import org.example.domain.entity.Player;
 import org.example.domain.model.Position;
 import org.example.domain.service.FogOfWarService;
-import org.example.domain.service.LevelGenerator;
+import org.example.domain.factory.LevelGenerator;
 
 import java.io.File;
 import java.io.IOException;
@@ -90,7 +90,7 @@ public class JCursesRenderer implements Renderer {
 
                 if (!isExplored) {
                     // Не исследовано - черная клетка
-                    drawChar(x, y, 'b', COLOR_WHITE);
+                    drawChar(x, y, ' ', COLOR_BLACK);
                 } else if (isCurrentlyVisible) {
                     // Видно сейчас - яркие цвета
                     short color = getBrightTileColor(tile);

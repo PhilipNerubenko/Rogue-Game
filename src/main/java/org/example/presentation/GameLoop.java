@@ -1,12 +1,17 @@
 package org.example.presentation;
 
 import jcurses.system.CharColor;
-import org.example.GameInitializer;
+import org.example.application.GameInitializer;
+import org.example.application.SaveGameUseCase;
+import org.example.application.input.InputStateManager;
 import org.example.config.GameConstants;
 import org.example.datalayer.SessionStat;
 import org.example.datalayer.Statistics;
 import org.example.domain.entity.*;
-import org.example.domain.model.Direction;
+import org.example.domain.enums.EnemyType;
+import org.example.domain.enums.ItemType;
+import org.example.domain.factory.LevelGenerator;
+import org.example.domain.enums.Direction;
 import org.example.domain.model.InputCommand;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
@@ -27,6 +32,8 @@ public class GameLoop {
 
     private final GameSession session;
     private final InputHandler inputHandler;
+    private final InputStateManager inputStateManager;
+    private final SaveGameUseCase saveGameUseCase;
     private final Renderer renderer;
     private boolean running = false;
 
@@ -41,7 +48,6 @@ public class GameLoop {
     private int playerX;
     private int playerY;
     private char symbolUnderPlayer;
-    private char symbolAtNewPosition;
 
     // Сообщения
     private String activeMessageLine1;
@@ -51,33 +57,27 @@ public class GameLoop {
     private static final int MESSAGE_DURATION = 2;
 
     // Статистика текущей сессии
-    private SessionStat currentSessionStat;
+    private final SessionStat currentSessionStat;
 
 
     public GameLoop(GameInitializer initializer) {
         this.session = initializer.getSession();
-        this.inputHandler = initializer.getInputHandler();
+        this.currentSessionStat = initializer.getSessionStat();
+        this.inputStateManager = initializer.getInputStateManager();
+        this.saveGameUseCase = initializer.getSaveGameUseCase();
         this.renderer = initializer.getRenderer();
         this.combatService = initializer.getCombatService();
         this.enemyAIService = initializer.getEnemyAIService();
         this.fogOfWarService = initializer.getFogOfWarService();
         this.levelGenerator = initializer.getLevelGenerator();
+        this.inputHandler = initializer.getInputHandler();
         this.asciiMap = new char[GameConstants.Map.HEIGHT][GameConstants.Map.WIDTH];
 
         this.playerX = 0;
         this.playerY = 0;
-        this.symbolAtNewPosition = symbolUnderPlayer;
-
-        // Передаем сессию в inputHandler
-        this.inputHandler.setGameSession(this.session);
     }
 
-    public void start(SessionStat sessionStat) throws IOException {
-        // Сохраняем статистику в поле класса
-        this.currentSessionStat = sessionStat;
-
-        // Передаем статистику в inputHandler
-        this.inputHandler.setSessionStat(sessionStat);
+    public void start() throws IOException {
 
         // Проверяем, была ли игра загружена
         if (session.getCurrentMap() == null || session.getPlayer() == null) {
@@ -97,8 +97,6 @@ public class GameLoop {
 
         renderer.clearScreen();
         enemyAIService.updateAllGhostEffects(session, playerX, playerY);
-
-        initPresentation();
 
         running = true;
 
@@ -123,7 +121,7 @@ public class GameLoop {
             renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
 
             // Если ожидаем выбор предмета - рендерим меню поверх
-            if (inputHandler.isAwaitingSelection()) {
+            if (inputStateManager.isAwaitingSelection()) {
                 // Перерисовываем меню выбора
                 redrawSelectionMenu();
             } else {
@@ -147,6 +145,7 @@ public class GameLoop {
             InputCommand command = inputHandler.readCommand();
 
             if (command.getType() == InputCommand.Type.QUIT) {
+                saveGameUseCase.saveGame(session, currentSessionStat);
                 running = false;
                 continue;
             }
@@ -249,7 +248,7 @@ public class GameLoop {
         fogOfWarService.updateForLoadedGame(playerPos, asciiMap);
 
         // Принудительно добавляем стартовую комнату в исследованные (на случай если сохранение пустое)
-        if (fogOfWarService.getAllExploredCells().size() == 0) {
+        if (fogOfWarService.getAllExploredCells().isEmpty()) {
             if (session.getRooms() != null && !session.getRooms().isEmpty()) {
                 Room startRoom = session.getRooms().get(0);
                 for (int x = startRoom.getX1(); x <= startRoom.getX2(); x++) {
@@ -264,18 +263,7 @@ public class GameLoop {
         messageTimer = MESSAGE_DURATION;
     }
 
-    private void initPresentation() {
-        sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
-            renderer.shutdown();
-            System.exit(0);
-        });
-
-        renderer.clearScreen();
-        enemyAIService.updateAllGhostEffects(session, playerX, playerY);
-        System.out.print(HIDE_CURSOR);
-    }
-
-    private void handleDeath() throws IOException {
+   private void handleDeath() throws IOException {
         renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
         // Передаем gameSession в updateScoreBoard
         Statistics.updateScoreBoard(session, currentSessionStat);
@@ -340,7 +328,7 @@ public class GameLoop {
 
     private void drawUI() {
         // Если ожидаем выбор предмета - не рисуем обычный UI
-        if (inputHandler.isAwaitingSelection()) {
+        if (inputStateManager.isAwaitingSelection()) {
             return;
         }
 
@@ -570,15 +558,14 @@ public class GameLoop {
             }
 
             // Проверяем символ на НОВОЙ позиции ПЕРЕД перемещением
-            symbolAtNewPosition = asciiMap[newY][newX];
+            char symbolAtNewPosition = asciiMap[newY][newX];
 
             // Проверяем, есть ли враг
             Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
             if (enemyAtPosition != null) {
                 // Блок try-catch для обработки IOException
                 try {
-                    String message = combatService.attackEnemy(session, enemyAtPosition, currentSessionStat);
-                    activeMessageLine1 = message;
+                    activeMessageLine1 = combatService.attackEnemy(session, enemyAtPosition, currentSessionStat);
                     messageTimer = MESSAGE_DURATION;
 
                     if (enemyAtPosition.getHealth() <= 0) {
@@ -672,7 +659,7 @@ public class GameLoop {
         }
 
         // Просто переходим в режим ожидания выбора
-        inputHandler.setAwaitingSelection(true, itemType);
+        inputStateManager.setAwaitingSelection(itemType);
 
         // Сообщение для пользователя
         activeMessageLine3 = "Select " + itemType.name().toLowerCase() + " (1-9) or ESC to cancel";
@@ -725,11 +712,11 @@ public class GameLoop {
     }
 
     private void handleItemSelection(int index) {
-        if (!inputHandler.isAwaitingSelection()) {
+        if (!inputStateManager.isAwaitingSelection()) {
             return;
         }
 
-        ItemType type = inputHandler.getPendingItemType();
+        ItemType type = inputStateManager.getPendingItemType();
         Player player = session.getPlayer();
 
         try {
@@ -763,7 +750,7 @@ public class GameLoop {
             activeMessageLine3 = "Error using item: " + e.getMessage();
             messageTimer = MESSAGE_DURATION;
         } finally {
-            inputHandler.resetAwaitingState();
+            inputStateManager.resetAwaitingState();
         }
     }
 
@@ -1014,7 +1001,7 @@ public class GameLoop {
     }
 
     private void redrawSelectionMenu() {
-        ItemType pendingType = inputHandler.getPendingItemType();
+        ItemType pendingType = inputStateManager.getPendingItemType();
         if (pendingType == null) return;
 
         // Очищаем область для меню (правый верхний угол)

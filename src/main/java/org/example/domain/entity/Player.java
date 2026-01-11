@@ -4,7 +4,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.example.config.GameConstants;
-import org.example.domain.model.Direction;
+import org.example.domain.enums.ItemType;
+import org.example.domain.enums.Direction;
 import org.example.domain.model.Position;
 
 @JsonIgnoreProperties(ignoreUnknown = true)

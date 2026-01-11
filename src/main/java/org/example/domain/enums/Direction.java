@@ -1,4 +1,4 @@
-package org.example.domain.model;
+package org.example.domain.enums;
 
 // Энум для классификации передвижения
 //Первые 4 для всех, оставшиеся последние 4 для Змея

@@ -9,10 +9,11 @@ import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.example.config.GameConstants;
 import org.example.domain.entity.*;
+import org.example.domain.enums.ItemType;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
 import org.example.domain.service.FogOfWarService;
-import org.example.domain.service.LevelGenerator;
+import org.example.domain.factory.LevelGenerator;
 
 import java.awt.*;
 import java.io.File;

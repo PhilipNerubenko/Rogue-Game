@@ -1,6 +1,7 @@
 package org.example.domain.model;
 
-import org.example.domain.entity.ItemType;
+import org.example.domain.enums.Direction;
+import org.example.domain.enums.ItemType;
 
 /**
  * Команда ввода от пользователя.

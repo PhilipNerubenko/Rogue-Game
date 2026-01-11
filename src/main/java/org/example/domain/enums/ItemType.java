@@ -1,4 +1,4 @@
-package org.example.domain.entity;
+package org.example.domain.enums;
 
 // Энум классификатор артефактов
 public enum ItemType {

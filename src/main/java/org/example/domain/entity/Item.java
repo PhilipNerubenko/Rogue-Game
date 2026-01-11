@@ -3,6 +3,7 @@ package org.example.domain.entity;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.example.domain.enums.ItemType;
 
 /**
  * Сущность предмета в игре.

@@ -1,4 +1,4 @@
-package org.example.domain.service;
+package org.example.domain.factory;
 
 import org.example.config.GameConstants;
 import org.example.domain.entity.Item;
