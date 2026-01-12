@@ -244,7 +244,7 @@ public class AutosaveService {
         Position playerPos = player.getPosition();
         playerState.setPositionX(playerPos.getX());
         playerState.setPositionY(playerPos.getY());
-        playerState.setSleepTurns(player.isSleepTurns());
+        playerState.setSleepTurns(player.getSleepTurns());
 
         // Сохраняем инвентарь
         Inventory inventory = player.getInventory();
@@ -418,7 +418,7 @@ public class AutosaveService {
                 playerState.getStrength()
         );
 
-        player.setSleepTurns(playerState.isSleepTurns());
+        player.setSleepTurns(playerState.getSleepTurns());
 
         // Восстанавливаем инвентарь
         Inventory inventory = new Inventory();

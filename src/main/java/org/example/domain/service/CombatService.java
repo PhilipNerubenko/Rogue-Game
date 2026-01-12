@@ -168,7 +168,7 @@ public class CombatService {
         // Способность змеи: усыпление игрока
         if (enemy.hasAbility(Enemy.ABILITY_SNAKE_SLEEP) &&
                 new Random().nextInt(100) < SNAKE_SLEEP_CHANCE) {
-            session.getPlayer().setSleepTurns(true);
+            session.getPlayer().setSleepTurns(1);
             message.append(", put you to sleep!");
         } else {
             message.append("!");

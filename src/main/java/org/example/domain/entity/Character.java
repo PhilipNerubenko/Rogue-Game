@@ -12,7 +12,7 @@ public class Character {
     private int agility;
     private int strength;
     private Inventory inventory;
-    private boolean sleepTurns; // Флаг состояния сна (пропуск ходов)
+    private int sleepTurns;
 
     /**
      * Основной конструктор для нового персонажа.
@@ -26,7 +26,7 @@ public class Character {
         this.agility = agility;
         this.strength = strength;
         this.inventory = new Inventory();
-        this.sleepTurns = false;
+        this.sleepTurns = 0;
     }
 
     /**
@@ -43,7 +43,7 @@ public class Character {
         this.agility = agility;
         this.strength = strength;
         this.inventory = new Inventory();
-        this.sleepTurns = false;
+        this.sleepTurns = 0;
 
         // Миграция данных из старого формата инвентаря в новый
         if (backpack != null) {
@@ -126,11 +126,19 @@ public class Character {
     }
 
     public boolean isSleepTurns() {
+        return sleepTurns > 0;
+    }
+
+    public void setSleepTurns(int turns) {
+        this.sleepTurns = turns;
+    }
+
+    public int getSleepTurns() {
         return sleepTurns;
     }
 
-    public void setSleepTurns(boolean sleepTurns) {
-        this.sleepTurns = sleepTurns;
+    public void decrementSleep() {
+        if (sleepTurns > 0) sleepTurns--;
     }
 
     // ============ Методы обратной совместимости ============

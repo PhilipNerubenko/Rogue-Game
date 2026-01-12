@@ -1,5 +1,8 @@
 package org.example.config;
 
+import jcurses.system.CharColor;
+import jcurses.system.Toolkit;
+
 public final class GameConstants {
 
     public static final class Map {
@@ -35,7 +38,8 @@ public final class GameConstants {
         public static final int MESSAGE_LINE_1 = Map.HEIGHT + 1;
         public static final int MESSAGE_LINE_2 = Map.HEIGHT + 2;
         public static final int MESSAGE_LINE_3 = Map.HEIGHT + 3;
-        public static final int DEATH_MESSAGE_Y = Map.HEIGHT + 4;
+        public static final int DEATH_MESSAGE_Y = -Map.MAP_OFFSET_Y;
+        public static final int DEATH_MESSAGE_X = -Map.MAP_OFFSET_X;
 
         public static final String HIDE_CURSOR = "\033[?25l";
         public static final String SHOW_CURSOR = "\033[?25h";
@@ -62,7 +66,7 @@ public final class GameConstants {
     public static final class TextMessages {
         public static final String TERMINATE = "\nTerminated via Ctrl+C";
         public static final String CONTROL = "WASD | . rest | ESC | h/j/k/e use | 1-9 choose (wep 0-9, 0 off)";
-        public static final String DIED = "YOU DIED! Press ESC to exit";
+        public static final String DIED = "YOU DIED! any key to exit";
         public static final String VICTORY = "Congratulations! YOU VICTORY!   Press ESC to exit";
         public static final String MISSED = "You missed!";
         public static final String MISSED_VAMPIRE = "First attack on vampire misses!";
@@ -70,15 +74,15 @@ public final class GameConstants {
     }
 
     public static final class Colors {
-        // Используем стандартные цвета JCurses (0-7)
-        public static final int BLACK = 0;
-        public static final int RED = 1;
-        public static final int GREEN = 2;
-        public static final int YELLOW = 3;
-        public static final int BLUE = 4;
-        public static final int MAGENTA = 5;
-        public static final int CYAN = 6;
-        public static final int WHITE = 7;
+        // Цветовые константы JCurses (ограничены палитрой 0-7)
+        public static final short COLOR_BLACK = CharColor.BLACK;
+        public static final short COLOR_RED = CharColor.RED;
+        public static final short COLOR_GREEN = CharColor.GREEN;
+        public static final short COLOR_YELLOW = CharColor.YELLOW;
+        public static final short COLOR_BLUE = CharColor.BLUE;
+        public static final short COLOR_MAGENTA = CharColor.MAGENTA;
+        public static final short COLOR_CYAN = CharColor.CYAN;
+        public static final short COLOR_WHITE = CharColor.WHITE;
 
         // ANSI escape codes для консоли (если нужно)
         public static final String ANSI_GREEN = "\033[92m";

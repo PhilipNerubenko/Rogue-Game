@@ -123,7 +123,7 @@ public class GameState {
         private int positionY;
 
         @JsonProperty("sleep_turns")
-        private boolean sleepTurns;
+        private int sleepTurns;
 
         @JsonProperty("inventory")
         private List<Item> inventoryItems;
@@ -188,11 +188,15 @@ public class GameState {
         }
 
         public boolean isSleepTurns() {
-            return sleepTurns;
+            return sleepTurns > 0;
         }
 
-        public void setSleepTurns(boolean sleepTurns) {
-            this.sleepTurns = sleepTurns;
+        public void setSleepTurns(int turns) {
+            this.sleepTurns = turns;
+        }
+
+        public int getSleepTurns() {
+            return sleepTurns;
         }
 
         public List<Item> getInventoryItems() {

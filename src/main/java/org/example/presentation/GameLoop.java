@@ -1,12 +1,14 @@
 package org.example.presentation;
 
 import jcurses.system.CharColor;
+import jcurses.system.Toolkit;
 import org.example.application.GameInitializer;
 import org.example.application.SaveGameUseCase;
 import org.example.application.input.InputStateManager;
 import org.example.config.GameConstants;
 import org.example.datalayer.SessionStat;
 import org.example.datalayer.Statistics;
+import org.example.domain.dto.VisibleMapDto;
 import org.example.domain.entity.*;
 import org.example.domain.enums.EnemyType;
 import org.example.domain.enums.ItemType;
@@ -35,6 +37,7 @@ public class GameLoop {
     private final InputStateManager inputStateManager;
     private final SaveGameUseCase saveGameUseCase;
     private final Renderer renderer;
+    private final MapVisibilityService mapVisibilityService;
     private boolean running = false;
 
     // Сервисы бизнес-логики
@@ -66,9 +69,10 @@ public class GameLoop {
         this.inputStateManager = initializer.getInputStateManager();
         this.saveGameUseCase = initializer.getSaveGameUseCase();
         this.renderer = initializer.getRenderer();
+        this.fogOfWarService = initializer.getFogOfWarService();
+        this.mapVisibilityService = new MapVisibilityService(fogOfWarService);
         this.combatService = initializer.getCombatService();
         this.enemyAIService = initializer.getEnemyAIService();
-        this.fogOfWarService = initializer.getFogOfWarService();
         this.levelGenerator = initializer.getLevelGenerator();
         this.inputHandler = initializer.getInputHandler();
         this.asciiMap = new char[GameConstants.Map.HEIGHT][GameConstants.Map.WIDTH];
@@ -264,7 +268,9 @@ public class GameLoop {
     }
 
    private void handleDeath() throws IOException {
-        renderer.drawMessage(DEATH_MESSAGE_Y, DIED, CharColor.RED);
+        renderer.clearScreen();
+        renderer.drawString(DEATH_MESSAGE_X, DEATH_MESSAGE_Y, DIED, CharColor.RED);
+        Toolkit.readCharacter();
         // Передаем gameSession в updateScoreBoard
         Statistics.updateScoreBoard(session, currentSessionStat);
     }
@@ -314,12 +320,12 @@ public class GameLoop {
         }
 
         try {
-            renderer.drawMapWithFog(
+            VisibleMapDto visibleMap = mapVisibilityService.prepareVisibleMap(
                     asciiMap,
-                    session.getPlayer(),
-                    fogOfWarService,
-                    levelGenerator
+                    session.getPlayer()
             );
+
+            renderer.drawMap(visibleMap);
         } catch (Exception e) {
             System.err.println("ERROR in drawMap: " + e.getMessage());
             e.printStackTrace();
@@ -330,28 +336,6 @@ public class GameLoop {
         // Если ожидаем выбор предмета - не рисуем обычный UI
         if (inputStateManager.isAwaitingSelection()) {
             return;
-        }
-
-        // Отрисовка предметов
-        for (Item item : session.getCurrentLevelItems()) {
-            if (item.getX() >= 0 && item.getY() >= 0) {
-                // ВАЖНО: проверяем, не на позиции ли игрока
-                if (item.getX() == playerX && item.getY() == playerY) {
-                    continue; // Пропускаем отрисовку предмета под игроком
-                }
-
-                if (fogOfWarService.isVisible(item.getX(), item.getY())) {
-                    char symbol = switch (item.getType()) {
-                        case "food" -> ',';
-                        case "elixir" -> '!';
-                        case "scroll" -> '?';
-                        case "weapon" -> ')';
-                        case "treasure" -> '$';
-                        default -> '*';
-                    };
-                    renderer.drawChar(item.getX(), item.getY(), symbol, CharColor.YELLOW);
-                }
-            }
         }
 
         // Подсказка
@@ -517,28 +501,18 @@ public class GameLoop {
     }
 
     private void handleSleepTurn() throws IOException {
-        String sleepMsg = "You are sleep! Zzz...";
-        session.getPlayer().setSleepTurns(false);
-        renderer.drawMessage(UI_START_Y, sleepMsg, CharColor.CYAN);
-
-        renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
+        activeMessageLine1 = "You are asleep... Zzz";
+        messageTimer = MESSAGE_DURATION;
 
         List<String> enemyMessages = enemyAIService.witchMoveEnemiesPattern(
                 session, combatService, playerX, playerY, asciiMap);
+
         if (!enemyMessages.isEmpty()) {
             activeMessageLine2 = String.join(", ", enemyMessages);
             messageTimer = MESSAGE_DURATION;
         }
 
-        renderer.clearScreen();
-        drawMap();
-        drawEnemies();
-        renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
-        drawUI();
-
-        if (activeMessageLine2 != null) {
-            renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, CharColor.YELLOW);
-        }
+        session.getPlayer().decrementSleep();
 
         if (session.getPlayer().getHealth() <= 0) {
             handleDeath();

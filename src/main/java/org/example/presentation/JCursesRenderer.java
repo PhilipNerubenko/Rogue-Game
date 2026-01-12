@@ -6,20 +6,17 @@ import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
 import org.example.datalayer.SessionStat;
+import org.example.domain.dto.VisibleMapDto;
 import org.example.domain.entity.Inventory;
 import org.example.domain.enums.ItemType;
-import org.example.domain.entity.Player;
-import org.example.domain.model.Position;
-import org.example.domain.service.FogOfWarService;
-import org.example.domain.factory.LevelGenerator;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
+import static org.example.config.GameConstants.Colors.*;
 import static org.example.config.GameConstants.PathToFiles.SCOREBOARD_PATH;
 import static org.example.config.GameConstants.ScreenConfig.SHOW_CURSOR;
 
@@ -38,16 +35,6 @@ public class JCursesRenderer implements Renderer {
     private static final int MAP_OFFSET_X = GameConstants.Map.MAP_OFFSET_X;
     private static final int MAP_OFFSET_Y = GameConstants.Map.MAP_OFFSET_Y;
 
-    // Цветовые константы JCurses (ограничены палитрой 0-7)
-    private static final short COLOR_BLACK = CharColor.BLACK;
-    private static final short COLOR_RED = CharColor.RED;
-    private static final short COLOR_GREEN = CharColor.GREEN;
-    private static final short COLOR_YELLOW = CharColor.YELLOW;
-    private static final short COLOR_BLUE = CharColor.BLUE;
-    private static final short COLOR_MAGENTA = CharColor.MAGENTA;
-    private static final short COLOR_CYAN = CharColor.CYAN;
-    private static final short COLOR_WHITE = CharColor.WHITE;
-
     /**
      * Конструктор инициализирует рендерер и библиотеку JCurses.
      */
@@ -59,111 +46,13 @@ public class JCursesRenderer implements Renderer {
         Toolkit.clearScreen(defaultColor);
     }
 
-    /**
-     * Отрисовывает карту с учетом "тумана войны".
-     *
-     * @param map игровая карта
-     * @param player текущий игрок
-     * @param fog сервис тумана войны
-     * @param levelGen генератор уровней
-     */
     @Override
-    public void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, LevelGenerator levelGen) {
-        if (map == null || fog == null) return;
-
-        Set<Position> allExploredCells = fog.getAllExploredCells();      // Все исследованные клетки
-        Set<Position> currentVisibleCells = fog.getCurrentVisibleCells(); // Клетки, видимые в текущий момент
-
-        for (int y = 0; y < map.length; y++) {
-            for (int x = 0; x < map[y].length; x++) {
-                char tile = map[y][x];
-                Position pos = new Position(x, y);
-
-                // Пустые клетки всегда черные
-                if (tile == ' ') {
-                    drawChar(x, y, ' ', COLOR_BLACK);
-                    continue;
-                }
-
-                boolean isExplored = allExploredCells.contains(pos);
-                boolean isCurrentlyVisible = currentVisibleCells.contains(pos);
-
-                if (!isExplored) {
-                    // Не исследовано - черная клетка
-                    drawChar(x, y, ' ', COLOR_BLACK);
-                } else if (isCurrentlyVisible) {
-                    // Видно сейчас - яркие цвета
-                    short color = getBrightTileColor(tile);
-                    drawChar(x, y, tile, color);
-                } else {
-                    // Исследовано, но не видно сейчас - тусклые цвета
-                    short color = getDimTileColor(tile);
-                    if (color != -1) {
-                        drawChar(x, y, tile, color);
-                    } else {
-                        // Существа и игрок скрываются, если не видны
-                        drawChar(x, y, ' ', COLOR_BLACK);
-                    }
-                }
+    public void drawMap(VisibleMapDto visibleMap) {
+        for (int y = 0; y < visibleMap.height(); y++) {
+            for (int x = 0; x < visibleMap.width(); x++) {
+                drawChar(x, y, visibleMap.getSymbol(x, y), visibleMap.getColor(x, y));
             }
         }
-    }
-
-    /**
-     * Возвращает яркие цвета для клеток, видимых в текущий момент.
-     *
-     * @param tile символ клетки
-     * @return цвет для отрисовки
-     */
-    private short getBrightTileColor(char tile) {
-        return switch (tile) {
-            case '.' -> COLOR_CYAN;           // Пол
-            case '|', '~' -> COLOR_WHITE;     // Стены
-            case '#' -> COLOR_YELLOW;         // Коридор
-            case '+' -> COLOR_MAGENTA;        // Дверь
-            case '$' -> COLOR_GREEN;          // Сокровище
-            case ',' -> COLOR_GREEN;          // Еда
-            case '!' -> COLOR_BLUE;           // Эликсир
-            case '?' -> COLOR_MAGENTA;        // Свиток
-            case ')' -> COLOR_RED;            // Оружие
-
-            // Существа
-            case 'z' -> COLOR_GREEN;          // Зомби
-            case 'v' -> COLOR_RED;            // Вампир
-            case 'g' -> COLOR_WHITE;          // Призрак
-            case 'o' -> COLOR_YELLOW;         // Огр
-            case 's' -> COLOR_CYAN;           // Змеиный маг
-            case '@' -> COLOR_YELLOW;         // Игрок
-
-            // Выход
-            case 'E', '⇧' -> COLOR_GREEN;
-
-            default -> COLOR_WHITE;
-        };
-    }
-
-    /**
-     * Возвращает тусклые цвета для исследованных, но не видимых клеток.
-     *
-     * @param tile символ клетки
-     * @return цвет для отрисовки или -1 если объект не должен отображаться
-     */
-    private short getDimTileColor(char tile) {
-        return switch (tile) {
-            // Стены и пол
-            case '.', '|', '~', '#', '+' -> COLOR_BLUE;
-
-            // Предметы
-            case '$', ',', '!', '?', ')' -> COLOR_BLUE;
-
-            // Существа и игрок - скрываем
-            case 'z', 'v', 'g', 'o', 's', '@' -> -1;
-
-            // Выход
-            case 'E', '⇧' -> COLOR_BLUE;
-
-            default -> COLOR_BLUE;
-        };
     }
 
     /**
@@ -275,7 +164,7 @@ public class JCursesRenderer implements Renderer {
     public void drawMessage(int line, String message, int color) {
         clearLine(line);
         short safeColor = (short) Math.max(COLOR_BLACK, Math.min(color, COLOR_WHITE));
-        drawString(3, line, "> " + message, safeColor);
+        drawString(MAP_OFFSET_X, line, "> " + message, safeColor);
     }
 
     /**

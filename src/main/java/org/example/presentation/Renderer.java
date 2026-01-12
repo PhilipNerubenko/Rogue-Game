@@ -1,9 +1,7 @@
 package org.example.presentation;
 
+import org.example.domain.dto.VisibleMapDto;
 import org.example.domain.entity.Inventory;
-import org.example.domain.entity.Player;
-import org.example.domain.service.FogOfWarService;
-import org.example.domain.factory.LevelGenerator;
 
 /**
  * Интерфейс рендерера (контракт для отрисовки игрового интерфейса).
@@ -50,14 +48,7 @@ public interface Renderer {
 
     // ========== ОТРИСОВКА ИГРОВОЙ КАРТЫ ==========
 
-    /**
-     * Отрисовать карту с учетом "тумана войны".
-     * @param map Двумерный массив символов карты
-     * @param player Игрок (для определения видимости)
-     * @param fog Сервис тумана войны
-     * @param levelGen Генератор уровней
-     */
-    void drawMapWithFog(char[][] map, Player player, FogOfWarService fog, LevelGenerator levelGen);
+    void drawMap(VisibleMapDto visibleMap);
 
     // ========== ОТРИСОВКА ИНТЕРФЕЙСА ПОЛЬЗОВАТЕЛЯ ==========
 
