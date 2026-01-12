@@ -86,6 +86,10 @@ public class GameApplication {
                 GameConstants.Map.TERMINAL_HEIGHT,
                 GameConstants.Map.TERMINAL_WIDTH
         );
+        System.out.flush();
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException ignored) {}
     }
 
     private void shutdown() {
