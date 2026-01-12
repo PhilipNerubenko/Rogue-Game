@@ -8,7 +8,7 @@ import org.example.application.input.InputStateManager;
 import org.example.config.GameConstants;
 import org.example.datalayer.SessionStat;
 import org.example.datalayer.Statistics;
-import org.example.domain.dto.VisibleMapDto;
+import org.example.presentation.dto.VisibleMapDto;
 import org.example.domain.entity.*;
 import org.example.domain.enums.EnemyType;
 import org.example.domain.enums.ItemType;

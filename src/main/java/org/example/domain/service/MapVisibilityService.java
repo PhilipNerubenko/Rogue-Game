@@ -1,7 +1,6 @@
 package org.example.domain.service;
 
-import jcurses.system.CharColor;
-import org.example.domain.dto.VisibleMapDto;
+import org.example.presentation.dto.VisibleMapDto;
 import org.example.domain.entity.Player;
 import org.example.domain.model.Position;
 

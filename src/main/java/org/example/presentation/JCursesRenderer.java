@@ -6,7 +6,7 @@ import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
 import org.example.datalayer.SessionStat;
-import org.example.domain.dto.VisibleMapDto;
+import org.example.presentation.dto.VisibleMapDto;
 import org.example.domain.entity.Inventory;
 import org.example.domain.enums.ItemType;
 

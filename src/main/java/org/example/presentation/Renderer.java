@@ -1,6 +1,6 @@
 package org.example.presentation;
 
-import org.example.domain.dto.VisibleMapDto;
+import org.example.presentation.dto.VisibleMapDto;
 import org.example.domain.entity.Inventory;
 
 /**
