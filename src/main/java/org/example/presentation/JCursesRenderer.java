@@ -7,8 +7,6 @@ import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
 import org.example.datalayer.SessionStat;
 import org.example.presentation.dto.VisibleMapDto;
-import org.example.domain.entity.Inventory;
-import org.example.domain.enums.ItemType;
 
 import java.io.File;
 import java.io.IOException;
@@ -129,28 +127,6 @@ public class JCursesRenderer implements Renderer {
                 playerHealth, maxHealth, pX, pY, level, treasures
         );
         drawString(3, GameConstants.Map.HEIGHT + 5, status, COLOR_CYAN);
-    }
-
-    /**
-     * Отрисовывает инвентарь игрока.
-     *
-     * @param inventory инвентарь для отображения
-     */
-    @Override
-    public void drawInventory(Inventory inventory) {
-        int startY = 5;
-        int startX = GameConstants.Map.WIDTH + 10;
-
-        drawString(startX, startY, "=== BACKPACK ===", COLOR_WHITE);
-
-        int line = startY + 2;
-        for (ItemType type : ItemType.values()) {
-            int count = inventory.count(type);
-            if (count > 0) {
-                String text = String.format("%s: %d/9", type.name(), count);
-                drawString(startX, line++, text, COLOR_YELLOW);
-            }
-        }
     }
 
     /**

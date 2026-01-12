@@ -127,7 +127,6 @@ public class AutosaveService {
             }
 
             File latestSave = saveFiles.get(0);
-            System.out.println("Loading save: " + latestSave.getName());
 
             return objectMapper.readValue(latestSave, GameState.class);
 

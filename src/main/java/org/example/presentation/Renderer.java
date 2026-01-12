@@ -64,12 +64,6 @@ public interface Renderer {
     void drawStatusBar(int playerHealth, int maxHealth, int pX, int pY, int level, int treasures);
 
     /**
-     * Нарисовать инвентарь игрока.
-     * @param inventory Объект инвентаря
-     */
-    void drawInventory(Inventory inventory);
-
-    /**
      * Показать информационное сообщение.
      * @param line Номер строки для отображения (обычно нижние строки экрана)
      * @param message Текст сообщения
