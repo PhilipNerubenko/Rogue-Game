@@ -5,7 +5,6 @@ import jcurses.system.Toolkit;
 import org.example.application.service.GameLoadService;
 import org.example.config.GameConstants;
 import org.example.datalayer.SessionStat;
-import org.example.application.records.LoadedGame;
 import org.example.presentation.GameLoop;
 import org.example.presentation.JCursesRenderer;
 import org.example.presentation.MainMenuController;
@@ -63,16 +62,14 @@ public class GameApplication {
         GameInitializer initializer = new GameInitializer(sessionStat);
         GameLoadService loader = new GameLoadService();
 
-        LoadedGame game = loader.loadGame(initializer);
-
-        if (game == null) {
+        if (!loader.load(initializer)) {
             renderer.drawString(10, 10, "No saved games found!", CharColor.RED);
             Toolkit.readCharacter();
             return;
         }
 
         try {
-            new GameLoop(game.initializer()).start();
+            new GameLoop(initializer).start();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

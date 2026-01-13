@@ -11,7 +11,6 @@ public class Enemy {
     private char type;
     private int health;
     private int agility;
-    private int speed;
     private int strength;
     private int hostility;
     private int x;
@@ -40,7 +39,6 @@ public class Enemy {
             @JsonProperty("type") char type,
             @JsonProperty("health") int health,
             @JsonProperty("agility") int agility,
-            @JsonProperty("speed") int speed,
             @JsonProperty("strength") int strength,
             @JsonProperty("hostility") int hostility,
             @JsonProperty("color") Color color,
@@ -48,7 +46,6 @@ public class Enemy {
         this.type = type;
         this.health = health;
         this.agility = agility;
-        this.speed = speed;
         this.strength = strength;
         this.hostility = hostility;
         this.color = color;
@@ -59,7 +56,7 @@ public class Enemy {
 
     // Конструктор по умолчанию для Jackson
     public Enemy() {
-        this(' ', 0, 0, 0, 0, 0, Color.WHITE, 0);
+        this(' ', 0, 0, 0, 0, Color.WHITE, 0);
     }
 
     // Геттеры и сеттеры для основных свойств

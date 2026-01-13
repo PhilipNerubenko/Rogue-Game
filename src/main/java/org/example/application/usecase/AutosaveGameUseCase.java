@@ -1,4 +1,4 @@
-package org.example.application.impl;
+package org.example.application.usecase;
 
 import org.example.application.SaveGameUseCase;
 import org.example.datalayer.AutosaveService;

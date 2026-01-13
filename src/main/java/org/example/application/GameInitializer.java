@@ -1,6 +1,6 @@
 package org.example.application;
 
-import org.example.application.impl.AutosaveGameUseCase;
+import org.example.application.usecase.AutosaveGameUseCase;
 import org.example.application.input.GameInputMapper;
 import org.example.application.input.InputMapper;
 import org.example.application.input.InputStateManager;
