@@ -3,6 +3,8 @@ package org.example.domain.model;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.example.domain.enums.Direction;
+
 import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -37,6 +39,18 @@ public class Position {
 
     public void setY(int y) {
         this.y = y;
+    }
+
+    // Метод для перемещения
+    public void move(int dx, int dy) {
+        this.x += dx;
+        this.y += dy;
+    }
+
+    // Метод для перемещения с Direction
+    public void move(Direction dir) {
+        this.x += dir.getDx();
+        this.y += dir.getDy();
     }
 
     @Override

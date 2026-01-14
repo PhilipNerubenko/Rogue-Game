@@ -243,7 +243,8 @@ public class GameLoop {
             System.err.println("[GameLoop] ERROR: Player position out of bounds!");
             px = Math.max(0, Math.min(px, asciiMap[0].length - 1));
             py = Math.max(0, Math.min(py, asciiMap.length - 1));
-            session.getPlayer().setPosition(new Position(px, py));
+            playerPos.setX(px);
+            playerPos.setY(py);
         }
 
         symbolUnderPlayer = asciiMap[py][px];
@@ -418,15 +419,13 @@ public class GameLoop {
         int py = pos.getY();
         for (Room room : rooms) {
             if (room.isStartRoom()) {
-                px = room.getX1() + 2;
-                py = room.getY1() + 2;
+                pos.setX(room.getX1() + 2);
+                pos.setY(room.getY1() + 2);
                 break;
             }
         }
 
-        Position newPlayerPosition = new Position(px, py);
         symbolUnderPlayer = asciiMap[py][px];
-        session.getPlayer().setPosition(newPlayerPosition);
 
         // Очищаем и генерируем врагов
         session.getEnemies().clear();
@@ -435,7 +434,7 @@ public class GameLoop {
         // Обновляем туман войны
         fogOfWarService.reset();
         fogOfWarService.markCellAsExplored(px, py);
-        fogOfWarService.updateVisibility(newPlayerPosition, asciiMap);
+        fogOfWarService.updateVisibility(getPlayerPosition(), asciiMap);
 
         // Сообщение игроку
 //        activeMessageLine1 = "Level " + levelToGenerate;
@@ -567,12 +566,8 @@ public class GameLoop {
                         fogOfWarService.markCellAsExplored(newX, newY);
 
                         // Обновляем позицию игрока
-                        pos.setX(newX);
-                        pos.setY(newY);
-                        symbolUnderPlayer = '.'; // После подбора на клетке всегда пол
-
-                        // Обновляем позицию в entity
                         session.getPlayer().move(dir);
+                        symbolUnderPlayer = '.'; // После подбора на клетке всегда пол
                         try {
                             currentSessionStat.incrementMoves();
                         } catch (IOException e) {
@@ -601,12 +596,8 @@ public class GameLoop {
                 fogOfWarService.markCellAsExplored(newX, newY);
 
                 // Обновляем локальные координаты
-                pos.setX(newX);
-                pos.setY(newY);
-                symbolUnderPlayer = symbolAtNewPosition;
-
-                // Синхронизируем с Player entity
                 session.getPlayer().move(dir);
+                symbolUnderPlayer = symbolAtNewPosition;
                 try {
                     currentSessionStat.incrementMoves();
                 } catch (IOException e) {

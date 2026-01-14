@@ -69,10 +69,7 @@ public class Player extends Character {
      * Перемещает игрока в указанном направлении
      */
     public void move(Direction direction) {
-        this.position = new Position(
-                this.position.getX() + direction.getDx(),
-                this.position.getY() + direction.getDy()
-        );
+        this.position.move(direction);
     }
 
     /**
