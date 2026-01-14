@@ -1,9 +1,9 @@
-package org.example.application.usecase;
+package org.example.application.usecase.impl;
 
-import org.example.application.SaveGameUseCase;
-import org.example.datalayer.AutosaveService;
+import org.example.application.usecase.SaveGameUseCase;
+import org.example.datalayer.service.AutosaveService;
 import org.example.domain.entity.GameSession;
-import org.example.datalayer.SessionStat;
+import org.example.datalayer.entity.SessionStat;
 import org.example.domain.factory.LevelGenerator;
 
 public class AutosaveGameUseCase implements SaveGameUseCase {

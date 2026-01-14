@@ -21,7 +21,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("org.example.App")
+    mainClass.set("org.example.application.App")
 }
 
 tasks.test {

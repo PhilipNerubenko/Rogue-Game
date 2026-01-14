@@ -1,6 +1,6 @@
-package org.example.application;
+package org.example.application.usecase;
 
-import org.example.datalayer.SessionStat;
+import org.example.datalayer.entity.SessionStat;
 import org.example.domain.entity.GameSession;
 
 public interface SaveGameUseCase {

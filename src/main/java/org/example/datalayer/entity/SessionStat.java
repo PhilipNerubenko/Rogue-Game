@@ -1,7 +1,8 @@
-package org.example.datalayer;
+package org.example.datalayer.entity;
 
 import java.io.IOException;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.example.datalayer.service.StatisticsService;
 
 /**
  * Класс для хранения и управления статистикой игровой сессии.
@@ -109,52 +110,52 @@ public class SessionStat implements Comparable<SessionStat> {
 
     public void incrementTreasures() throws IOException {
         this.treasures++;
-        Statistics.saveCurrentStats(this);
+        StatisticsService.saveCurrentStats(this);
     }
 
     public void incrementLevel() throws IOException {
         this.levelNum++;
-        Statistics.saveCurrentStats(this);
+        StatisticsService.saveCurrentStats(this);
     }
 
     public void incrementEnemies() throws IOException {
         this.enemies++;
-        Statistics.saveCurrentStats(this);
+        StatisticsService.saveCurrentStats(this);
     }
 
     public void incrementFood() throws IOException {
         this.food++;
-        Statistics.saveCurrentStats(this);
+        StatisticsService.saveCurrentStats(this);
     }
 
     public void incrementElixirs() throws IOException {
         this.elixirs++;
-        Statistics.saveCurrentStats(this);
+        StatisticsService.saveCurrentStats(this);
     }
 
     public void incrementScrolls() throws IOException {
         this.scrolls++;
-        Statistics.saveCurrentStats(this);
+        StatisticsService.saveCurrentStats(this);
     }
 
     public void incrementAttacks() throws IOException {
         this.attacks++;
-        Statistics.saveCurrentStats(this);
+        StatisticsService.saveCurrentStats(this);
     }
 
     public void incrementMissed() throws IOException {
         this.missed++;
-        Statistics.saveCurrentStats(this);
+        StatisticsService.saveCurrentStats(this);
     }
 
     public void incrementMoves() throws IOException {
         this.moves++;
-        Statistics.saveCurrentStats(this);
+        StatisticsService.saveCurrentStats(this);
     }
 
     public void addTreasures(int count) throws IOException {
         this.treasures += count;
-        Statistics.saveCurrentStats(this);
+        StatisticsService.saveCurrentStats(this);
     }
 
 

@@ -1,17 +1,8 @@
-package org.example.presentation;
+package org.example.presentation.input;
 
 import jcurses.system.InputChar;
 import jcurses.system.Toolkit;
-import org.example.application.input.InputMapper;
-import org.example.datalayer.AutosaveService;
-import org.example.datalayer.SessionStat;
-import org.example.domain.entity.GameSession;
-import org.example.domain.enums.ItemType;
-import org.example.domain.factory.LevelGenerator;
-import org.example.domain.enums.Direction;
-import org.example.domain.model.InputCommand;
-
-import static org.example.config.GameConstants.control.*;
+import org.example.presentation.dto.InputCommand;
 
 /**
  * Обработчик пользовательского ввода для игрового интерфейса.

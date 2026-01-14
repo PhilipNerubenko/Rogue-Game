@@ -1,12 +1,12 @@
-package org.example.presentation;
+package org.example.presentation.views;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
-import org.example.datalayer.SessionStat;
-import org.example.presentation.dto.VisibleMapDto;
+import org.example.datalayer.entity.SessionStat;
+import org.example.domain.dto.VisibleMapDto;
 
 import java.io.File;
 import java.io.IOException;

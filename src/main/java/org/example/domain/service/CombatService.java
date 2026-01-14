@@ -2,7 +2,7 @@ package org.example.domain.service;
 
 import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
-import org.example.datalayer.SessionStat;
+import org.example.datalayer.entity.SessionStat;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
 import org.example.domain.entity.Item;

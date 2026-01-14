@@ -1,23 +1,25 @@
-package org.example.presentation;
+package org.example.presentation.screens;
 
 import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
 import org.example.application.GameInitializer;
-import org.example.application.SaveGameUseCase;
-import org.example.application.input.InputStateManager;
+import org.example.application.usecase.SaveGameUseCase;
 import org.example.config.GameConstants;
-import org.example.datalayer.SessionStat;
-import org.example.datalayer.Statistics;
-import org.example.presentation.dto.VisibleMapDto;
+import org.example.datalayer.entity.SessionStat;
+import org.example.datalayer.service.StatisticsService;
+import org.example.presentation.input.InputHandler;
+import org.example.presentation.views.Renderer;
+import org.example.domain.dto.VisibleMapDto;
 import org.example.domain.entity.*;
 import org.example.domain.enums.EnemyType;
 import org.example.domain.enums.ItemType;
 import org.example.domain.factory.LevelGenerator;
 import org.example.domain.enums.Direction;
-import org.example.domain.model.InputCommand;
+import org.example.presentation.dto.InputCommand;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
 import org.example.domain.service.*;
+import org.example.presentation.input.InputStateManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -272,7 +274,7 @@ public class GameLoop {
         renderer.drawString(DEATH_MESSAGE_X, DEATH_MESSAGE_Y, DIED, CharColor.RED);
         Toolkit.readCharacter();
         // Передаем gameSession в updateScoreBoard
-        Statistics.updateScoreBoard(session, currentSessionStat);
+        StatisticsService.updateScoreBoard(session, currentSessionStat);
     }
 
     private void handleVictory() throws IOException {
@@ -283,7 +285,7 @@ public class GameLoop {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        Statistics.updateScoreBoard(session, currentSessionStat);
+        StatisticsService.updateScoreBoard(session, currentSessionStat);
     }
 
     private boolean canMoveTo(int x, int y) {

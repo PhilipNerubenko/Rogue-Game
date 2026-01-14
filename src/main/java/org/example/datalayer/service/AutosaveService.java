@@ -1,4 +1,4 @@
-package org.example.datalayer;
+package org.example.datalayer.service;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.example.config.GameConstants;
+import org.example.datalayer.entity.GameState;
+import org.example.datalayer.entity.SessionStat;
 import org.example.domain.entity.*;
 import org.example.domain.enums.ItemType;
 import org.example.domain.model.Position;

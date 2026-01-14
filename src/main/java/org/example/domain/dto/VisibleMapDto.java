@@ -1,4 +1,4 @@
-package org.example.presentation.dto;
+package org.example.domain.dto;
 
 public class VisibleMapDto {
     private final char[][] symbols;

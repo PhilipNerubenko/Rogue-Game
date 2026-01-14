@@ -1,4 +1,4 @@
-package org.example.datalayer;
+package org.example.datalayer.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.example.domain.entity.Enemy;

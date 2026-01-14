@@ -1,7 +1,8 @@
-package org.example.presentation;
+package org.example.presentation.controllers;
 
 import jcurses.system.InputChar;
 import jcurses.system.Toolkit;
+import org.example.presentation.views.JCursesRenderer;
 
 public class MainMenuController {
 

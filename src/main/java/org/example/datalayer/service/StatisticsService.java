@@ -1,10 +1,11 @@
-package org.example.datalayer;
+package org.example.datalayer.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.example.config.GameConstants;
+import org.example.datalayer.entity.SessionStat;
 import org.example.domain.entity.GameSession;
 import org.example.domain.entity.Inventory;
 import org.example.domain.enums.ItemType;
@@ -13,7 +14,7 @@ import org.example.domain.entity.Player;
 import java.io.File;
 import java.io.IOException;
 
-public class Statistics {
+public class StatisticsService {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     /**

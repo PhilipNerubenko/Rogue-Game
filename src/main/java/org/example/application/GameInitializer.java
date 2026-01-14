@@ -1,18 +1,19 @@
 package org.example.application;
 
-import org.example.application.usecase.AutosaveGameUseCase;
-import org.example.application.input.GameInputMapper;
-import org.example.application.input.InputMapper;
-import org.example.application.input.InputStateManager;
-import org.example.datalayer.AutosaveService;
-import org.example.datalayer.SessionStat;
-import org.example.datalayer.Statistics;
+import org.example.application.usecase.impl.AutosaveGameUseCase;
+import org.example.application.usecase.SaveGameUseCase;
+import org.example.datalayer.service.AutosaveService;
+import org.example.datalayer.entity.SessionStat;
+import org.example.datalayer.service.StatisticsService;
 import org.example.domain.entity.*;
 import org.example.domain.factory.LevelGenerator;
 import org.example.domain.service.*;
-import org.example.presentation.InputHandler;
-import org.example.presentation.JCursesRenderer;
-import org.example.presentation.Renderer;
+import org.example.presentation.input.InputHandler;
+import org.example.presentation.views.JCursesRenderer;
+import org.example.presentation.views.Renderer;
+import org.example.presentation.input.GameInputMapper;
+import org.example.presentation.input.InputMapper;
+import org.example.presentation.input.InputStateManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -85,7 +86,7 @@ public class GameInitializer {
         session.setCurrentMap(null);
 
         // Сброс статистики до начальных значений
-        Statistics.resetStatistics(sessionStat);
+        StatisticsService.resetStatistics(sessionStat);
     }
 
     // ==================== ГЕТТЕРЫ ====================

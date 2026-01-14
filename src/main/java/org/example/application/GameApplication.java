@@ -2,13 +2,13 @@ package org.example.application;
 
 import jcurses.system.CharColor;
 import jcurses.system.Toolkit;
-import org.example.application.service.GameLoadService;
 import org.example.config.GameConstants;
-import org.example.datalayer.SessionStat;
-import org.example.presentation.GameLoop;
-import org.example.presentation.JCursesRenderer;
-import org.example.presentation.MainMenuController;
-import org.example.presentation.MenuAction;
+import org.example.datalayer.entity.SessionStat;
+import org.example.application.usecase.LoadGameUseCase;
+import org.example.presentation.screens.GameLoop;
+import org.example.presentation.views.JCursesRenderer;
+import org.example.presentation.controllers.MainMenuController;
+import org.example.presentation.controllers.MenuAction;
 import sun.misc.Signal;
 
 import java.io.IOException;
@@ -60,7 +60,7 @@ public class GameApplication {
 
     private void loadGame() {
         GameInitializer initializer = new GameInitializer(sessionStat);
-        GameLoadService loader = new GameLoadService();
+        LoadGameUseCase loader = new LoadGameUseCase();
 
         if (!loader.load(initializer)) {
             renderer.drawString(10, 10, "No saved games found!", CharColor.RED);

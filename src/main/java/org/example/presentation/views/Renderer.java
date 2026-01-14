@@ -1,7 +1,6 @@
-package org.example.presentation;
+package org.example.presentation.views;
 
-import org.example.presentation.dto.VisibleMapDto;
-import org.example.domain.entity.Inventory;
+import org.example.domain.dto.VisibleMapDto;
 
 /**
  * Интерфейс рендерера (контракт для отрисовки игрового интерфейса).
