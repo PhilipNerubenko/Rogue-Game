@@ -50,8 +50,6 @@ public class GameLoop {
     private char[][] asciiMap;
 
     // Позиция игрока
-    private int playerX;
-    private int playerY;
     private char symbolUnderPlayer;
 
     // Сообщения
@@ -78,9 +76,10 @@ public class GameLoop {
         this.levelGenerator = initializer.getLevelGenerator();
         this.inputHandler = initializer.getInputHandler();
         this.asciiMap = new char[GameConstants.Map.HEIGHT][GameConstants.Map.WIDTH];
+    }
 
-        this.playerX = 0;
-        this.playerY = 0;
+    private Position getPlayerPosition() {
+        return session.getPlayer().getPosition();
     }
 
     public void start() throws IOException {
@@ -94,15 +93,14 @@ public class GameLoop {
             restoreLoadedGame();
         }
 
-        syncPlayerPositionWithEntity();
-
         sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
             renderer.shutdown();
             System.exit(0);
         });
 
         renderer.clearScreen();
-        enemyAIService.updateAllGhostEffects(session, playerX, playerY);
+        Position pos = getPlayerPosition();
+        enemyAIService.updateAllGhostEffects(session, pos.getX(), pos.getY());
 
         running = true;
 
@@ -124,7 +122,7 @@ public class GameLoop {
             renderer.clearScreen();
             drawMap();
             drawEnemies();
-            renderer.drawChar(playerX, playerY, GameConstants.Icons.PLAYER, CharColor.YELLOW);
+            renderer.drawChar(pos.getX(), pos.getY(), GameConstants.Icons.PLAYER, CharColor.YELLOW);
 
             // Если ожидаем выбор предмета - рендерим меню поверх
             if (inputStateManager.isAwaitingSelection()) {
@@ -178,7 +176,7 @@ public class GameLoop {
             fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
 
             List<String> enemyMessages = enemyAIService.witchMoveEnemiesPattern(
-                    session, combatService, playerX, playerY, asciiMap);
+                    session, combatService, pos.getX(), pos.getY(), asciiMap);
             if (!enemyMessages.isEmpty()) {
                 activeMessageLine2 = String.join(", ", enemyMessages);
                 messageTimer = MESSAGE_DURATION;
@@ -225,7 +223,7 @@ public class GameLoop {
         }
 
         // Устанавливаем позицию игрока
-        Position playerPos = session.getPlayer().getPosition();
+        Position playerPos = getPlayerPosition();
         if (playerPos == null) {
             try {
                 generateNewLevel();
@@ -236,19 +234,19 @@ public class GameLoop {
             return;
         }
 
-        playerX = playerPos.getX();
-        playerY = playerPos.getY();
+        int px = playerPos.getX();
+        int py = playerPos.getY();
 
         // Проверяем границы позиции
-        if (playerY < 0 || playerY >= asciiMap.length ||
-                playerX < 0 || playerX >= asciiMap[playerY].length) {
+        if (py < 0 || py >= asciiMap.length ||
+                px < 0 || px >= asciiMap[py].length) {
             System.err.println("[GameLoop] ERROR: Player position out of bounds!");
-            playerX = Math.max(0, Math.min(playerX, asciiMap[0].length - 1));
-            playerY = Math.max(0, Math.min(playerY, asciiMap.length - 1));
-            session.getPlayer().setPosition(new Position(playerX, playerY));
+            px = Math.max(0, Math.min(px, asciiMap[0].length - 1));
+            py = Math.max(0, Math.min(py, asciiMap.length - 1));
+            session.getPlayer().setPosition(new Position(px, py));
         }
 
-        symbolUnderPlayer = asciiMap[playerY][playerX];
+        symbolUnderPlayer = asciiMap[py][px];
 
         // Обновляем туман войны для загруженной игры
         fogOfWarService.updateForLoadedGame(playerPos, asciiMap);
@@ -256,7 +254,7 @@ public class GameLoop {
         // Принудительно добавляем стартовую комнату в исследованные (на случай если сохранение пустое)
         if (fogOfWarService.getAllExploredCells().isEmpty()) {
             if (session.getRooms() != null && !session.getRooms().isEmpty()) {
-                Room startRoom = session.getRooms().get(0);
+                Room startRoom = session.getRooms().getFirst();
                 for (int x = startRoom.getX1(); x <= startRoom.getX2(); x++) {
                     for (int y = startRoom.getY1(); y <= startRoom.getY2(); y++) {
                         fogOfWarService.markCellAsExplored(x, y);
@@ -384,12 +382,6 @@ public class GameLoop {
         drawInventory();
     }
 
-    private void syncPlayerPositionWithEntity() {
-        Position pos = session.getPlayer().getPosition();
-        this.playerX = pos.getX();
-        this.playerY = pos.getY();
-    }
-
     private void generateNewLevel() throws IOException {
         int levelToGenerate;
 
@@ -421,16 +413,19 @@ public class GameLoop {
 
         // Находим стартовую позицию
         List<Room> rooms = levelGenerator.getRooms();
+        Position pos = getPlayerPosition();
+        int px = pos.getX();
+        int py = pos.getY();
         for (Room room : rooms) {
             if (room.isStartRoom()) {
-                playerX = room.getX1() + 2;
-                playerY = room.getY1() + 2;
+                px = room.getX1() + 2;
+                py = room.getY1() + 2;
                 break;
             }
         }
 
-        Position newPlayerPosition = new Position(playerX, playerY);
-        symbolUnderPlayer = asciiMap[playerY][playerX];
+        Position newPlayerPosition = new Position(px, py);
+        symbolUnderPlayer = asciiMap[py][px];
         session.getPlayer().setPosition(newPlayerPosition);
 
         // Очищаем и генерируем врагов
@@ -439,7 +434,7 @@ public class GameLoop {
 
         // Обновляем туман войны
         fogOfWarService.reset();
-        fogOfWarService.markCellAsExplored(playerX, playerY);
+        fogOfWarService.markCellAsExplored(px, py);
         fogOfWarService.updateVisibility(newPlayerPosition, asciiMap);
 
         // Сообщение игроку
@@ -505,9 +500,10 @@ public class GameLoop {
     private void handleSleepTurn() throws IOException {
         activeMessageLine1 = "You are asleep... Zzz";
         messageTimer = MESSAGE_DURATION;
+        Position pos = getPlayerPosition();
 
         List<String> enemyMessages = enemyAIService.witchMoveEnemiesPattern(
-                session, combatService, playerX, playerY, asciiMap);
+                session, combatService, pos.getX(), pos.getY(), asciiMap);
 
         if (!enemyMessages.isEmpty()) {
             activeMessageLine2 = String.join(", ", enemyMessages);
@@ -524,8 +520,9 @@ public class GameLoop {
 
     private void handleMovement(Direction dir) {
         try {
-            int newX = playerX + dir.getDx();
-            int newY = playerY + dir.getDy();
+            Position pos = getPlayerPosition();
+            int newX = pos.getX() + dir.getDx();
+            int newY = pos.getY() + dir.getDy();
 
             // Проверяем границы
             if (newX < 0 || newX >= GameConstants.Map.WIDTH ||
@@ -564,14 +561,14 @@ public class GameLoop {
 
                         // После подбора игрок перемещается на эту клетку
                         // Затираем старую позицию
-                        renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
+                        renderer.drawChar(pos.getX(), pos.getY(), symbolUnderPlayer, CharColor.WHITE);
 
                         // Помечаем клетку как исследованную
                         fogOfWarService.markCellAsExplored(newX, newY);
 
                         // Обновляем позицию игрока
-                        playerX = newX;
-                        playerY = newY;
+                        pos.setX(newX);
+                        pos.setY(newY);
                         symbolUnderPlayer = '.'; // После подбора на клетке всегда пол
 
                         // Обновляем позицию в entity
@@ -598,14 +595,14 @@ public class GameLoop {
 
                 // ТРЕТЬЕ: Обычное перемещение (без предмета)
                 // Затираем старую позицию
-                renderer.drawChar(playerX, playerY, symbolUnderPlayer, CharColor.WHITE);
+                renderer.drawChar(pos.getX(), pos.getY(), symbolUnderPlayer, CharColor.WHITE);
 
                 // Помечаем клетку как исследованную
                 fogOfWarService.markCellAsExplored(newX, newY);
 
                 // Обновляем локальные координаты
-                playerX = newX;
-                playerY = newY;
+                pos.setX(newX);
+                pos.setY(newY);
                 symbolUnderPlayer = symbolAtNewPosition;
 
                 // Синхронизируем с Player entity
@@ -680,11 +677,10 @@ public class GameLoop {
 
             activeMessageLine3 = String.format("Picked up: %s (%s)",
                     item.getSubType(), type.name().toLowerCase());
-            messageTimer = MESSAGE_DURATION;
         } else {
             activeMessageLine3 = "Failed to add item to inventory";
-            messageTimer = MESSAGE_DURATION;
         }
+        messageTimer = MESSAGE_DURATION;
     }
 
     private void handleItemSelection(int index) {
@@ -693,10 +689,9 @@ public class GameLoop {
         }
 
         ItemType type = inputStateManager.getPendingItemType();
-        Player player = session.getPlayer();
 
         try {
-            boolean success = false;
+            boolean success;
 
             if (type == ItemType.WEAPON) {
                 success = handleWeaponSelection(index);
@@ -738,11 +733,10 @@ public class GameLoop {
             // Просто вызываем unequipWeapon - он сам добавит оружие в инвентарь
             player.unequipWeapon();
             activeMessageLine3 = "Weapon unequipped and added to inventory";
-            messageTimer = MESSAGE_DURATION;
         } else {
             activeMessageLine3 = "No weapon equipped!";
-            messageTimer = MESSAGE_DURATION;
         }
+        messageTimer = MESSAGE_DURATION;
     }
 
     private boolean handleWeaponSelection(int index) {
@@ -813,38 +807,13 @@ public class GameLoop {
         }
 
         // Применяем эффекты предмета
-        applyItemEffects(player, item);
+        player.applyItemEffects(item);
 
         String itemName = type.name().toLowerCase();
         activeMessageLine3 = "Used " + itemName + " (" + item.getSubType() + ") successfully!";
         messageTimer = MESSAGE_DURATION;
 
         return true;
-    }
-
-    private void applyItemEffects(Player player, Item item) {
-        // Восстановление здоровья (еда)
-        if (item.getHealth() > 0) {
-            player.heal(item.getHealth());
-        }
-
-        // Увеличение максимального здоровья (свитки/эликсиры)
-        if (item.getMaxHealth() > 0) {
-            int newMaxHealth = player.getMaxHealth() + item.getMaxHealth();
-            player.setMaxHealth(newMaxHealth);
-            // Также восстанавливаем здоровье на ту же величину
-            player.heal(item.getMaxHealth());
-        }
-
-        // Увеличение ловкости (свитки/эликсиры)
-        if (item.getAgility() > 0) {
-            player.setAgility(player.getAgility() + item.getAgility());
-        }
-
-        // Увеличение силы (свитки/эликсиры)
-        if (item.getStrength() > 0 && !item.getType().equals("weapon")) {
-            player.setStrength(player.getStrength() + item.getStrength());
-        }
     }
 
     private boolean isItemSymbol(char symbol) {

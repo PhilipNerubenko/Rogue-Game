@@ -135,7 +135,7 @@ public class Player extends Character {
     /**
      * Применяет эффекты предмета (восстановление здоровья, увеличение характеристик и т.д.)
      */
-    private void applyItemEffects(Item item) {
+    public void applyItemEffects(Item item) {
         // Восстановление здоровья
         if (item.getHealth() > 0) {
             this.heal(item.getHealth());
@@ -158,10 +158,10 @@ public class Player extends Character {
             this.setStrength(this.getStrength() + item.getStrength());
         }
 
-        // Экипировка оружия
-        if (item.getType().equals("weapon")) {
-            this.equip(item);
-        }
+//        // Экипировка оружия
+//        if (item.getType().equals("weapon")) {
+//            this.equip(item);
+//        }
     }
 
     /**
