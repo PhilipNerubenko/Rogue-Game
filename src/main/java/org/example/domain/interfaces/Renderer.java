@@ -1,6 +1,8 @@
-package org.example.presentation.views;
+package org.example.domain.interfaces;
 
 import org.example.domain.dto.VisibleMapDto;
+import org.example.domain.entity.Enemy;
+import org.example.domain.entity.GameSession;
 
 /**
  * Интерфейс рендерера (контракт для отрисовки игрового интерфейса).
@@ -8,6 +10,8 @@ import org.example.domain.dto.VisibleMapDto;
  * Может быть реализован с использованием JCurses, Swing, LibGDX и т.д.
  */
 public interface Renderer {
+
+    int readCharacter();
 
     // ========== ОСНОВНЫЕ МЕТОДЫ ОТРИСОВКИ ==========
 
@@ -44,6 +48,8 @@ public interface Renderer {
      * @param y Номер строки для очистки
      */
     void clearLine(int y);
+
+    void removeEnemy(GameSession session, Enemy enemy, char[][] asciiMap);
 
     // ========== ОТРИСОВКА ИГРОВОЙ КАРТЫ ==========
 

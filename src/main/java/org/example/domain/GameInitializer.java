@@ -1,19 +1,16 @@
-package org.example.application;
+package org.example.domain;
 
-import org.example.application.usecase.impl.AutosaveGameUseCase;
-import org.example.application.usecase.SaveGameUseCase;
-import org.example.datalayer.service.AutosaveService;
-import org.example.datalayer.entity.SessionStat;
-import org.example.datalayer.service.StatisticsService;
+import org.example.domain.input.inputGameManager;
+import org.example.domain.interfaces.IAutosaveRepository;
+import org.example.domain.interfaces.ISessionStatRepository;
+import org.example.domain.service.AutosaveService;
+import org.example.domain.entity.SessionStat;
+import org.example.domain.service.StatisticsService;
 import org.example.domain.entity.*;
 import org.example.domain.factory.LevelGenerator;
 import org.example.domain.service.*;
-import org.example.presentation.input.InputHandler;
-import org.example.presentation.views.JCursesRenderer;
-import org.example.presentation.views.Renderer;
-import org.example.presentation.input.GameInputMapper;
-import org.example.presentation.input.InputMapper;
-import org.example.presentation.input.InputStateManager;
+import org.example.domain.interfaces.Renderer;
+import org.example.domain.input.InputStateManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,8 +23,8 @@ public class GameInitializer {
     // Основные компоненты игровой сессии
     private final GameSession session;
     private final Renderer renderer;
-    private final InputHandler inputHandler;
-    private final InputStateManager inputStateManager;
+    private InputStateManager inputStateManager;
+    private inputGameManager inputGameManager;
     private final SessionStat sessionStat;
 
     // Сервисы игровых механик
@@ -35,13 +32,14 @@ public class GameInitializer {
     private final EnemyAIService enemyAIService;
     private final FogOfWarService fogOfWarService;
     private final LevelGenerator levelGenerator;
-    private final SaveGameUseCase saveGameUseCase;
+    private final AutosaveService autosaveService;
+    private final StatisticsService statisticsService;
 
     /**
      * Конструктор по умолчанию. Инициализирует все компоненты игры.
      * Выполняет настройку зависимостей между сервисами.
      */
-    public GameInitializer(SessionStat sessionStat) {
+    public GameInitializer(SessionStat sessionStat, Renderer renderer, ISessionStatRepository sessionStatRepository, IAutosaveRepository autosaveRepository) {
         this.sessionStat = sessionStat;
 
         // domain
@@ -50,19 +48,15 @@ public class GameInitializer {
         this.enemyAIService = new EnemyAIService();
         this.levelGenerator = new LevelGenerator();
         this.fogOfWarService = new FogOfWarService(levelGenerator);
-
-        // datalayer
-        AutosaveService autosaveService = new AutosaveService();
-        autosaveService.setFogOfWarService(fogOfWarService); // Установка зависимости FogOfWarService
+        this.statisticsService = new StatisticsService(sessionStatRepository);
+        this.inputStateManager = new InputStateManager();
+        this.inputGameManager = new inputGameManager(renderer, inputStateManager);
 
         // application
-        this.inputStateManager = new InputStateManager();
-        this.saveGameUseCase = new AutosaveGameUseCase(autosaveService, levelGenerator);
-        InputMapper inputMapper = new GameInputMapper(inputStateManager);
+        this.autosaveService = new AutosaveService(autosaveRepository, fogOfWarService);
 
         // presentation
-        this.inputHandler = new InputHandler(inputMapper);
-        this.renderer = new JCursesRenderer(); // Реализация рендерера на основе JCurses
+        this.renderer = renderer; // Реализация рендерера на основе JCurses
     }
 
     /**
@@ -86,7 +80,7 @@ public class GameInitializer {
         session.setCurrentMap(null);
 
         // Сброс статистики до начальных значений
-        StatisticsService.resetStatistics(sessionStat);
+        statisticsService.reset(sessionStat);
     }
 
     // ==================== ГЕТТЕРЫ ====================
@@ -101,11 +95,6 @@ public class GameInitializer {
      * @return рендерер для отображения игры
      */
     public Renderer getRenderer() { return renderer; }
-
-    /**
-     * @return обработчик пользовательского ввода
-     */
-    public InputHandler getInputHandler() { return inputHandler; }
 
     /**
      * @return сервис боевой системы
@@ -126,10 +115,21 @@ public class GameInitializer {
      * @return генератор уровней/карт
      */
     public LevelGenerator getLevelGenerator() { return levelGenerator; }
-    public SaveGameUseCase getSaveGameUseCase() { return saveGameUseCase; }
-    public SessionStat getSessionStat() { return sessionStat; }
+    public AutosaveService getAutosaveService() {
+        return autosaveService;
+    }
 
     public InputStateManager getInputStateManager() {
         return inputStateManager;
+    }
+
+    public StatisticsService getStatisticsService() {
+        return statisticsService;
+    }
+
+    public SessionStat getSessionStat() { return sessionStat; }
+
+    public inputGameManager getGameInputManager() {
+        return inputGameManager;
     }
 }

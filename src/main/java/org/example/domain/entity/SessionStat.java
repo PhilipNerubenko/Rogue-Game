@@ -1,39 +1,18 @@
-package org.example.datalayer.entity;
-
-import java.io.IOException;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import org.example.datalayer.service.StatisticsService;
+package org.example.domain.entity;
 
 /**
  * Класс для хранения и управления статистикой игровой сессии.
  * Реализует Comparable для сравнения статистик (например, для таблицы рекордов).
  */
 public class SessionStat implements Comparable<SessionStat> {
-    @JsonProperty("treasures")
     private int treasures;   // Количество найденных сокровищ
-
-    @JsonProperty("levelNum")
     private int levelNum;    // Текущий номер уровня
-
-    @JsonProperty("enemies")
     private int enemies;     // Количество побежденных врагов
-
-    @JsonProperty("food")
     private int food;        // Количество съеденной еды
-
-    @JsonProperty("elixirs")
     private int elixirs;     // Количество использованных эликсиров
-
-    @JsonProperty("scrolls")
     private int scrolls;     // Количество использованных свитков
-
-    @JsonProperty("attacks")
     private int attacks;     // Количество атак
-
-    @JsonProperty("missed")
     private int missed;      // Количество промахов
-
-    @JsonProperty("moves")
     private int moves;       // Количество ходов
 
     /**
@@ -104,60 +83,6 @@ public class SessionStat implements Comparable<SessionStat> {
         this.missed = 0;
         this.moves = 0;
     }
-
-    // Ниже представлены методы инкремента с сохранением статистики.
-    // Каждый метод увеличивает соответствующее поле на 1 и сохраняет обновленную статистику.
-
-    public void incrementTreasures() throws IOException {
-        this.treasures++;
-        StatisticsService.saveCurrentStats(this);
-    }
-
-    public void incrementLevel() throws IOException {
-        this.levelNum++;
-        StatisticsService.saveCurrentStats(this);
-    }
-
-    public void incrementEnemies() throws IOException {
-        this.enemies++;
-        StatisticsService.saveCurrentStats(this);
-    }
-
-    public void incrementFood() throws IOException {
-        this.food++;
-        StatisticsService.saveCurrentStats(this);
-    }
-
-    public void incrementElixirs() throws IOException {
-        this.elixirs++;
-        StatisticsService.saveCurrentStats(this);
-    }
-
-    public void incrementScrolls() throws IOException {
-        this.scrolls++;
-        StatisticsService.saveCurrentStats(this);
-    }
-
-    public void incrementAttacks() throws IOException {
-        this.attacks++;
-        StatisticsService.saveCurrentStats(this);
-    }
-
-    public void incrementMissed() throws IOException {
-        this.missed++;
-        StatisticsService.saveCurrentStats(this);
-    }
-
-    public void incrementMoves() throws IOException {
-        this.moves++;
-        StatisticsService.saveCurrentStats(this);
-    }
-
-    public void addTreasures(int count) throws IOException {
-        this.treasures += count;
-        StatisticsService.saveCurrentStats(this);
-    }
-
 
     /**
      * Сравнивает текущую статистику с другой для определения порядка сортировки.

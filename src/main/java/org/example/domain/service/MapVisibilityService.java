@@ -7,6 +7,8 @@ import org.example.domain.model.Position;
 import java.util.Set;
 
 import static org.example.config.GameConstants.Colors.*;
+import static org.example.config.GameConstants.Icons.*;
+import static org.example.domain.enums.ItemType.TREASURE;
 
 public class MapVisibilityService {
 
@@ -57,26 +59,26 @@ public class MapVisibilityService {
      */
     private short getBrightTileColor(char tile) {
         return switch (tile) {
-            case '.' -> COLOR_CYAN;           // Пол
-            case '|', '~' -> COLOR_WHITE;     // Стены
-            case '#' -> COLOR_YELLOW;         // Коридор
-            case '+' -> COLOR_MAGENTA;        // Дверь
-            case '$' -> COLOR_GREEN;          // Сокровище
-            case ',' -> COLOR_GREEN;          // Еда
-            case '!' -> COLOR_BLUE;           // Эликсир
-            case '?' -> COLOR_MAGENTA;        // Свиток
-            case ')' -> COLOR_RED;            // Оружие
+            case FLOOR -> COLOR_CYAN;           // Пол
+            case W_WALL, H_WALL -> COLOR_WHITE;     // Стены
+            case CORRIDOR -> COLOR_YELLOW;         // Коридор
+            case DOOR -> COLOR_MAGENTA;        // Дверь
+            case TREASURES -> COLOR_GREEN;          // Сокровище
+            case FOOD -> COLOR_GREEN;          // Еда
+            case ELIXIR -> COLOR_BLUE;           // Эликсир
+            case SCROLL -> COLOR_MAGENTA;        // Свиток
+            case WEAPON -> COLOR_RED;            // Оружие
 
             // Существа
-            case 'z' -> COLOR_GREEN;          // Зомби
-            case 'v' -> COLOR_RED;            // Вампир
-            case 'g' -> COLOR_WHITE;          // Призрак
-            case 'o' -> COLOR_YELLOW;         // Огр
-            case 's' -> COLOR_CYAN;           // Змеиный маг
-            case '@' -> COLOR_YELLOW;         // Игрок
+            case ZOMBIE -> COLOR_GREEN;          // Зомби
+            case VAMPIRE -> COLOR_RED;            // Вампир
+            case GHOST -> COLOR_WHITE;          // Призрак
+            case OGRE -> COLOR_YELLOW;         // Огр
+            case SNAKE_MAGE -> COLOR_WHITE;           // Змеиный маг
+            case PLAYER -> COLOR_YELLOW;         // Игрок
 
             // Выход
-            case 'E', '⇧' -> COLOR_GREEN;
+            case 'E', EXIT -> COLOR_GREEN;
 
             default -> COLOR_WHITE;
         };
@@ -91,7 +93,7 @@ public class MapVisibilityService {
     private short getDimTileColor(char tile) {
         return switch (tile) {
             // Стены и пол
-            case '.', '|', '~', '#', '+' -> COLOR_BLUE;
+            case '.', '|', '~', CORRIDOR, '+' -> COLOR_BLUE;
 
             // Предметы
             case '$', ',', '!', '?', ')' -> COLOR_BLUE;

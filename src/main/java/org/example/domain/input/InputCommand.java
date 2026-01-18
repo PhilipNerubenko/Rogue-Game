@@ -1,4 +1,4 @@
-package org.example.presentation.dto;
+package org.example.domain.input;
 
 import org.example.domain.enums.Direction;
 import org.example.domain.enums.ItemType;

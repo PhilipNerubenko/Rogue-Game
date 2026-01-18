@@ -1,8 +1,9 @@
-package org.example.datalayer.entity;
+package org.example.datalayer;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.Item;
+import org.example.domain.entity.SessionStat;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
 

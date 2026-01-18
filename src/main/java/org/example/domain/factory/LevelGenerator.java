@@ -7,6 +7,8 @@ import org.example.domain.model.Position;
 
 import java.util.*;
 
+import static org.example.config.GameConstants.Icons.CORRIDOR;
+
 /**
  * Генератор уровней для игры.
  * Создает карту с комнатами, коридорами и предметами.
@@ -21,7 +23,7 @@ public class LevelGenerator {
 
     // Основные структуры данных
     private List<Room> rooms;
-    private Random rand;
+    private final Random rand;
     private List<Item> items = new ArrayList<>();
 
     // Внутренние карты для быстрого доступа
@@ -309,7 +311,7 @@ public class LevelGenerator {
             for (int y = minY; y <= maxY; y++) {
                 Position pos = new Position(x, y);
                 corridorCells.add(pos);
-                cellTypeMap.put(pos, '#');
+                cellTypeMap.put(pos, CORRIDOR);
             }
         }
     }
@@ -322,7 +324,7 @@ public class LevelGenerator {
         int end = Math.max(from, to);
 
         for (int x = start; x < end; x++) {
-            asciiMap[y][x] = '#';
+            asciiMap[y][x] = CORRIDOR;
         }
     }
 
@@ -334,7 +336,7 @@ public class LevelGenerator {
         int end = Math.max(from, to);
 
         for (int y = start; y < end; y++) {
-            asciiMap[y][x] = '#';
+            asciiMap[y][x] = CORRIDOR;
         }
     }
 
@@ -372,7 +374,7 @@ public class LevelGenerator {
                 char tile = map[y][x];
                 cellTypeMap.put(pos, tile);
 
-                if (tile == '#') {
+                if (tile == CORRIDOR) {
                     corridorCells.add(pos);
                 }
             }

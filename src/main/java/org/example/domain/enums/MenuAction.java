@@ -1,4 +1,4 @@
-package org.example.presentation.controllers;
+package org.example.domain.enums;
 
 public enum MenuAction {
     NEW_GAME,

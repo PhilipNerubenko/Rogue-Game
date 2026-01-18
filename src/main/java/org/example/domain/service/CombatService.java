@@ -1,8 +1,6 @@
 package org.example.domain.service;
 
-import jcurses.system.CharColor;
-import jcurses.system.Toolkit;
-import org.example.datalayer.entity.SessionStat;
+import org.example.domain.entity.SessionStat;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
 import org.example.domain.entity.Item;
@@ -10,7 +8,6 @@ import org.example.domain.entity.Item;
 import java.io.IOException;
 import java.util.Random;
 
-import static org.example.config.GameConstants.Map.MAP_OFFSET_X;
 import static org.example.config.GameConstants.ProbabilitiesAndBalance.*;
 import static org.example.config.GameConstants.TextMessages.*;
 
@@ -23,20 +20,19 @@ public class CombatService {
      * Атаковать врага
      * @param session текущая игровая сессия
      * @param enemy враг для атаки
-     * @param sessionStat статистика сессии
      * @return сообщение о результате атаки
      */
-    public String attackEnemy(GameSession session, Enemy enemy, SessionStat sessionStat) throws IOException {
+    public String attackEnemy(GameSession session, Enemy enemy, SessionStat sessionStat, StatisticsService statisticsService) throws IOException {
         // Проверка промаха игрока
-        if (!isHit(session.getPlayer().getAgility(), enemy.getAgility())) {
-            sessionStat.incrementMissed();
+        if (isHit(session.getPlayer().getAgility(), enemy.getAgility())) {
+            statisticsService.incrementMissed(sessionStat);
             return MISSED;
         }
 
         // Проверка специальной способности врага "промах первого удара"
         if (enemy.hasAbility(Enemy.ABILITY_FIRST_MISS)) {
             enemy.removeAbility(Enemy.ABILITY_FIRST_MISS);
-            sessionStat.incrementMissed();
+            statisticsService.incrementMissed(sessionStat);
             return MISSED_VAMPIRE;
         }
 
@@ -51,26 +47,12 @@ public class CombatService {
             int gold = calculateGoldDrop(enemy);
             Item goldItem = Item.createTreasure(gold);
             session.getPlayer().getInventory().add(goldItem);
+            statisticsService.addTreasures(gold, sessionStat);
             resultMessage += " - KILLED!, added " + gold;
         }
 
-        sessionStat.incrementAttacks();
+        statisticsService.incrementAttacks(sessionStat);
         return resultMessage;
-    }
-
-    /**
-     * Удалить врага с карты и из списка врагов
-     * @param session игровая сессия
-     * @param enemy враг для удаления
-     * @param asciiMap ASCII карта игры
-     */
-    public void removeEnemy(GameSession session, Enemy enemy, char[][] asciiMap) {
-        // Очистка позиции врага на карте
-        Toolkit.printString(String.valueOf(asciiMap[enemy.getY()][enemy.getX()]),
-                enemy.getX() + MAP_OFFSET_X, enemy.getY(),
-                new CharColor(CharColor.BLACK, CharColor.WHITE));
-        // Удаление врага из списка активных врагов
-        session.getEnemies().remove(enemy);
     }
 
     /**
@@ -90,7 +72,7 @@ public class CombatService {
         }
 
         // Проверка промаха врага
-        if (!isHit(enemy.getAgility(), session.getPlayer().getAgility())) {
+        if (isHit(enemy.getAgility(), session.getPlayer().getAgility())) {
             return enemy.getType() + " missed!";
         }
 
@@ -115,14 +97,14 @@ public class CombatService {
      * @param defenderAgility ловкость защищающегося
      * @return true если атака попала
      */
-    private static boolean isHit(int attackerAgility, int defenderAgility) {
+    private boolean isHit(int attackerAgility, int defenderAgility) {
         int baseChance = 50;
         int agilityDelta = attackerAgility - defenderAgility;
         int finalChance = Math.max(MIN_HIT_CHANCE,
                 Math.min(MAX_HIT_CHANCE,
                         baseChance + agilityDelta * AGILITY_MULTIPLIER));
         Random rand = new Random();
-        return rand.nextInt(100) < finalChance;
+        return rand.nextInt(100) >= finalChance;
     }
 
     /**

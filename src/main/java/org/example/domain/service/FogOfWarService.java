@@ -14,25 +14,25 @@ import java.util.*;
 public class FogOfWarService {
 
     // Множество всех видимых клеток (включая затемненные)
-    private Set<Position> visibleCells = new HashSet<>();
+    private final Set<Position> visibleCells = new HashSet<>();
 
     // Множество исследованных клеток (остаются видимыми как затемненные)
-    private Set<Position> exploredCells = new HashSet<>();
+    private final Set<Position> exploredCells = new HashSet<>();
 
     // Множество исследованных комнат
-    private Set<Room> exploredRooms = new HashSet<>();
+    private final Set<Room> exploredRooms = new HashSet<>();
 
     // Текущая комната игрока
     private Room currentRoom = null;
 
     // Клетки, видимые в данный момент (яркие)
-    private Set<Position> currentVisibleCells = new HashSet<>();
+    private final Set<Position> currentVisibleCells = new HashSet<>();
 
     // Константа радиуса обзора
     private static final int VISION_RADIUS = GameConstants.Map.VISION_RADIUS;
 
     // Генератор уровня для получения информации о комнатах
-    private LevelGenerator levelGenerator;
+    private final LevelGenerator levelGenerator;
 
     public FogOfWarService(LevelGenerator levelGenerator) {
         this.levelGenerator = levelGenerator;
@@ -78,7 +78,7 @@ public class FogOfWarService {
         // 3. Ray casting для определения видимости в коридорах
         for (int angle = 0; angle < 360; angle += 5) {
             double radian = Math.toRadians(angle);
-            castRay(playerX, playerY, Math.cos(radian), Math.sin(radian), map, true);
+            castRay(playerX, playerY, Math.cos(radian), Math.sin(radian), map);
         }
 
         // 4. Объединяем видимые клетки
@@ -125,20 +125,20 @@ public class FogOfWarService {
         // Ray casting для коридоров
         for (int angle = 0; angle < 360; angle += 5) {
             double radian = Math.toRadians(angle);
-            castRay(playerX, playerY, Math.cos(radian), Math.sin(radian), map, true);
+            castRay(playerX, playerY, Math.cos(radian), Math.sin(radian), map);
         }
     }
 
     /**
      * Бросает луч для определения видимости клеток
+     *
      * @param startX начальная координата X
      * @param startY начальная координата Y
-     * @param dx направление луча по X
-     * @param dy направление луча по Y
-     * @param map карта уровня
-     * @param forCurrentVisibility true - для текущей видимости, false - для общей
+     * @param dx     направление луча по X
+     * @param dy     направление луча по Y
+     * @param map    карта уровня
      */
-    private void castRay(int startX, int startY, double dx, double dy, char[][] map, boolean forCurrentVisibility) {
+    private void castRay(int startX, int startY, double dx, double dy, char[][] map) {
         if (map == null || map.length == 0) return;
 
         double x = startX;
@@ -173,7 +173,7 @@ public class FogOfWarService {
                 if (cell == '|' || cell == '~' || cell == ' ') {
                     break; // Стена или пустота прерывает луч
                 }
-                addVisibleCell(pos, forCurrentVisibility);
+                addVisibleCell(pos);
                 continue;
             }
 
@@ -182,13 +182,13 @@ public class FogOfWarService {
                 break;
             }
 
-            addVisibleCell(pos, forCurrentVisibility);
+            addVisibleCell(pos);
 
             // Если нашли дверь - добавляем видимость в соседнюю комнату
             if (cell == '+') {
                 Room adjacentRoom = findAdjacentRoom(intX, intY);
                 if (adjacentRoom != null && adjacentRoom != currentRoom) {
-                    addVisibleRoomInterior(intX, intY, stepX, stepY, adjacentRoom, forCurrentVisibility);
+                    addVisibleRoomInterior(intX, intY, stepX, stepY, adjacentRoom);
                 }
                 break; // Дверь прерывает луч
             }
@@ -198,18 +198,14 @@ public class FogOfWarService {
     /**
      * Добавляет видимую клетку в соответствующее множество
      */
-    private void addVisibleCell(Position pos, boolean forCurrentVisibility) {
-        if (forCurrentVisibility) {
-            currentVisibleCells.add(pos);
-        } else {
-            visibleCells.add(pos);
-        }
+    private void addVisibleCell(Position pos) {
+        currentVisibleCells.add(pos);
     }
 
     /**
      * Добавляет видимость внутрь комнаты через дверь
      */
-    private void addVisibleRoomInterior(int doorX, int doorY, double dx, double dy, Room room, boolean forCurrentVisibility) {
+    private void addVisibleRoomInterior(int doorX, int doorY, double dx, double dy, Room room) {
         // Видимость ограничена глубиной 8 клеток от двери
         for (int depth = 1; depth <= 8; depth++) {
             int viewX = doorX + (int)(dx * depth);
@@ -217,7 +213,7 @@ public class FogOfWarService {
 
             if (viewX >= room.getX1() && viewX <= room.getX2() &&
                     viewY >= room.getY1() && viewY <= room.getY2()) {
-                addVisibleCell(new Position(viewX, viewY), forCurrentVisibility);
+                addVisibleCell(new Position(viewX, viewY));
             } else {
                 break; // Вышли за границы комнаты
             }
@@ -303,16 +299,5 @@ public class FogOfWarService {
         if (rooms == null) return;
         exploredRooms.clear();
         exploredRooms.addAll(rooms);
-    }
-
-    /**
-     * Выводит отладочную информацию
-     */
-    public void debugInfo() {
-        System.out.println("=== Fog of War Debug ===");
-        System.out.println("Explored cells: " + exploredCells.size());
-        System.out.println("Explored rooms: " + exploredRooms.size());
-        System.out.println("Visible cells: " + visibleCells.size());
-        System.out.println("Current visible cells: " + currentVisibleCells.size());
     }
 }

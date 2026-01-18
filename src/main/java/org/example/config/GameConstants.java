@@ -1,7 +1,6 @@
 package org.example.config;
 
 import jcurses.system.CharColor;
-import jcurses.system.Toolkit;
 
 public final class GameConstants {
 
@@ -13,7 +12,6 @@ public final class GameConstants {
         public static final int WIDTH = 80;     //ширина игрового поля
         public static final int HEIGHT = 30;    //высота игрового поля
 
-        public static final int MAP_LEVEL = 1;
         public static final int MAP_OFFSET_X = 3; // смещение карты от левого края
         public static final int MAP_OFFSET_Y = 3; // смещение карты от левого края
         public static final int VISION_RADIUS = 8; // радиус видимости игрока
@@ -22,19 +20,18 @@ public final class GameConstants {
     public static final class PathToFiles {
 
         public static final String DATA_DIR = "data";
-        public static final String SAVES_DIR = DATA_DIR + "/saves";
-        public static final String SAVE_PATH = DATA_DIR + "/save.json";
+
+        public static final String AUTOSAVE_DIR = DATA_DIR + "/autosaves";
+        public static final String AUTOSAVE_PREFIX = "autosave_";
+        public static final String AUTOSAVE_EXTENSION = ".json";
+        public static final int AUTOSAVE_MAX = 10;
+
         public static final String STATISTICS_PATH = DATA_DIR + "/statistics.json";
         public static final String SCOREBOARD_PATH = DATA_DIR + "/scoreboard.json";
 
     }
 
     public static final class ScreenConfig {
-        public static final int MAP_WIDTH = 80;
-        public static final int MAP_HEIGHT = 25;
-        public static final int UI_START_Y = 26;
-        public static final int STATUS_LINE_Y = 30;
-
         public static final int MESSAGE_LINE_1 = Map.HEIGHT + 1;
         public static final int MESSAGE_LINE_2 = Map.HEIGHT + 2;
         public static final int MESSAGE_LINE_3 = Map.HEIGHT + 3;
@@ -65,12 +62,10 @@ public final class GameConstants {
 
     public static final class TextMessages {
         public static final String TERMINATE = "\nTerminated via Ctrl+C";
-        public static final String CONTROL = "WASD | . rest | ESC | h/j/k/e use | 1-9 choose (wep 0-9, 0 off)";
         public static final String DIED = "YOU DIED! any key to exit";
         public static final String VICTORY = "Congratulations! YOU VICTORY!   Press ESC to exit";
         public static final String MISSED = "You missed!";
         public static final String MISSED_VAMPIRE = "First attack on vampire misses!";
-        public static final String CONTROL_HINT = "Use WASD to move, ESC to exit";
     }
 
     public static final class Colors {
@@ -83,11 +78,6 @@ public final class GameConstants {
         public static final short COLOR_MAGENTA = CharColor.MAGENTA;
         public static final short COLOR_CYAN = CharColor.CYAN;
         public static final short COLOR_WHITE = CharColor.WHITE;
-
-        // ANSI escape codes для консоли (если нужно)
-        public static final String ANSI_GREEN = "\033[92m";
-        public static final String ANSI_RED = "\033[91m";
-        public static final String ANSI_RESET = "\033[0m";
     }
 
     public static final class Icons {
@@ -103,29 +93,25 @@ public final class GameConstants {
         public static final char SNAKE_MAGE = 's';
         public static final char OGRE = 'o';
         public static final char EXIT = '⇧';
+        public static final char DOOR = '+';
+
+        public static final char TREASURES = '$';
+        public static final char FOOD = ',';
+        public static final char ELIXIR = '!';
+        public static final char SCROLL = '?';
+        public static final char WEAPON = ')';
     }
 
     public static final class control {
         public static final int KEY_W = 'w';
         public static final int KEY_S = 's';
-        public static final int KEY_A = 'a';
-        public static final int KEY_D = 'd';
-        public static final int REST1 = '.';
-        public static final int REST2 = ' ';
-        private static final int KEY_H = 'h'; // Оружие
-        private static final int KEY_J = 'j'; // Еда
-        private static final int KEY_K = 'k'; // Эликсир
-        private static final int KEY_E = 'e'; // Свиток
-        private static final int KEY_Q = 'q'; // Выход
-        public static final int ESC_KEY_CODE = 27; // Выход
+        public static final int ESC_KEY_CODE = 27; // Выход// Стрелка вниз
     }
 
     public static final class Player {
-        public static final int START_HEALTH = 30;
-        public static final int START_MAX_HEALTH = 30;  // <-- ДОБАВЬТЕ ЭТОТЬ
+        public static final int START_MAX_HEALTH = 30;
         public static final int START_AGILITY = 5;
         public static final int START_STRENGTH = 5;
-        public static final int SIZE_BACKPACK = 36; //  9 предметов  х  4 типа(еда, свитки, эликсир, оружие)
         public static final int MAX_PER_TYPE = 9; //  9 предметов
 
     }

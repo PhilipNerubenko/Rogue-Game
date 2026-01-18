@@ -1,25 +1,21 @@
-package org.example.presentation.screens;
+package org.example.domain;
 
-import jcurses.system.CharColor;
-import jcurses.system.Toolkit;
-import org.example.application.GameInitializer;
-import org.example.application.usecase.SaveGameUseCase;
+import org.example.domain.input.inputGameManager;
 import org.example.config.GameConstants;
-import org.example.datalayer.entity.SessionStat;
-import org.example.datalayer.service.StatisticsService;
-import org.example.presentation.input.InputHandler;
-import org.example.presentation.views.Renderer;
+import org.example.domain.input.InputCommand;
+import org.example.domain.entity.SessionStat;
+import org.example.domain.service.StatisticsService;
+import org.example.domain.interfaces.Renderer;
 import org.example.domain.dto.VisibleMapDto;
 import org.example.domain.entity.*;
 import org.example.domain.enums.EnemyType;
 import org.example.domain.enums.ItemType;
 import org.example.domain.factory.LevelGenerator;
 import org.example.domain.enums.Direction;
-import org.example.presentation.dto.InputCommand;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
 import org.example.domain.service.*;
-import org.example.presentation.input.InputStateManager;
+import org.example.domain.input.InputStateManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
+import static org.example.config.GameConstants.Colors.*;
 import static org.example.config.GameConstants.Icons.*;
 import static org.example.config.GameConstants.ProbabilitiesAndBalance.*;
 import static org.example.config.GameConstants.ScreenConfig.*;
@@ -35,9 +32,10 @@ import static org.example.config.GameConstants.TextMessages.*;
 public class GameLoop {
 
     private final GameSession session;
-    private final InputHandler inputHandler;
+    private final AutosaveService autosaveService;
+    private final StatisticsService statisticsService;
     private final InputStateManager inputStateManager;
-    private final SaveGameUseCase saveGameUseCase;
+    private final inputGameManager inputGameManager;
     private final Renderer renderer;
     private final MapVisibilityService mapVisibilityService;
     private boolean running = false;
@@ -66,15 +64,16 @@ public class GameLoop {
     public GameLoop(GameInitializer initializer) {
         this.session = initializer.getSession();
         this.currentSessionStat = initializer.getSessionStat();
-        this.inputStateManager = initializer.getInputStateManager();
-        this.saveGameUseCase = initializer.getSaveGameUseCase();
         this.renderer = initializer.getRenderer();
         this.fogOfWarService = initializer.getFogOfWarService();
+        this.autosaveService = initializer.getAutosaveService();
+        this.statisticsService = initializer.getStatisticsService();
+        this.inputStateManager = initializer.getInputStateManager();
+        this.inputGameManager = initializer.getGameInputManager();
         this.mapVisibilityService = new MapVisibilityService(fogOfWarService);
         this.combatService = initializer.getCombatService();
         this.enemyAIService = initializer.getEnemyAIService();
         this.levelGenerator = initializer.getLevelGenerator();
-        this.inputHandler = initializer.getInputHandler();
         this.asciiMap = new char[GameConstants.Map.HEIGHT][GameConstants.Map.WIDTH];
     }
 
@@ -92,11 +91,6 @@ public class GameLoop {
             // Игра была загружена, восстанавливаем состояние
             restoreLoadedGame();
         }
-
-        sun.misc.Signal.handle(new sun.misc.Signal(SIGINT_STRING), signal -> {
-            renderer.shutdown();
-            System.exit(0);
-        });
 
         renderer.clearScreen();
         Position pos = getPlayerPosition();
@@ -122,7 +116,7 @@ public class GameLoop {
             renderer.clearScreen();
             drawMap();
             drawEnemies();
-            renderer.drawChar(pos.getX(), pos.getY(), GameConstants.Icons.PLAYER, CharColor.YELLOW);
+            renderer.drawChar(pos.getX(), pos.getY(), GameConstants.Icons.PLAYER, COLOR_YELLOW);
 
             // Если ожидаем выбор предмета - рендерим меню поверх
             if (inputStateManager.isAwaitingSelection()) {
@@ -135,21 +129,21 @@ public class GameLoop {
 
             if (messageTimer > 0) {
                 if (activeMessageLine1 != null) {
-                    renderer.drawMessage(MESSAGE_LINE_1 , activeMessageLine1, CharColor.YELLOW);
+                    renderer.drawMessage(MESSAGE_LINE_1 , activeMessageLine1, COLOR_YELLOW);
                 }
                 if (activeMessageLine2 != null) {
-                    renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, CharColor.YELLOW);
+                    renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, COLOR_YELLOW);
                 }
                 if (activeMessageLine3 != null) {
-                    renderer.drawMessage(MESSAGE_LINE_3, activeMessageLine3, CharColor.YELLOW);
+                    renderer.drawMessage(MESSAGE_LINE_3, activeMessageLine3, COLOR_YELLOW);
                 }
             }
 
             // 2. ВВОД
-            InputCommand command = inputHandler.readCommand();
+            InputCommand command = inputGameManager.processInput();
 
             if (command.getType() == InputCommand.Type.QUIT) {
-                saveGameUseCase.saveGame(session, currentSessionStat);
+                autosaveService.saveGame(session, currentSessionStat);
                 running = false;
                 continue;
             }
@@ -191,8 +185,6 @@ public class GameLoop {
 
         renderer.shutdown();
     }
-
-
 
     /**
      * Помечает всю карту как исследованную при загрузке игры
@@ -270,21 +262,21 @@ public class GameLoop {
 
    private void handleDeath() throws IOException {
         renderer.clearScreen();
-        renderer.drawString(DEATH_MESSAGE_X, DEATH_MESSAGE_Y, DIED, CharColor.RED);
-        Toolkit.readCharacter();
-        // Передаем gameSession в updateScoreBoard
-        StatisticsService.updateScoreBoard(session, currentSessionStat);
+        renderer.drawString(DEATH_MESSAGE_X, DEATH_MESSAGE_Y, DIED, COLOR_RED);
+        renderer.readCharacter();
+
+       statisticsService.addToScoreboard(currentSessionStat, session);
     }
 
     private void handleVictory() throws IOException {
-        renderer.drawMessage(DEATH_MESSAGE_Y, VICTORY, CharColor.GREEN);
-        // Передаем gameSession в updateScoreBoard
+        renderer.drawMessage(DEATH_MESSAGE_Y, VICTORY, COLOR_GREEN);
+
         try {
             Thread.sleep(5000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        StatisticsService.updateScoreBoard(session, currentSessionStat);
+        statisticsService.addToScoreboard(currentSessionStat, session);
     }
 
     private boolean canMoveTo(int x, int y) {
@@ -305,12 +297,12 @@ public class GameLoop {
 
     private static int getEnemyColor(Enemy enemy) {
         return switch (enemy.getType()) {
-            case ZOMBIE -> CharColor.GREEN;
-            case VAMPIRE -> CharColor.RED;
-            case GHOST -> CharColor.WHITE;
-            case OGRE -> CharColor.YELLOW;
-            case SNAKE_MAGE -> CharColor.CYAN;
-            default -> CharColor.WHITE;
+            case ZOMBIE -> COLOR_GREEN;
+            case VAMPIRE -> COLOR_RED;
+//            case GHOST -> COLOR_WHITE;
+            case OGRE -> COLOR_YELLOW;
+//            case SNAKE_MAGE ->  COLOR_WHITE;
+            default -> COLOR_WHITE;
         };
     }
 
@@ -341,7 +333,7 @@ public class GameLoop {
 
         // Подсказка
         String controls = "WASD:move | h:weapon | j:food | k:elixir | e:scroll | q:unequip | ESC:save&exit";
-        renderer.drawString(3, GameConstants.Map.HEIGHT + 4, controls, CharColor.CYAN);
+        renderer.drawString(3, GameConstants.Map.HEIGHT + 4, controls, COLOR_CYAN);
 
         // Статус Бар
         renderer.drawStatusBar(
@@ -356,10 +348,10 @@ public class GameLoop {
         // Предметы на уровне
         int itemLIstX = 84;
         int itemListY = 20;
-        renderer.drawString(itemLIstX, itemListY++, "=== ITEMS ON LEVEL ===", CharColor.CYAN);
+        renderer.drawString(itemLIstX, itemListY++, "=== ITEMS ON LEVEL ===", COLOR_CYAN);
 
         if (session.getCurrentLevelItems().isEmpty()) {
-            renderer.drawString(itemLIstX, itemListY++, "No items on this level", CharColor.WHITE);
+            renderer.drawString(itemLIstX, itemListY++, "No items on this level", COLOR_WHITE);
         } else {
             int maxToShow = Math.min(5, session.getCurrentLevelItems().size());
             for (int i = 0; i < maxToShow; i++) {
@@ -370,13 +362,13 @@ public class GameLoop {
                         item.getX(),
                         item.getY()
                 );
-                renderer.drawString(itemLIstX, itemListY++, itemInfo, CharColor.WHITE);
+                renderer.drawString(itemLIstX, itemListY++, itemInfo, COLOR_WHITE);
             }
 
             if (session.getCurrentLevelItems().size() > 5) {
                 renderer.drawString(itemLIstX, itemListY++,
                         "... and " + (session.getCurrentLevelItems().size() - 5) + " more",
-                        CharColor.YELLOW);
+                        COLOR_YELLOW);
             }
         }
 
@@ -445,7 +437,7 @@ public class GameLoop {
 
         // Увеличиваем уровень в статистике
         if (levelToGenerate > 1) {
-            currentSessionStat.incrementLevel();
+            statisticsService.incrementLevel(currentSessionStat);
         }
     }
 
@@ -537,12 +529,12 @@ public class GameLoop {
             if (enemyAtPosition != null) {
                 // Блок try-catch для обработки IOException
                 try {
-                    activeMessageLine1 = combatService.attackEnemy(session, enemyAtPosition, currentSessionStat);
+                    activeMessageLine1 = combatService.attackEnemy(session, enemyAtPosition, currentSessionStat, statisticsService);
                     messageTimer = MESSAGE_DURATION;
 
                     if (enemyAtPosition.getHealth() <= 0) {
-                        combatService.removeEnemy(session, enemyAtPosition, asciiMap);
-                        currentSessionStat.incrementEnemies();
+                        renderer.removeEnemy(session, enemyAtPosition, asciiMap);
+                        statisticsService.incrementEnemies(currentSessionStat);
                     }
                 } catch (IOException e) {
                     System.err.println("ERROR updating enemy stats: " + e.getMessage());
@@ -556,20 +548,20 @@ public class GameLoop {
                     Item item = getItemAt(newX, newY);
                     if (item != null) {
                         // Подбираем предмет
-                        handleItemPickup(item, newX, newY);
+                        handleItemPickup(item, newX, newY, currentSessionStat);
 
                         // После подбора игрок перемещается на эту клетку
                         // Затираем старую позицию
-                        renderer.drawChar(pos.getX(), pos.getY(), symbolUnderPlayer, CharColor.WHITE);
+                        renderer.drawChar(pos.getX(), pos.getY(), symbolUnderPlayer, COLOR_WHITE);
 
                         // Помечаем клетку как исследованную
                         fogOfWarService.markCellAsExplored(newX, newY);
 
                         // Обновляем позицию игрока
                         session.getPlayer().move(dir);
-                        symbolUnderPlayer = '.'; // После подбора на клетке всегда пол
+                        symbolUnderPlayer = FLOOR; // После подбора на клетке всегда пол
                         try {
-                            currentSessionStat.incrementMoves();
+                            statisticsService.incrementMoves(currentSessionStat);
                         } catch (IOException e) {
                             System.err.println("ERROR updating move stats: " + e.getMessage());
                         }
@@ -581,7 +573,7 @@ public class GameLoop {
                 if (symbolAtNewPosition == 'E' || symbolAtNewPosition == EXIT) {
                     generateNewLevel();
                     try {
-                        currentSessionStat.incrementMoves();
+                        statisticsService.incrementMoves(currentSessionStat);
                     } catch (IOException e) {
                         System.err.println("ERROR updating move stats: " + e.getMessage());
                     }
@@ -590,7 +582,7 @@ public class GameLoop {
 
                 // ТРЕТЬЕ: Обычное перемещение (без предмета)
                 // Затираем старую позицию
-                renderer.drawChar(pos.getX(), pos.getY(), symbolUnderPlayer, CharColor.WHITE);
+                renderer.drawChar(pos.getX(), pos.getY(), symbolUnderPlayer, COLOR_WHITE);
 
                 // Помечаем клетку как исследованную
                 fogOfWarService.markCellAsExplored(newX, newY);
@@ -599,7 +591,7 @@ public class GameLoop {
                 session.getPlayer().move(dir);
                 symbolUnderPlayer = symbolAtNewPosition;
                 try {
-                    currentSessionStat.incrementMoves();
+                    statisticsService.incrementMoves(currentSessionStat);
                 } catch (IOException e) {
                     System.err.println("ERROR updating move stats: " + e.getMessage());
                 }
@@ -630,7 +622,7 @@ public class GameLoop {
         messageTimer = MESSAGE_DURATION;
     }
 
-    private void handleItemPickup(Item item, int x, int y) {
+    private void handleItemPickup(Item item, int x, int y, SessionStat currentSessionStat) throws IOException {
         Player player = session.getPlayer();
         Inventory inventory = player.getInventory();
 
@@ -639,9 +631,10 @@ public class GameLoop {
             // Сокровища не имеют ограничений по количеству
             if (inventory.add(item)) {
                 session.getCurrentLevelItems().remove(item);
-                asciiMap[y][x] = '.';
+                asciiMap[y][x] = FLOOR;
 
                 activeMessageLine3 = String.format("Picked up: %d gold", item.getValue());
+                statisticsService.addTreasures(item.getValue(), currentSessionStat);
                 messageTimer = MESSAGE_DURATION;
             }
             return;
@@ -664,7 +657,7 @@ public class GameLoop {
 
         if (inventory.add(item)) {
             session.getCurrentLevelItems().remove(item);
-            asciiMap[y][x] = '.';
+            asciiMap[y][x] = FLOOR;
 
             activeMessageLine3 = String.format("Picked up: %s (%s)",
                     item.getSubType(), type.name().toLowerCase());
@@ -694,9 +687,9 @@ public class GameLoop {
                 // Обновляем статистику с обработкой исключений
                 try {
                     switch (type) {
-                        case FOOD -> currentSessionStat.incrementFood();
-                        case ELIXIR -> currentSessionStat.incrementElixirs();
-                        case SCROLL -> currentSessionStat.incrementScrolls();
+                        case FOOD -> statisticsService.incrementFood(currentSessionStat);
+                        case ELIXIR -> statisticsService.incrementElixirs(currentSessionStat);
+                        case SCROLL -> statisticsService.incrementScrolls(currentSessionStat);
                         default -> {}
                     }
                 } catch (IOException e) {
@@ -808,11 +801,11 @@ public class GameLoop {
     }
 
     private boolean isItemSymbol(char symbol) {
-        return symbol == ',' ||   // food
-                symbol == '!' ||   // elixir
-                symbol == '?' ||   // scroll
-                symbol == ')' ||   // weapon
-                symbol == '$';     // treasure
+        return symbol == FOOD ||   // food
+                symbol == ELIXIR ||   // elixir
+                symbol == SCROLL ||   // scroll
+                symbol == WEAPON ||   // weapon
+                symbol == TREASURES;     // treasure
     }
 
     private Item getItemAt(int x, int y) {
@@ -839,18 +832,18 @@ public class GameLoop {
 
     private short getItemTypeColor(ItemType type) {
         return switch (type) {
-            case WEAPON -> CharColor.RED;
-            case FOOD -> CharColor.GREEN;
-            case ELIXIR -> CharColor.BLUE;
-            case SCROLL -> CharColor.MAGENTA;
-            case TREASURE -> CharColor.YELLOW;
-            default -> CharColor.WHITE;
+            case WEAPON -> COLOR_RED;
+            case FOOD -> COLOR_GREEN;
+            case ELIXIR -> COLOR_BLUE;
+            case SCROLL -> COLOR_MAGENTA;
+            case TREASURE -> COLOR_YELLOW;
+            default -> COLOR_WHITE;
         };
     }
 
     private void drawInventory() {
         int startY = 0;
-        renderer.drawString(84, startY++, "=== INVENTORY ===", CharColor.CYAN);
+        renderer.drawString(84, startY++, "=== INVENTORY ===", COLOR_CYAN);
 
         Player player = session.getPlayer();
         Inventory inventory = player.getInventory();
@@ -867,7 +860,7 @@ public class GameLoop {
         }
 
         if (isEmpty && inventory.getTreasureValue() == 0) {
-            renderer.drawString(86, startY++, "Empty", CharColor.WHITE);
+            renderer.drawString(86, startY++, "Empty", COLOR_WHITE);
             return;
         }
 
@@ -875,7 +868,7 @@ public class GameLoop {
         if (treasureValue > 0) {
             renderer.drawString(86, startY++,
                     String.format("Treasure: %d gold", treasureValue),
-                    CharColor.YELLOW);
+                    COLOR_YELLOW);
         }
 
         for (ItemType type : ItemType.values()) {
@@ -896,13 +889,13 @@ public class GameLoop {
                 for (int i = 0; i < itemsToShow; i++) {
                     Item item = items.get(i);
                     String itemInfo = formatItemInfo(item);
-                    renderer.drawString(88, startY++, itemInfo, CharColor.WHITE);
+                    renderer.drawString(88, startY++, itemInfo, COLOR_WHITE);
                 }
 
                 if (items.size() > 2) {
                     renderer.drawString(88, startY++,
                             String.format("... and %d more", items.size() - 2),
-                            CharColor.YELLOW);
+                            COLOR_YELLOW);
                 }
             }
         }
@@ -913,12 +906,12 @@ public class GameLoop {
                     String.format("Weapon Equipped: %s (STR+%d)",
                             equipped.getSubType(),
                             equipped.getStrength()),
-                    CharColor.GREEN);
+                    COLOR_GREEN);
         }
 
         renderer.drawString(84, startY,
                 String.format("Total items: %d", totalItems),
-                CharColor.CYAN);
+                COLOR_CYAN);
     }
 
     private String formatItemInfo(Item item) {
@@ -949,24 +942,24 @@ public class GameLoop {
         // Очищаем область
         for (int y = menuY; y < menuY + menuHeight; y++) {
             for (int x = menuX; x < menuX + menuWidth; x++) {
-                renderer.drawChar(x, y, ' ', CharColor.BLACK);
+                renderer.drawChar(x, y, ' ', COLOR_BLACK);
             }
         }
 
         // Рисуем рамку меню
         String border = "+" + "-".repeat(menuWidth ) + "+";
-        renderer.drawString(menuX, menuY, border, CharColor.YELLOW);
-        renderer.drawString(menuX, menuY + menuHeight - 1, border, CharColor.YELLOW);
+        renderer.drawString(menuX, menuY, border, COLOR_YELLOW);
+        renderer.drawString(menuX, menuY + menuHeight - 1, border, COLOR_YELLOW);
 
         for (int y = menuY + 1; y < menuY + menuHeight -1; y++) {
-            renderer.drawChar(menuX, y, '|', CharColor.YELLOW);
-            renderer.drawChar(menuX + menuWidth + 1, y, '|', CharColor.YELLOW);
+            renderer.drawChar(menuX, y, '|', COLOR_YELLOW);
+            renderer.drawChar(menuX + menuWidth + 1, y, '|', COLOR_YELLOW);
         }
 
         // Заголовок
         String title = " Select " + pendingType.name().toLowerCase() + " ";
         int titleX = menuX + (menuWidth - title.length()) / 2;
-        renderer.drawString(titleX, menuY + 1, title, CharColor.CYAN);
+        renderer.drawString(titleX, menuY + 1, title, COLOR_CYAN);
 
         if (pendingType == ItemType.WEAPON) {
             showWeaponSelectionMenu(menuX + 2, menuY + 3);
@@ -976,7 +969,7 @@ public class GameLoop {
 
         // Подсказка
         renderer.drawString(menuX + 2, menuY + menuHeight - 2,
-                "0-9: select, ESC: cancel", CharColor.WHITE);
+                "0-9: select, ESC: cancel", COLOR_WHITE);
     }
 
     private void showWeaponSelectionMenu(int x, int y) {
@@ -989,17 +982,17 @@ public class GameLoop {
         // Опция 0: снять оружие
         String currentWeaponName = (equippedWeapon != null && !equippedWeapon.getSubType().equals("fists"))
                 ? equippedWeapon.getSubType() : "fists";
-        renderer.drawString(x, line++, String.format("0. Unequip (%s)", currentWeaponName), CharColor.WHITE);
+        renderer.drawString(x, line++, String.format("0. Unequip (%s)", currentWeaponName), COLOR_WHITE);
 
         // Список оружия в инвентаре
         if (weapons.isEmpty()) {
-            renderer.drawString(x, line++, "No weapons in inventory", CharColor.YELLOW);
+            renderer.drawString(x, line++, "No weapons in inventory", COLOR_YELLOW);
         } else {
             for (int i = 0; i < weapons.size() && i < 9; i++) {
                 Item weapon = weapons.get(i);
                 String text = String.format("%d. %s (STR+%d)",
                         i + 1, weapon.getSubType(), weapon.getStrength());
-                renderer.drawString(x, line++, text, CharColor.WHITE);
+                renderer.drawString(x, line++, text, COLOR_WHITE);
             }
         }
     }
@@ -1011,12 +1004,12 @@ public class GameLoop {
         int line = y;
 
         if (items.isEmpty()) {
-            renderer.drawString(x, line++, "No " + type.name().toLowerCase() + " in inventory", CharColor.YELLOW);
+            renderer.drawString(x, line++, "No " + type.name().toLowerCase() + " in inventory", COLOR_YELLOW);
         } else {
             for (int i = 0; i < items.size() && i < 9; i++) {
                 Item item = items.get(i);
                 String text = String.format("%d. %s", i + 1, formatItemForSelection(item));
-                renderer.drawString(x, line++, text, CharColor.WHITE);
+                renderer.drawString(x, line++, text, COLOR_WHITE);
             }
         }
     }

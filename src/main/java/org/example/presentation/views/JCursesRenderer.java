@@ -3,10 +3,14 @@ package org.example.presentation.views;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jcurses.system.CharColor;
+import jcurses.system.InputChar;
 import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
-import org.example.datalayer.entity.SessionStat;
+import org.example.domain.entity.Enemy;
+import org.example.domain.entity.GameSession;
+import org.example.domain.entity.SessionStat;
 import org.example.domain.dto.VisibleMapDto;
+import org.example.domain.interfaces.Renderer;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,6 +46,12 @@ public class JCursesRenderer implements Renderer {
         this.defaultColor = new CharColor(COLOR_BLACK, COLOR_BLACK);
         Toolkit.init();
         Toolkit.clearScreen(defaultColor);
+    }
+
+    @Override
+    public int readCharacter() {
+        InputChar input = Toolkit.readCharacter();
+        return input.getCode();
     }
 
     @Override
@@ -350,6 +360,22 @@ public class JCursesRenderer implements Renderer {
     @Override
     public void clearLine(int y) {
         drawString(3, y, " ".repeat(width), COLOR_BLACK);
+    }
+
+    /**
+     * Удалить врага с карты и из списка врагов
+     * @param session игровая сессия
+     * @param enemy враг для удаления
+     * @param asciiMap ASCII карта игры
+     */
+    @Override
+    public void removeEnemy(GameSession session, Enemy enemy, char[][] asciiMap) {
+        // Очистка позиции врага на карте
+        Toolkit.printString(String.valueOf(asciiMap[enemy.getY()][enemy.getX()]),
+                enemy.getX() + MAP_OFFSET_X, enemy.getY(),
+                new CharColor(CharColor.BLACK, CharColor.WHITE));
+        // Удаление врага из списка активных врагов
+        session.getEnemies().remove(enemy);
     }
 
     /**
