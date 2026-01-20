@@ -76,10 +76,6 @@ public class Player extends Character {
      * Экипирует оружие (если уже есть экипированное оружие, помещает его в инвентарь)
      */
     public void equip(Item weapon) {
-        // Сохраняем текущее оружие в инвентарь, если это не кулаки
-        if (this.equippedWeapon != null && !this.equippedWeapon.getSubType().equals("fists")) {
-            this.getInventory().add(this.equippedWeapon);
-        }
 
         this.equippedWeapon = weapon;
 
@@ -92,41 +88,20 @@ public class Player extends Character {
 
     /**
      * Снимает текущее оружие и возвращается к использованию кулаков
+     * @return снятое оружие или null, если не было оружия
      */
-    public void unequipWeapon() {
-        if (this.equippedWeapon != null && !this.equippedWeapon.getSubType().equals("fists")) {
-            this.getInventory().add(this.equippedWeapon);
+    public Item unequipWeapon() {
+        Item previousWeapon = this.equippedWeapon;
+
+        if (previousWeapon != null && !previousWeapon.getSubType().equals("fists")) {
+            this.equippedWeapon = Item.createFists();
+            this.setStrength(GameConstants.Player.START_STRENGTH);
+            return previousWeapon; // возвращаем снятое оружие
         }
 
         this.equippedWeapon = Item.createFists();
         this.setStrength(GameConstants.Player.START_STRENGTH);
-    }
-
-    /**
-     * Возвращает урон атаки с учетом силы персонажа и экипированного оружия
-     */
-    public int getAttackDamage() {
-        int baseDamage = this.getStrength();
-
-        if (equippedWeapon != null) {
-            baseDamage += equippedWeapon.getStrength();
-        }
-
-        return baseDamage;
-    }
-
-    /**
-     * Использует предмет из инвентаря по типу и индексу
-     * @return true если предмет был успешно использован
-     */
-    public boolean useItem(ItemType type, int index) {
-        Item item = this.getInventory().take(type, index);
-        if (item == null) {
-            return false;
-        }
-
-        applyItemEffects(item);
-        return true;
+        return null; // не было оружия или были кулаки
     }
 
     /**
@@ -154,11 +129,6 @@ public class Player extends Character {
         if (item.getStrength() > 0 && !item.getType().equals("weapon")) {
             this.setStrength(this.getStrength() + item.getStrength());
         }
-
-//        // Экипировка оружия
-//        if (item.getType().equals("weapon")) {
-//            this.equip(item);
-//        }
     }
 
     /**

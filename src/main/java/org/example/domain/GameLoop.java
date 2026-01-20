@@ -1,6 +1,7 @@
 package org.example.domain;
 
-import org.example.domain.input.inputGameManager;
+import jcurses.system.CharColor;
+import org.example.domain.input.GameCommandHandler;
 import org.example.config.GameConstants;
 import org.example.domain.input.InputCommand;
 import org.example.domain.entity.SessionStat;
@@ -8,34 +9,29 @@ import org.example.domain.service.StatisticsService;
 import org.example.domain.interfaces.Renderer;
 import org.example.domain.dto.VisibleMapDto;
 import org.example.domain.entity.*;
-import org.example.domain.enums.EnemyType;
 import org.example.domain.enums.ItemType;
 import org.example.domain.factory.LevelGenerator;
-import org.example.domain.enums.Direction;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
 import org.example.domain.service.*;
-import org.example.domain.input.InputStateManager;
+import org.example.domain.input.ItemSelectionState;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 import static org.example.config.GameConstants.Colors.*;
 import static org.example.config.GameConstants.Icons.*;
-import static org.example.config.GameConstants.ProbabilitiesAndBalance.*;
 import static org.example.config.GameConstants.ScreenConfig.*;
-import static org.example.config.GameConstants.TextMessages.*;
+import static org.example.config.GameConstants.TextMessages.MESSAGE_DURATION;
 
 public class GameLoop {
 
     private final GameSession session;
     private final AutosaveService autosaveService;
     private final StatisticsService statisticsService;
-    private final InputStateManager inputStateManager;
-    private final inputGameManager inputGameManager;
+    private final ItemSelectionState itemSelectionState;
+    private final GameCommandHandler gameCommandHandler;
     private final Renderer renderer;
     private final MapVisibilityService mapVisibilityService;
     private boolean running = false;
@@ -44,22 +40,12 @@ public class GameLoop {
     private final CombatService combatService;
     private final EnemyAIService enemyAIService;
     private final FogOfWarService fogOfWarService;
+    private final Message message;
     private final LevelGenerator levelGenerator;
     private char[][] asciiMap;
 
-    // Позиция игрока
-    private char symbolUnderPlayer;
-
-    // Сообщения
-    private String activeMessageLine1;
-    private String activeMessageLine2;
-    private String activeMessageLine3;
-    private int messageTimer = 0;
-    private static final int MESSAGE_DURATION = 2;
-
     // Статистика текущей сессии
     private final SessionStat currentSessionStat;
-
 
     public GameLoop(GameInitializer initializer) {
         this.session = initializer.getSession();
@@ -68,17 +54,14 @@ public class GameLoop {
         this.fogOfWarService = initializer.getFogOfWarService();
         this.autosaveService = initializer.getAutosaveService();
         this.statisticsService = initializer.getStatisticsService();
-        this.inputStateManager = initializer.getInputStateManager();
-        this.inputGameManager = initializer.getGameInputManager();
+        this.itemSelectionState = initializer.getInputStateManager();
+        this.gameCommandHandler = initializer.getGameInputManager();
+        this.message = initializer.getMessage();
         this.mapVisibilityService = new MapVisibilityService(fogOfWarService);
         this.combatService = initializer.getCombatService();
         this.enemyAIService = initializer.getEnemyAIService();
         this.levelGenerator = initializer.getLevelGenerator();
         this.asciiMap = new char[GameConstants.Map.HEIGHT][GameConstants.Map.WIDTH];
-    }
-
-    private Position getPlayerPosition() {
-        return session.getPlayer().getPosition();
     }
 
     public void start() throws IOException {
@@ -89,8 +72,10 @@ public class GameLoop {
             generateNewLevel();
         } else {
             // Игра была загружена, восстанавливаем состояние
-            restoreLoadedGame();
+            initializeLoadedGame();
         }
+
+        gameCommandHandler.bindWorld(session, asciiMap, currentSessionStat);
 
         renderer.clearScreen();
         Position pos = getPlayerPosition();
@@ -99,16 +84,14 @@ public class GameLoop {
         running = true;
 
         while (running) {
-            if (messageTimer > 0) {
-                messageTimer--;
+            if (message.getMessageTimer() > 0) {
+                message.setMessageTimer(message.getMessageTimer() - 1);
             } else {
-                activeMessageLine1 = null;
-                activeMessageLine2 = null;
-                activeMessageLine3 = null;
+                message.resetMessage();
             }
 
             if (session.getPlayer().isSleepTurns()) {
-                handleSleepTurn();
+                gameCommandHandler.handleSleepTurn();
                 continue;
             }
 
@@ -119,7 +102,7 @@ public class GameLoop {
             renderer.drawChar(pos.getX(), pos.getY(), GameConstants.Icons.PLAYER, COLOR_YELLOW);
 
             // Если ожидаем выбор предмета - рендерим меню поверх
-            if (inputStateManager.isAwaitingSelection()) {
+            if (itemSelectionState.isAwaitingSelection()) {
                 // Перерисовываем меню выбора
                 redrawSelectionMenu();
             } else {
@@ -127,20 +110,20 @@ public class GameLoop {
                 drawUI();
             }
 
-            if (messageTimer > 0) {
-                if (activeMessageLine1 != null) {
-                    renderer.drawMessage(MESSAGE_LINE_1 , activeMessageLine1, COLOR_YELLOW);
+            if (message.getMessageTimer() > 0) {
+                if (message.getActiveMessageLine1() != null) {
+                    renderer.drawMessage(MESSAGE_LINE_1, message.getActiveMessageLine1(), COLOR_YELLOW);
                 }
-                if (activeMessageLine2 != null) {
-                    renderer.drawMessage(MESSAGE_LINE_2, activeMessageLine2, COLOR_YELLOW);
+                if (message.getActiveMessageLine2() != null) {
+                    renderer.drawMessage(MESSAGE_LINE_2, message.getActiveMessageLine2(), COLOR_YELLOW);
                 }
-                if (activeMessageLine3 != null) {
-                    renderer.drawMessage(MESSAGE_LINE_3, activeMessageLine3, COLOR_YELLOW);
+                if (message.getActiveMessageLine3() != null) {
+                    renderer.drawMessage(MESSAGE_LINE_3, message.getActiveMessageLine3(), COLOR_YELLOW);
                 }
             }
 
             // 2. ВВОД
-            InputCommand command = inputGameManager.processInput();
+            InputCommand command = gameCommandHandler.processInput();
 
             if (command.getType() == InputCommand.Type.QUIT) {
                 autosaveService.saveGame(session, currentSessionStat);
@@ -149,22 +132,25 @@ public class GameLoop {
             }
 
             // 3. ОБРАБОТКА
-            switch (command.getType()) {
-                case MOVE:
-                    handleMovement(command.getDirection());
-                    break;
-                case USE_ITEM:
-                    handleUseItem(command.getItemType());
-                    break;
-                case SELECT_INDEX:
-                    handleItemSelection(command.getSelectedIndex());
-                    break;
-                case UNEQUIP_WEAPON:
-                    handleUnequipWeapon();
-                    break;
-                default:
-                    break;
-            }
+                switch (command.getType()) {
+                    case MOVE:
+                        boolean isExit = gameCommandHandler.handleMovement(command.getDirection());
+                        if (isExit) {
+                            generateNewLevel();
+                        }
+                        break;
+                    case USE_ITEM:
+                        gameCommandHandler.handleUseItem(command.getItemType());
+                        break;
+                    case SELECT_INDEX:
+                        gameCommandHandler.handleItemSelection(command.getSelectedIndex());
+                        break;
+                    case UNEQUIP_WEAPON:
+                        gameCommandHandler.handleUnequipWeapon();
+                        break;
+                    default:
+                        break;
+                }
 
             // 4. ОБНОВЛЕНИЕ МИРА
             fogOfWarService.updateVisibility(session.getPlayer().getPosition(), asciiMap);
@@ -172,13 +158,13 @@ public class GameLoop {
             List<String> enemyMessages = enemyAIService.witchMoveEnemiesPattern(
                     session, combatService, pos.getX(), pos.getY(), asciiMap);
             if (!enemyMessages.isEmpty()) {
-                activeMessageLine2 = String.join(", ", enemyMessages);
-                messageTimer = MESSAGE_DURATION;
+                message.setActiveMessageLine2(String.join(", ", enemyMessages));
+                message.setMessageTimer(MESSAGE_DURATION);
             }
 
             // Проверяем смерть игрока
             if (session.getPlayer().getHealth() <= 0) {
-                handleDeath();
+                gameCommandHandler.handleDeath();
                 running = false;
             }
         }
@@ -186,10 +172,14 @@ public class GameLoop {
         renderer.shutdown();
     }
 
+    private Position getPlayerPosition() {
+        return session.getPlayer().getPosition();
+    }
+
     /**
      * Помечает всю карту как исследованную при загрузке игры
      */
-    private void restoreLoadedGame() {
+    private void initializeLoadedGame() {
         // Проверка на null
         if (session.getCurrentMap() == null) {
             System.err.println("[GameLoop] ERROR: Saved map is null!");
@@ -239,8 +229,6 @@ public class GameLoop {
             playerPos.setY(py);
         }
 
-        symbolUnderPlayer = asciiMap[py][px];
-
         // Обновляем туман войны для загруженной игры
         fogOfWarService.updateForLoadedGame(playerPos, asciiMap);
 
@@ -256,34 +244,73 @@ public class GameLoop {
             }
         }
 
-        activeMessageLine1 = "Loaded game - Level " + session.getLevelNum();
-        messageTimer = MESSAGE_DURATION;
+        message.setActiveMessageLine1("Loaded game - Level " + session.getLevelNum());
+        message.setMessageTimer(MESSAGE_DURATION);
     }
 
-   private void handleDeath() throws IOException {
-        renderer.clearScreen();
-        renderer.drawString(DEATH_MESSAGE_X, DEATH_MESSAGE_Y, DIED, COLOR_RED);
-        renderer.readCharacter();
+    private void generateNewLevel() throws IOException {
+        int levelToGenerate;
 
-       statisticsService.addToScoreboard(currentSessionStat, session);
-    }
-
-    private void handleVictory() throws IOException {
-        renderer.drawMessage(DEATH_MESSAGE_Y, VICTORY, COLOR_GREEN);
-
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        if (session.getCurrentMap() == null) {
+            levelToGenerate = session.getLevelNum();
+        } else {
+            levelToGenerate = session.getLevelNum() + 1;
+            session.setLevelNum(levelToGenerate);
         }
-        statisticsService.addToScoreboard(currentSessionStat, session);
-    }
 
-    private boolean canMoveTo(int x, int y) {
-        return x >= 0 && x < GameConstants.Map.WIDTH &&
-                y >= 0 && y < GameConstants.Map.HEIGHT &&
-                asciiMap[y][x] != W_WALL && asciiMap[y][x] != H_WALL &&
-                asciiMap[y][x] != EMPTINESS;
+        // Проверка на победу
+        if (levelToGenerate > 21) {
+            gameCommandHandler.handleVictory();
+            running = false;
+            return;
+        }
+
+        // Генерация карты
+        char[][] newMap = levelGenerator.createAsciiMap(levelToGenerate);
+        session.setCurrentMap(newMap);
+        asciiMap = newMap;
+
+        gameCommandHandler.bindWorld(session, asciiMap, currentSessionStat);
+
+        // Сохраняем комнаты в GameSession
+        session.setRooms(levelGenerator.getRooms());
+
+        // Предметы из LevelGenerator
+        session.getCurrentLevelItems().clear();
+        session.getCurrentLevelItems().addAll(levelGenerator.getItems());
+
+        // Находим стартовую позицию
+        List<Room> rooms = levelGenerator.getRooms();
+        Position pos = getPlayerPosition();
+        int px = pos.getX();
+        int py = pos.getY();
+        for (Room room : rooms) {
+            if (room.isStartRoom()) {
+                pos.setX(room.getX1() + 2);
+                pos.setY(room.getY1() + 2);
+                break;
+            }
+        }
+
+        // Очищаем и генерируем врагов
+        session.getEnemies().clear();
+        List<Enemy> newEnemies = levelGenerator.generateEnemiesForSession(session, asciiMap);
+        session.getEnemies().addAll(newEnemies);
+
+        // Обновляем туман войны
+        fogOfWarService.reset();
+        fogOfWarService.markCellAsExplored(px, py);
+        fogOfWarService.updateVisibility(getPlayerPosition(), asciiMap);
+
+        if (levelToGenerate > 1) {
+            message.setActiveMessageLine1("You have gone deeper...");
+        }
+        message.setMessageTimer(MESSAGE_DURATION);
+
+        // Увеличиваем уровень в статистике
+        if (levelToGenerate > 1) {
+            statisticsService.incrementLevel(currentSessionStat);
+        }
     }
 
     private void drawEnemies() {
@@ -327,7 +354,7 @@ public class GameLoop {
 
     private void drawUI() {
         // Если ожидаем выбор предмета - не рисуем обычный UI
-        if (inputStateManager.isAwaitingSelection()) {
+        if (itemSelectionState.isAwaitingSelection()) {
             return;
         }
 
@@ -358,7 +385,7 @@ public class GameLoop {
                 Item item = session.getCurrentLevelItems().get(i);
                 String itemInfo = String.format("%d. %s at (%d,%d)",
                         i + 1,
-                        getItemShortName(item),
+                        getItemDisplayName(item),
                         item.getX(),
                         item.getY()
                 );
@@ -375,449 +402,7 @@ public class GameLoop {
         drawInventory();
     }
 
-    private void generateNewLevel() throws IOException {
-        int levelToGenerate;
-
-        if (session.getCurrentMap() == null) {
-            levelToGenerate = session.getLevelNum();
-        } else {
-            levelToGenerate = session.getLevelNum() + 1;
-            session.setLevelNum(levelToGenerate);
-        }
-
-        // Проверка на победу
-        if (levelToGenerate > 21) {
-            handleVictory();
-            running = false;
-            return;
-        }
-
-        // Генерация карты
-        char[][] newMap = levelGenerator.createAsciiMap(levelToGenerate);
-        session.setCurrentMap(newMap);
-        asciiMap = newMap;
-
-        // Сохраняем комнаты в GameSession
-        session.setRooms(levelGenerator.getRooms());
-
-        // Предметы из LevelGenerator
-        session.getCurrentLevelItems().clear();
-        session.getCurrentLevelItems().addAll(levelGenerator.getItems());
-
-        // Находим стартовую позицию
-        List<Room> rooms = levelGenerator.getRooms();
-        Position pos = getPlayerPosition();
-        int px = pos.getX();
-        int py = pos.getY();
-        for (Room room : rooms) {
-            if (room.isStartRoom()) {
-                pos.setX(room.getX1() + 2);
-                pos.setY(room.getY1() + 2);
-                break;
-            }
-        }
-
-        symbolUnderPlayer = asciiMap[py][px];
-
-        // Очищаем и генерируем врагов
-        session.getEnemies().clear();
-        createEnemies();
-
-        // Обновляем туман войны
-        fogOfWarService.reset();
-        fogOfWarService.markCellAsExplored(px, py);
-        fogOfWarService.updateVisibility(getPlayerPosition(), asciiMap);
-
-        // Сообщение игроку
-//        activeMessageLine1 = "Level " + levelToGenerate;
-        if (levelToGenerate > 1) {
-            activeMessageLine2 = "You have gone deeper...";
-        }
-        messageTimer = MESSAGE_DURATION;
-
-        // Увеличиваем уровень в статистике
-        if (levelToGenerate > 1) {
-            statisticsService.incrementLevel(currentSessionStat);
-        }
-    }
-
-    private void createEnemies() {
-        List<Room> rooms = levelGenerator.getRooms();
-        Random rand = levelGenerator.getRand();
-
-        int totalRoomsWithEnemies = calculateTotalRoomsWithEnemies(rooms.size(), rand);
-        List<Room> shuffledRooms = new ArrayList<>(rooms);
-        Collections.shuffle(shuffledRooms, rand);
-
-        int enemiesPlaced = 0;
-
-        for (Room room : shuffledRooms) {
-            if (enemiesPlaced >= totalRoomsWithEnemies) break;
-            if (room.isStartRoom()) continue;
-
-            enemiesPlaced += createEnemiesInRoom(room, rand, session);
-        }
-    }
-
-    private int calculateTotalRoomsWithEnemies(int totalRooms, Random rand) {
-        int roomsWithEnemies = (int) Math.round(
-                totalRooms * (MIN_ENEMY_DENSITY + rand.nextDouble() * DENSITY_RANGE)
-        );
-        return Math.max(MIN_ROOMS_WITH_ENEMIES, roomsWithEnemies);
-    }
-
-    private int createEnemiesInRoom(Room room, Random rand, GameSession session) {
-        int enemiesCreated = 0;
-        int enemiesInRoom = 1;
-
-        for (int j = 0; j < enemiesInRoom; j++) {
-            int enemyX = room.getX1() + 1 + rand.nextInt(room.getWidth() - 2);
-            int enemyY = room.getY1() + 1 + rand.nextInt(room.getHeight() - 2);
-
-            EnemyType randomType = EnemyType.values()[rand.nextInt(EnemyType.values().length)];
-
-            // Более Злые монстры с ростом уровня.
-            Enemy enemy = randomType.create(session.getLevelNum());
-            enemy.setX(enemyX);
-            enemy.setY(enemyY);
-
-            session.getEnemies().add(enemy);
-            enemiesCreated++;
-        }
-
-        return enemiesCreated;
-    }
-
-    private void handleSleepTurn() throws IOException {
-        activeMessageLine1 = "You are asleep... Zzz";
-        messageTimer = MESSAGE_DURATION;
-        Position pos = getPlayerPosition();
-
-        List<String> enemyMessages = enemyAIService.witchMoveEnemiesPattern(
-                session, combatService, pos.getX(), pos.getY(), asciiMap);
-
-        if (!enemyMessages.isEmpty()) {
-            activeMessageLine2 = String.join(", ", enemyMessages);
-            messageTimer = MESSAGE_DURATION;
-        }
-
-        session.getPlayer().decrementSleep();
-
-        if (session.getPlayer().getHealth() <= 0) {
-            handleDeath();
-            running = false;
-        }
-    }
-
-    private void handleMovement(Direction dir) {
-        try {
-            Position pos = getPlayerPosition();
-            int newX = pos.getX() + dir.getDx();
-            int newY = pos.getY() + dir.getDy();
-
-            // Проверяем границы
-            if (newX < 0 || newX >= GameConstants.Map.WIDTH ||
-                    newY < 0 || newY >= GameConstants.Map.HEIGHT) {
-                return;
-            }
-
-            // Проверяем символ на НОВОЙ позиции ПЕРЕД перемещением
-            char symbolAtNewPosition = asciiMap[newY][newX];
-
-            // Проверяем, есть ли враг
-            Enemy enemyAtPosition = enemyAIService.getEnemyAt(session, newX, newY);
-            if (enemyAtPosition != null) {
-                // Блок try-catch для обработки IOException
-                try {
-                    activeMessageLine1 = combatService.attackEnemy(session, enemyAtPosition, currentSessionStat, statisticsService);
-                    messageTimer = MESSAGE_DURATION;
-
-                    if (enemyAtPosition.getHealth() <= 0) {
-                        renderer.removeEnemy(session, enemyAtPosition, asciiMap);
-                        statisticsService.incrementEnemies(currentSessionStat);
-                    }
-                } catch (IOException e) {
-                    System.err.println("ERROR updating enemy stats: " + e.getMessage());
-                    activeMessageLine1 = "Error in combat!";
-                    messageTimer = MESSAGE_DURATION;
-                }
-            } else if (canMoveTo(newX, newY)) {
-
-                // ПЕРВОЕ: Проверяем предмет на новой клетке
-                if (isItemSymbol(symbolAtNewPosition)) {
-                    Item item = getItemAt(newX, newY);
-                    if (item != null) {
-                        // Подбираем предмет
-                        handleItemPickup(item, newX, newY, currentSessionStat);
-
-                        // После подбора игрок перемещается на эту клетку
-                        // Затираем старую позицию
-                        renderer.drawChar(pos.getX(), pos.getY(), symbolUnderPlayer, COLOR_WHITE);
-
-                        // Помечаем клетку как исследованную
-                        fogOfWarService.markCellAsExplored(newX, newY);
-
-                        // Обновляем позицию игрока
-                        session.getPlayer().move(dir);
-                        symbolUnderPlayer = FLOOR; // После подбора на клетке всегда пол
-                        try {
-                            statisticsService.incrementMoves(currentSessionStat);
-                        } catch (IOException e) {
-                            System.err.println("ERROR updating move stats: " + e.getMessage());
-                        }
-                        return;
-                    }
-                }
-
-                // ВТОРОЕ: Проверяем выход
-                if (symbolAtNewPosition == 'E' || symbolAtNewPosition == EXIT) {
-                    generateNewLevel();
-                    try {
-                        statisticsService.incrementMoves(currentSessionStat);
-                    } catch (IOException e) {
-                        System.err.println("ERROR updating move stats: " + e.getMessage());
-                    }
-                    return;
-                }
-
-                // ТРЕТЬЕ: Обычное перемещение (без предмета)
-                // Затираем старую позицию
-                renderer.drawChar(pos.getX(), pos.getY(), symbolUnderPlayer, COLOR_WHITE);
-
-                // Помечаем клетку как исследованную
-                fogOfWarService.markCellAsExplored(newX, newY);
-
-                // Обновляем локальные координаты
-                session.getPlayer().move(dir);
-                symbolUnderPlayer = symbolAtNewPosition;
-                try {
-                    statisticsService.incrementMoves(currentSessionStat);
-                } catch (IOException e) {
-                    System.err.println("ERROR updating move stats: " + e.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("ERROR in handleMovement: " + e.getMessage());
-            e.printStackTrace();
-            activeMessageLine3 = "Error: " + e.getClass().getSimpleName();
-            messageTimer = MESSAGE_DURATION;
-        }
-    }
-
-    private void handleUseItem(ItemType itemType) {
-        Player player = session.getPlayer();
-        Inventory inventory = player.getInventory();
-
-        if (inventory.count(itemType) == 0) {
-            activeMessageLine3 = "No " + itemType.name().toLowerCase() + " in inventory!";
-            messageTimer = MESSAGE_DURATION;
-            return;
-        }
-
-        // Просто переходим в режим ожидания выбора
-        inputStateManager.setAwaitingSelection(itemType);
-
-        // Сообщение для пользователя
-        activeMessageLine3 = "Select " + itemType.name().toLowerCase() + " (1-9) or ESC to cancel";
-        messageTimer = MESSAGE_DURATION;
-    }
-
-    private void handleItemPickup(Item item, int x, int y, SessionStat currentSessionStat) throws IOException {
-        Player player = session.getPlayer();
-        Inventory inventory = player.getInventory();
-
-        // Для сокровищ - особый случай
-        if (item.getType().equalsIgnoreCase("treasure")) {
-            // Сокровища не имеют ограничений по количеству
-            if (inventory.add(item)) {
-                session.getCurrentLevelItems().remove(item);
-                asciiMap[y][x] = FLOOR;
-
-                activeMessageLine3 = String.format("Picked up: %d gold", item.getValue());
-                statisticsService.addTreasures(item.getValue(), currentSessionStat);
-                messageTimer = MESSAGE_DURATION;
-            }
-            return;
-        }
-
-        // Для обычных предметов
-        ItemType type;
-        try {
-            type = ItemType.valueOf(item.getType().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            type = ItemType.TREASURE;
-        }
-
-        if (inventory.isFull(type)) {
-            activeMessageLine3 = String.format("%s slot is full! Max %d per type.",
-                    type.name(), GameConstants.Player.MAX_PER_TYPE);
-            messageTimer = MESSAGE_DURATION;
-            return;
-        }
-
-        if (inventory.add(item)) {
-            session.getCurrentLevelItems().remove(item);
-            asciiMap[y][x] = FLOOR;
-
-            activeMessageLine3 = String.format("Picked up: %s (%s)",
-                    item.getSubType(), type.name().toLowerCase());
-        } else {
-            activeMessageLine3 = "Failed to add item to inventory";
-        }
-        messageTimer = MESSAGE_DURATION;
-    }
-
-    private void handleItemSelection(int index) {
-        if (!inputStateManager.isAwaitingSelection()) {
-            return;
-        }
-
-        ItemType type = inputStateManager.getPendingItemType();
-
-        try {
-            boolean success;
-
-            if (type == ItemType.WEAPON) {
-                success = handleWeaponSelection(index);
-            } else {
-                success = handleConsumableSelection(type, index);
-            }
-
-            if (success) {
-                // Обновляем статистику с обработкой исключений
-                try {
-                    switch (type) {
-                        case FOOD -> statisticsService.incrementFood(currentSessionStat);
-                        case ELIXIR -> statisticsService.incrementElixirs(currentSessionStat);
-                        case SCROLL -> statisticsService.incrementScrolls(currentSessionStat);
-                        default -> {}
-                    }
-                } catch (IOException e) {
-                    System.err.println("Statistics update failed: " + e.getMessage());
-                }
-
-                // Обновляем статус игрока
-                updatePlayerStatus();
-            }
-
-        } catch (Exception e) {
-            System.err.println("ERROR in handleItemSelection: " + e.getMessage());
-            activeMessageLine3 = "Error using item: " + e.getMessage();
-            messageTimer = MESSAGE_DURATION;
-        } finally {
-            inputStateManager.resetAwaitingState();
-        }
-    }
-
-    private void handleUnequipWeapon() {
-        Player player = session.getPlayer();
-        Item currentWeapon = player.getEquippedWeapon();
-
-        if (currentWeapon != null && !currentWeapon.getSubType().equals("fists")) {
-            // Просто вызываем unequipWeapon - он сам добавит оружие в инвентарь
-            player.unequipWeapon();
-            activeMessageLine3 = "Weapon unequipped and added to inventory";
-        } else {
-            activeMessageLine3 = "No weapon equipped!";
-        }
-        messageTimer = MESSAGE_DURATION;
-    }
-
-    private boolean handleWeaponSelection(int index) {
-        Player player = session.getPlayer();
-        Inventory inventory = player.getInventory();
-
-        if (index == 0) {
-            // Снять оружие
-            Item currentWeapon = player.getEquippedWeapon();
-            if (currentWeapon != null && !currentWeapon.getSubType().equals("fists")) {
-                // НЕ добавляем в инвентарь здесь - это сделает player.unequipWeapon()
-                player.unequipWeapon();
-                activeMessageLine3 = "Weapon unequipped and added to inventory";
-                messageTimer = MESSAGE_DURATION;
-                return true;
-            } else {
-                activeMessageLine3 = "No weapon equipped!";
-                messageTimer = MESSAGE_DURATION;
-                return false;
-            }
-        }
-
-        // Индексы начинаются с 1 для пользователя
-        int itemIndex = index - 1;  // Преобразуем в индекс массива
-        List<Item> weapons = inventory.getItems(ItemType.WEAPON);
-
-        if (itemIndex < 0 || itemIndex >= weapons.size()) {
-            activeMessageLine3 = "Invalid weapon selection!";
-            messageTimer = MESSAGE_DURATION;
-            return false;
-        }
-
-        Item weapon = weapons.get(itemIndex);
-
-        // Если уже экипировано оружие, снимаем его
-        Item currentWeapon = player.getEquippedWeapon();
-        if (currentWeapon != null && !currentWeapon.getSubType().equals("fists")) {
-            // Снимаем текущее оружие
-            player.unequipWeapon(); // Это добавит оружие в инвентарь
-        }
-
-        // Экипируем новое оружие
-        player.equip(weapon);
-
-        // Удаляем из инвентаря (так как теперь экипировано)
-        inventory.take(ItemType.WEAPON, itemIndex);
-
-        activeMessageLine3 = String.format("Equipped: %s (STR+%d)",
-                weapon.getSubType(), weapon.getStrength());
-        messageTimer = MESSAGE_DURATION;
-        return true;
-    }
-
-    private boolean handleConsumableSelection(ItemType type, int index) {
-        Player player = session.getPlayer();
-        Inventory inventory = player.getInventory();
-
-        // Индексы начинаются с 1 для пользователя
-        int itemIndex = index - 1; // Преобразуем в индекс массива
-
-        // Получаем предмет из инвентаря
-        Item item = inventory.take(type, itemIndex);
-
-        if (item == null) {
-            activeMessageLine3 = "No item at selected position!";
-            messageTimer = MESSAGE_DURATION;
-            return false;
-        }
-
-        // Применяем эффекты предмета
-        player.applyItemEffects(item);
-
-        String itemName = type.name().toLowerCase();
-        activeMessageLine3 = "Used " + itemName + " (" + item.getSubType() + ") successfully!";
-        messageTimer = MESSAGE_DURATION;
-
-        return true;
-    }
-
-    private boolean isItemSymbol(char symbol) {
-        return symbol == FOOD ||   // food
-                symbol == ELIXIR ||   // elixir
-                symbol == SCROLL ||   // scroll
-                symbol == WEAPON ||   // weapon
-                symbol == TREASURES;     // treasure
-    }
-
-    private Item getItemAt(int x, int y) {
-        for (Item item : session.getCurrentLevelItems()) {
-            if (item.getX() == x && item.getY() == y) {
-                return item;
-            }
-        }
-        return null;
-    }
-
-    private String getItemShortName(Item item) {
+    private String getItemDisplayName(Item item) {
         if (item == null) return "null";
 
         return switch (item.getType().toLowerCase()) {
@@ -930,7 +515,7 @@ public class GameLoop {
     }
 
     private void redrawSelectionMenu() {
-        ItemType pendingType = inputStateManager.getPendingItemType();
+        ItemType pendingType = itemSelectionState.getPendingItemType();
         if (pendingType == null) return;
 
         // Очищаем область для меню (правый верхний угол)
@@ -947,11 +532,11 @@ public class GameLoop {
         }
 
         // Рисуем рамку меню
-        String border = "+" + "-".repeat(menuWidth ) + "+";
+        String border = "+" + "-".repeat(menuWidth) + "+";
         renderer.drawString(menuX, menuY, border, COLOR_YELLOW);
         renderer.drawString(menuX, menuY + menuHeight - 1, border, COLOR_YELLOW);
 
-        for (int y = menuY + 1; y < menuY + menuHeight -1; y++) {
+        for (int y = menuY + 1; y < menuY + menuHeight - 1; y++) {
             renderer.drawChar(menuX, y, '|', COLOR_YELLOW);
             renderer.drawChar(menuX + menuWidth + 1, y, '|', COLOR_YELLOW);
         }
@@ -1028,18 +613,5 @@ public class GameLoop {
                 " (" + String.join(", ", effects) + ")";
 
         return item.getSubType() + effectsStr;
-    }
-
-    private void updatePlayerStatus() {
-        // Обновляем отображение статуса игрока
-        Player player = session.getPlayer();
-        renderer.drawStatusBar(
-                player.getHealth(),
-                player.getMaxHealth(),
-                player.getPosition().getX(),
-                player.getPosition().getY(),
-                session.getLevelNum(),
-                player.getTreasureValue()
-        );
     }
 }

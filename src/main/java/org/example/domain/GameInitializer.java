@@ -1,6 +1,6 @@
 package org.example.domain;
 
-import org.example.domain.input.inputGameManager;
+import org.example.domain.input.GameCommandHandler;
 import org.example.domain.interfaces.IAutosaveRepository;
 import org.example.domain.interfaces.ISessionStatRepository;
 import org.example.domain.service.AutosaveService;
@@ -10,7 +10,7 @@ import org.example.domain.entity.*;
 import org.example.domain.factory.LevelGenerator;
 import org.example.domain.service.*;
 import org.example.domain.interfaces.Renderer;
-import org.example.domain.input.InputStateManager;
+import org.example.domain.input.ItemSelectionState;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,8 +23,8 @@ public class GameInitializer {
     // Основные компоненты игровой сессии
     private final GameSession session;
     private final Renderer renderer;
-    private InputStateManager inputStateManager;
-    private inputGameManager inputGameManager;
+    private final ItemSelectionState itemSelectionState;
+    private final GameCommandHandler gameCommandHandler;
     private final SessionStat sessionStat;
 
     // Сервисы игровых механик
@@ -34,6 +34,7 @@ public class GameInitializer {
     private final LevelGenerator levelGenerator;
     private final AutosaveService autosaveService;
     private final StatisticsService statisticsService;
+    private final Message message;
 
     /**
      * Конструктор по умолчанию. Инициализирует все компоненты игры.
@@ -49,8 +50,10 @@ public class GameInitializer {
         this.levelGenerator = new LevelGenerator();
         this.fogOfWarService = new FogOfWarService(levelGenerator);
         this.statisticsService = new StatisticsService(sessionStatRepository);
-        this.inputStateManager = new InputStateManager();
-        this.inputGameManager = new inputGameManager(renderer, inputStateManager);
+        this.itemSelectionState = new ItemSelectionState();
+        this.message = new Message();
+        this.gameCommandHandler = new GameCommandHandler(renderer, itemSelectionState, combatService,
+                enemyAIService, statisticsService, fogOfWarService, message);
 
         // application
         this.autosaveService = new AutosaveService(autosaveRepository, fogOfWarService);
@@ -119,8 +122,8 @@ public class GameInitializer {
         return autosaveService;
     }
 
-    public InputStateManager getInputStateManager() {
-        return inputStateManager;
+    public ItemSelectionState getInputStateManager() {
+        return itemSelectionState;
     }
 
     public StatisticsService getStatisticsService() {
@@ -129,7 +132,11 @@ public class GameInitializer {
 
     public SessionStat getSessionStat() { return sessionStat; }
 
-    public inputGameManager getGameInputManager() {
-        return inputGameManager;
+    public GameCommandHandler getGameInputManager() {
+        return gameCommandHandler;
+    }
+
+    public Message getMessage() {
+        return message;
     }
 }

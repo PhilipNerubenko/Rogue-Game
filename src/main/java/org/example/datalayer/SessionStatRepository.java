@@ -62,14 +62,6 @@ public class SessionStatRepository implements ISessionStatRepository {
             Player player = gameSession.getPlayer();
             Inventory inventory = player.getInventory();
             treasuresValue = inventory.getTreasureValue();
-
-            int foodInInventory = inventory.count(ItemType.FOOD);
-            int elixirsInInventory = inventory.count(ItemType.ELIXIR);
-            int scrollsInInventory = inventory.count(ItemType.SCROLL);
-
-            totalFood += foodInInventory;
-            totalElixirs += elixirsInInventory;
-            totalScrolls += scrollsInInventory;
         } else {
             treasuresValue = sessionStat.getTreasures();
         }

@@ -1,13 +1,18 @@
 package org.example.domain.factory;
 
 import org.example.config.GameConstants;
+import org.example.domain.entity.Enemy;
+import org.example.domain.entity.GameSession;
 import org.example.domain.entity.Item;
+import org.example.domain.enums.EnemyType;
 import org.example.domain.model.Room;
 import org.example.domain.model.Position;
 
 import java.util.*;
 
 import static org.example.config.GameConstants.Icons.CORRIDOR;
+import static org.example.config.GameConstants.Icons.FLOOR;
+import static org.example.config.GameConstants.ProbabilitiesAndBalance.*;
 
 /**
  * Генератор уровней для игры.
@@ -415,6 +420,86 @@ public class LevelGenerator {
                 }
             }
         }
+    }
+
+    /**
+     * Генерирует список врагов для текущего уровня на основе комнат.
+     * Метод не меняет session напрямую — возвращает список, который может быть добавлен в session.
+     */
+    public List<Enemy> generateEnemiesForSession(GameSession session, char[][] asciiMap) {
+        List<Room> rooms = getRooms();
+        if (rooms == null || rooms.isEmpty()) return Collections.emptyList();
+
+        Random rand = getRand();
+        int totalRoomsWithEnemies = calculateTotalRoomsWithEnemies(rooms.size(), rand);
+
+        List<Room> shuffled = new ArrayList<>(rooms);
+        Collections.shuffle(shuffled, rand);
+
+        List<Enemy> enemies = new ArrayList<>();
+        int enemiesPlaced = 0;
+
+        Position playerPos = session.getPlayer() != null ? session.getPlayer().getPosition() : null;
+
+        for (Room room : shuffled) {
+            if (enemiesPlaced >= totalRoomsWithEnemies) break;
+            if (room.isStartRoom()) continue;
+
+            enemiesPlaced += createEnemiesInRoom(room, rand, session, asciiMap, enemies, playerPos);
+        }
+
+        return enemies;
+    }
+
+    private int calculateTotalRoomsWithEnemies(int totalRooms, Random rand) {
+        int roomsWithEnemies = (int) Math.round(
+                totalRooms * (MIN_ENEMY_DENSITY + rand.nextDouble() * DENSITY_RANGE)
+        );
+        return Math.max(MIN_ROOMS_WITH_ENEMIES, roomsWithEnemies);
+    }
+
+    /**
+     * Заполняет переданный список enemies новыми сущностями из комнаты.
+     * Проверяет, чтобы враг не оказался на стене, предмете или на позиции игрока.
+     */
+    private int createEnemiesInRoom(Room room, Random rand, GameSession session, char[][] asciiMap,
+                                    List<Enemy> outEnemies, Position playerPos) {
+        int created = 0;
+        int enemiesInRoom = 1; // можно усложнить по уровню или рандому
+
+        for (int j = 0; j < enemiesInRoom; j++) {
+            // Защита от маленьких комнат
+            if (room.getWidth() <= 2 || room.getHeight() <= 2) continue;
+
+            int attempts = 0;
+            boolean placed = false;
+            while (!placed && attempts < 20) {
+                int enemyX = room.getX1() + 1 + rand.nextInt(Math.max(1, room.getWidth() - 2));
+                int enemyY = room.getY1() + 1 + rand.nextInt(Math.max(1, room.getHeight() - 2));
+
+                // не ставим на игрока
+                if (playerPos != null && playerPos.getX() == enemyX && playerPos.getY() == enemyY) {
+                    attempts++;
+                    continue;
+                }
+
+                // проверяем, что клетка — пол
+                if (asciiMap != null && asciiMap[enemyY][enemyX] != FLOOR) {
+                    attempts++;
+                    continue;
+                }
+
+                EnemyType randomType = EnemyType.values()[rand.nextInt(EnemyType.values().length)];
+                Enemy enemy = randomType.create(session.getLevelNum());
+                enemy.setX(enemyX);
+                enemy.setY(enemyY);
+
+                outEnemies.add(enemy);
+                created++;
+                placed = true;
+            }
+        }
+        return created;
     }
 
     // ================= ГЕТТЕРЫ =================

@@ -66,6 +66,7 @@ public final class GameConstants {
         public static final String VICTORY = "Congratulations! YOU VICTORY!   Press ESC to exit";
         public static final String MISSED = "You missed!";
         public static final String MISSED_VAMPIRE = "First attack on vampire misses!";
+        public static final int MESSAGE_DURATION = 2;
     }
 
     public static final class Colors {
