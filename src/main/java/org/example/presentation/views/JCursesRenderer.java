@@ -1,26 +1,23 @@
 package org.example.presentation.views;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jcurses.system.CharColor;
 import jcurses.system.InputChar;
 import jcurses.system.Toolkit;
 import org.example.config.GameConstants;
-import org.example.domain.entity.Enemy;
-import org.example.domain.entity.GameSession;
-import org.example.domain.entity.SessionStat;
+import org.example.domain.entity.*;
 import org.example.domain.dto.VisibleMapDto;
+import org.example.domain.input.ItemSelectionState;
 import org.example.domain.interfaces.Renderer;
+import org.example.domain.model.Position;
+import org.example.domain.model.SaveSlotUiModel;
+import org.example.domain.service.FogOfWarService;
+import org.example.domain.service.MapVisibilityService;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.example.config.GameConstants.Colors.*;
-import static org.example.config.GameConstants.PathToFiles.SCOREBOARD_PATH;
-import static org.example.config.GameConstants.ScreenConfig.SHOW_CURSOR;
+import static org.example.config.GameConstants.PathToFiles.AUTOSAVE_MAX;
+import static org.example.config.GameConstants.ScreenConfig.*;
 
 /**
  * Реализация интерфейса Renderer для библиотеки JCurses.
@@ -66,10 +63,10 @@ public class JCursesRenderer implements Renderer {
     /**
      * Отрисовывает символ в указанной позиции.
      *
-     * @param x координата X
-     * @param y координата Y
+     * @param x      координата X
+     * @param y      координата Y
      * @param symbol символ для отрисовки
-     * @param color цвет символа
+     * @param color  цвет символа
      */
     @Override
     public void drawChar(int x, int y, char symbol, int color) {
@@ -87,9 +84,9 @@ public class JCursesRenderer implements Renderer {
     /**
      * Отрисовывает строку в указанной позиции.
      *
-     * @param x координата X
-     * @param y координата Y
-     * @param text текст для отрисовки
+     * @param x     координата X
+     * @param y     координата Y
+     * @param text  текст для отрисовки
      * @param color цвет текста
      */
     @Override
@@ -113,22 +110,14 @@ public class JCursesRenderer implements Renderer {
     }
 
     /**
-     * Обновляет экран (для JCurses не требуется явного обновления).
-     */
-    @Override
-    public void refresh() {
-        // JCurses не требует явного обновления экрана
-    }
-
-    /**
      * Отрисовывает статусную строку с информацией об игроке.
      *
      * @param playerHealth текущее здоровье
-     * @param maxHealth максимальное здоровье
-     * @param pX координата X игрока
-     * @param pY координата Y игрока
-     * @param level текущий уровень
-     * @param treasures количество сокровищ
+     * @param maxHealth    максимальное здоровье
+     * @param pX           координата X игрока
+     * @param pY           координата Y игрока
+     * @param level        текущий уровень
+     * @param treasures    количество сокровищ
      */
     @Override
     public void drawStatusBar(int playerHealth, int maxHealth, int pX, int pY, int level, int treasures) {
@@ -142,9 +131,9 @@ public class JCursesRenderer implements Renderer {
     /**
      * Отрисовывает сообщение на указанной строке.
      *
-     * @param line номер строки
+     * @param line    номер строки
      * @param message текст сообщения
-     * @param color цвет сообщения
+     * @param color   цвет сообщения
      */
     @Override
     public void drawMessage(int line, String message, int color) {
@@ -198,16 +187,76 @@ public class JCursesRenderer implements Renderer {
     }
 
     @Override
-    public void drawScoreboard() {
+    public void drawLoadGameScreen(int currentOption, List<SaveSlotUiModel> saveSlots) {
         clearScreen();
 
-        List<SessionStat> stats = loadScoreboardStats();
+        final int slotWidth = 44;
+        final int headerHeight = 3;
+        final int slotRowHeight = 1;
 
-        if (stats.isEmpty()) {
-            drawString(5, 10, "Scoreboard is empty or file not found", CharColor.YELLOW);
+        int screenWidth = Toolkit.getScreenWidth();
+        int screenHeight = Toolkit.getScreenHeight();
+
+        int totalHeight = headerHeight + saveSlots.size() * slotRowHeight + 3;
+        int shiftX = Math.max(0, (screenWidth - slotWidth) / 2);
+        int shiftY = Math.max(0, (screenHeight - totalHeight) / 2);
+
+        // Цвета: обычный, указатель и выделенный текст
+        CharColor normalColor = new CharColor(COLOR_BLACK, COLOR_WHITE);
+        CharColor pointerColor = new CharColor(COLOR_BLACK, COLOR_YELLOW);
+        CharColor selectedTextColor = new CharColor(COLOR_BLACK, COLOR_YELLOW); // Желтый текст для выделения
+
+        // Рамка и заголовок
+        String border = "+" + "-".repeat(slotWidth - 2) + "+";
+        Toolkit.printString(" ".repeat((slotWidth - "LOAD GAME".length()) / 2) +
+                        "LOAD GAME",
+                shiftX, shiftY + 1, normalColor);
+        Toolkit.printString(border, shiftX, shiftY + 2, normalColor);
+
+        // Слоты сохранений (с динамическим цветом)
+        for (int i = 0; i < saveSlots.size(); i++) {
+            SaveSlotUiModel slot = saveSlots.get(i);
+            int y = shiftY + headerHeight + i * slotRowHeight;
+
+            String desc = slot.description();
+            if (desc.length() > slotWidth - 6) {
+                desc = desc.substring(0, slotWidth - 9) + "...";
+            }
+
+            String borders = "|";
+            String slotText = String.format("       %-23s  ", desc);
+
+            CharColor currentColor = (i == currentOption) ? selectedTextColor : normalColor;
+            Toolkit.printString(slotText, shiftX, y, currentColor);
+            Toolkit.printString(borders, shiftX, y, normalColor);
+            Toolkit.printString(borders, shiftX + slotWidth - 1, y, normalColor);
+        }
+
+        // Нижняя рамка
+        int bottomY = shiftY + headerHeight + saveSlots.size() * slotRowHeight;
+        Toolkit.printString(border, shiftX, bottomY, normalColor);
+
+        // Указатели
+        if (!saveSlots.isEmpty()) {
+            int pointerY = shiftY + headerHeight + currentOption * slotRowHeight;
+            Toolkit.printString("<<<", shiftX + 2, pointerY, pointerColor);
+            Toolkit.printString(">>>", shiftX + slotWidth - 5, pointerY, pointerColor);
+        }
+
+        // Сообщение о лимите
+            String limitMsg = String.format("Showing %d/%d recent saves", saveSlots.size(), AUTOSAVE_MAX);
+            int msgX = Math.max(0, (screenWidth - limitMsg.length()) / 2 - MAP_OFFSET_X);
+            drawString(msgX, bottomY, limitMsg, GameConstants.Colors.COLOR_CYAN);
+    }
+
+    @Override
+    public void drawScoreboard(List<SessionStat> stats) {
+        clearScreen();
+
+        if (stats == null || stats.isEmpty()) {
+            drawString(5, 10, "Scoreboard is empty", CharColor.YELLOW);
             drawString(5, 11, "Play a game first to create it", CharColor.WHITE);
             drawString(5, 13, "Press any key to return...", CharColor.YELLOW);
-            refresh();
             Toolkit.readCharacter();
             return;
         }
@@ -215,8 +264,158 @@ public class JCursesRenderer implements Renderer {
         drawTable(stats);
 
         Toolkit.readCharacter();
+    }
 
-        refresh();
+    @Override
+    public void renderWorld(GameSession session,
+                            char[][] asciiMap,
+                            MapVisibilityService visibilityService,
+                            FogOfWarService fow,
+                            ItemSelectionState selectionState,
+                            Message message) {
+        // 1. Подготовка экрана
+        clearScreen();
+
+       VisibleMapDto visibleMap = visibilityService.prepareVisibleMap(asciiMap, session.getPlayer());
+        drawMap(visibleMap);
+
+        // 3. Отрисовка врагов (только тех, кто в зоне видимости и не скрыт туманом)
+        for (Enemy enemy : session.getEnemies()) {
+            if (!enemy.isInvisible() && fow.isVisible(enemy.getX(), enemy.getY())) {
+                drawChar(enemy.getX(), enemy.getY(), enemy.getType(), enemy.getColor());
+            }
+        }
+
+        // 4. Отрисовка игрока (всегда поверх карты и врагов)
+        Position p = session.getPlayer().getPosition();
+        drawChar(p.getX(), p.getY(), GameConstants.Icons.PLAYER, COLOR_YELLOW);
+
+        // 5. Отрисовка интерфейса (UI)
+        // Если игрок сейчас выбирает предмет в меню — рисуем меню. Иначе — обычный статус-бар.
+        if (selectionState.isAwaitingSelection()) {
+            drawSelectionMenu(selectionState, session.getPlayer());
+        } else {
+            drawGameUI(session);
+        }
+
+        // 6. Отрисовка игровых сообщений (события боя, поднятие предметов)
+        drawMessages(message);
+    }
+
+    private void drawGameUI(GameSession session) {
+        Player player = session.getPlayer();
+        // Статус-бар (здоровье, уровень, золото)
+        drawStatusBar(
+                player.getHealth(),
+                player.getMaxHealth(),
+                player.getPosition().getX(),
+                player.getPosition().getY(),
+                session.getLevelNum(),
+                player.getTreasureValue()
+        );
+
+        // Подсказки по управлению
+        drawString(3, GameConstants.Map.HEIGHT + 4,
+                "WASD:move | h:weapon | j:food | k:elixir | e:scroll | q:unequip | ESC:save&exit",
+                COLOR_CYAN);
+
+        // Инвентарь и предметы на уровне
+        drawInventory(player);
+        drawLevelItems(session.getCurrentLevelItems());
+    }
+
+    private void drawLevelItems(List<Item> items) {
+        int x = 84, y = 20;
+        drawString(x, y++, "=== ITEMS ON LEVEL ===", COLOR_CYAN);
+        if (items.isEmpty()) {
+            drawString(x, y, "No items on this level", COLOR_WHITE);
+        } else {
+            int max = Math.min(5, items.size());
+            for (int i = 0; i < max; i++) {
+                Item item = items.get(i);
+                drawString(x, y++, String.format("%d. %s at (%d,%d)", i + 1, item.getType(), item.getX(), item.getY()), COLOR_WHITE);
+            }
+        }
+    }
+
+    private void drawInventory(Player player) {
+        int y = 0;
+        int x = 84;
+        drawString(x, y++, "=== INVENTORY ===", COLOR_CYAN);
+        Inventory inv = player.getInventory();
+
+        if (inv.getTreasureValue() > 0) {
+            drawString(x + 2, y++, "Treasure: " + inv.getTreasureValue() + " gold", COLOR_YELLOW);
+        }
+
+        for (org.example.domain.enums.ItemType type : org.example.domain.enums.ItemType.values()) {
+            if (type == org.example.domain.enums.ItemType.TREASURE) continue;
+            List<Item> items = inv.getItems(type);
+            if (!items.isEmpty()) {
+                drawString(x + 2, y++, type.name() + ": " + items.size(), getItemTypeColor(type));
+                for (int i = 0; i < Math.min(2, items.size()); i++) {
+                    drawString(x + 4, y++, "- " + formatItemShortInfo(items.get(i)), COLOR_WHITE);
+                }
+            }
+        }
+
+        Item eq = player.getEquippedWeapon();
+        if (eq != null && !eq.getSubType().equals("fists")) {
+            drawString(x, y++, "Equipped: " + eq.getSubType() + " (STR+" + eq.getStrength() + ")", COLOR_GREEN);
+        }
+    }
+
+    private void drawSelectionMenu(ItemSelectionState state, Player player) {
+        org.example.domain.enums.ItemType type = state.getPendingItemType();
+        int menuX = 45, menuY = 5, menuW = 33, menuH = 15;
+
+        // Очистка области меню
+        for (int i = menuY; i < menuY + menuH; i++) {
+            drawString(menuX, i, " ".repeat(menuW + 2), COLOR_BLACK);
+        }
+
+        // Рамка
+        String border = "+" + "-".repeat(menuW) + "+";
+        drawString(menuX, menuY, border, COLOR_YELLOW);
+        drawString(menuX, menuY + menuH - 1, border, COLOR_YELLOW);
+        drawString(menuX + 2, menuY + 1, " Select " + type + " ", COLOR_CYAN);
+
+        List<Item> items = player.getInventory().getItems(type);
+        int currentY = menuY + 3;
+
+        if (type == org.example.domain.enums.ItemType.WEAPON) {
+            drawString(menuX + 2, currentY++, "0. Unequip", COLOR_WHITE);
+        }
+
+        for (int i = 0; i < Math.min(items.size(), 9); i++) {
+            drawString(menuX + 2, currentY++, (i + 1) + ". " + items.get(i).getSubType(), COLOR_WHITE);
+        }
+    }
+
+    // Вспомогательные методы для цветов и текста
+    private short getItemTypeColor(org.example.domain.enums.ItemType type) {
+        return switch (type) {
+            case WEAPON -> COLOR_RED;
+            case FOOD -> COLOR_GREEN;
+            case ELIXIR -> COLOR_BLUE;
+            case SCROLL -> COLOR_MAGENTA;
+            default -> COLOR_WHITE;
+        };
+    }
+
+    private String formatItemShortInfo(Item item) {
+        return item.getSubType() + (item.getStrength() > 0 ? " (STR+" + item.getStrength() + ")" : "");
+    }
+
+    private void drawMessages(Message message) {
+        if (message.getMessageTimer() > 0) {
+            if (message.getActiveMessageLine1() != null)
+                drawMessage(MESSAGE_LINE_1, message.getActiveMessageLine1(), COLOR_YELLOW);
+            if (message.getActiveMessageLine2() != null)
+                drawMessage(MESSAGE_LINE_2, message.getActiveMessageLine2(), COLOR_YELLOW);
+            if (message.getActiveMessageLine3() != null)
+                drawMessage(MESSAGE_LINE_3, message.getActiveMessageLine3(), COLOR_YELLOW);
+        }
     }
 
     private void drawTable(List<SessionStat> stats) {
@@ -301,41 +500,6 @@ public class JCursesRenderer implements Renderer {
         drawString(messageX, currentY + 1, message, CharColor.YELLOW);
     }
 
-    private List<SessionStat> loadScoreboardStats() {
-        List<SessionStat> stats = new ArrayList<>();
-        ObjectMapper mapper = new ObjectMapper();
-
-        try {
-            File file = new File(SCOREBOARD_PATH);
-            if (!file.exists()) {
-                return stats;
-            }
-
-            JsonNode root = mapper.readTree(file);
-            JsonNode sessionNode = root.get("sessionStats");
-
-            if (sessionNode != null && sessionNode.isArray()) {
-                SessionStat[] statArray = mapper.treeToValue(sessionNode, SessionStat[].class);
-                stats = Arrays.asList(statArray);
-            }
-        } catch (IOException e) {
-            System.err.println("Error loading scoreboard from: " + SCOREBOARD_PATH);
-            e.printStackTrace();
-
-            // Очищаем экран и показываем сообщение об ошибке
-            clearScreen();
-            drawString(5, 10, "Error loading scoreboard!", CharColor.RED);
-            drawString(5, 11, "File: " + SCOREBOARD_PATH, CharColor.RED);
-            drawString(5, 13, "Press any key to continue...", CharColor.YELLOW);
-            refresh();
-            Toolkit.readCharacter();
-
-            return new ArrayList<>();
-        }
-
-        return stats;
-    }
-
     /**
      * Возвращает ширину игровой карты.
      */
@@ -364,8 +528,9 @@ public class JCursesRenderer implements Renderer {
 
     /**
      * Удалить врага с карты и из списка врагов
-     * @param session игровая сессия
-     * @param enemy враг для удаления
+     *
+     * @param session  игровая сессия
+     * @param enemy    враг для удаления
      * @param asciiMap ASCII карта игры
      */
     @Override

@@ -3,7 +3,7 @@ package org.example.domain.controller;
 import org.example.domain.enums.MenuAction;
 import org.example.domain.interfaces.Renderer;
 
-import static org.example.config.GameConstants.control.*;
+import static org.example.config.GameConstants.Control.*;
 
 public class MainMenuController {
 

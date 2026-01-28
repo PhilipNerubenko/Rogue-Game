@@ -65,6 +65,10 @@ public class Player extends Character {
         return equippedWeapon;
     }
 
+    public void setEquippedWeapon(Item equippedWeapon) {
+        this.equippedWeapon = equippedWeapon;
+    }
+
     /**
      * Перемещает игрока в указанном направлении
      */

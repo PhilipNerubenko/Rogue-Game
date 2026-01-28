@@ -40,7 +40,7 @@ public class GameState {
      * Конструктор по умолчанию. Устанавливает текущую дату и время как timestamp.
      */
     public GameState() {
-        this.timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        this.timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss"));
     }
 
     /**

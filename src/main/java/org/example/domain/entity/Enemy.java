@@ -4,24 +4,27 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.awt.*;
+import static org.example.config.GameConstants.Colors.COLOR_WHITE;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Enemy {
     private char type;
     private int health;
-    private int agility;
-    private int strength;
-    private int hostility;
+    private final int agility;
+    private final int strength;
+    private final int hostility;
     private int x;
     private int y;
     private int diagX = 1;  // Направление движения по диагонали по X
     private int diagY = 1;  // Направление движения по диагонали по Y
 
     // Дополнительные свойства из ТЗ
-    private Color color;
+    private final short color;
+    @JsonProperty("specialAbility")
     private int specialAbility;  // Битовое поле специальных способностей
+    @JsonProperty("invisible")
     private boolean isInvisible;
+    @JsonProperty("restTurns")
     private int restTurns; // Для огра - счетчик отдыха после атаки
 
     // Битовые маски способностей
@@ -41,8 +44,10 @@ public class Enemy {
             @JsonProperty("agility") int agility,
             @JsonProperty("strength") int strength,
             @JsonProperty("hostility") int hostility,
-            @JsonProperty("color") Color color,
-            @JsonProperty("specialAbility") int specialAbility) {
+            @JsonProperty("color") short color,
+            @JsonProperty("specialAbility") int specialAbility,
+            @JsonProperty("invisible") boolean isInvisible,
+            @JsonProperty("restTurns") int restTurns) {
         this.type = type;
         this.health = health;
         this.agility = agility;
@@ -50,13 +55,13 @@ public class Enemy {
         this.hostility = hostility;
         this.color = color;
         this.specialAbility = specialAbility;
-        this.isInvisible = false;
-        this.restTurns = 0;
+        this.isInvisible = isInvisible;
+        this.restTurns = restTurns;
     }
 
     // Конструктор по умолчанию для Jackson
     public Enemy() {
-        this(' ', 0, 0, 0, 0, Color.WHITE, 0);
+        this(' ', 0, 0, 0, 0, COLOR_WHITE, 0, false, 0);
     }
 
     // Геттеры и сеттеры для основных свойств
@@ -152,5 +157,9 @@ public class Enemy {
      */
     public void removeAbility(int abilityMask) {
         specialAbility &= ~abilityMask;
+    }
+
+    public short getColor() {
+        return color;
     }
 }

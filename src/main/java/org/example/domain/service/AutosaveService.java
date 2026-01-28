@@ -7,11 +7,15 @@ import org.example.domain.factory.LevelGenerator;
 import org.example.domain.interfaces.IAutosaveRepository;
 import org.example.domain.model.Position;
 import org.example.domain.model.Room;
+import org.example.domain.model.SaveSlotUiModel;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.IntStream;
+
+import static org.example.config.GameConstants.PathToFiles.AUTOSAVE_MAX;
 
 /**
  * Сервис для управления автосохранениями игры
@@ -44,12 +48,22 @@ public class AutosaveService {
     }
 
     /**
-     * Загружает и восстанавливает игру из последнего сохранения
+     * Возвращает список UI-моделей для всех слотов сохранений
      */
-    public boolean loadAndRestoreGame(GameSession session, SessionStat sessionStat,
-                                      LevelGenerator levelGenerator) {
-        GameState gameState = repository.loadLatest();
+    public List<SaveSlotUiModel> getSaveSlots() {
+        return IntStream.range(0, AUTOSAVE_MAX)
+                .mapToObj(this::loadSaveSlot)
+                .toList();
+    }
+
+    /**
+     * Загружает конкретное сохранение по индексу слота
+     */
+    public boolean loadSpecificSave(int slotIndex, GameSession session,
+                                    SessionStat sessionStat, LevelGenerator levelGenerator) {
+        GameState gameState = repository.load(slotIndex);
         if (gameState == null) {
+            System.err.println("No save found in slot: " + slotIndex);
             return false;
         }
 
@@ -57,9 +71,21 @@ public class AutosaveService {
             restoreGameState(gameState, session, sessionStat, levelGenerator);
             return true;
         } catch (Exception e) {
-            System.err.println("Failed to restore game state: " + e.getMessage());
+            System.err.println("Failed to load save from slot " + slotIndex + ": " + e.getMessage());
             e.printStackTrace();
             return false;
+        }
+    }
+
+    private SaveSlotUiModel loadSaveSlot(int slotIndex) {
+        GameState gameState = repository.load(slotIndex);
+        if (gameState != null) {
+            String desc = String.format("Level %d - %s",
+                    gameState.getLevelState().getLevelNumber(),
+                    gameState.getTimestamp());
+            return new SaveSlotUiModel(slotIndex + 1, desc, false);
+        } else {
+            return new SaveSlotUiModel(slotIndex + 1, "Empty", true);
         }
     }
 
@@ -141,6 +167,10 @@ public class AutosaveService {
         restoreLevelState(gameState, session);
         restoreFogOfWar(gameState);
         restorePlayer(gameState, session);
+
+        if (fogOfWarService != null) {
+            fogOfWarService.updateForLoadedGame(session.getPlayer().getPosition(), session.getCurrentMap());
+        }
     }
 
     private void restoreSessionStatistics(GameState gameState, SessionStat sessionStat) {
@@ -199,15 +229,28 @@ public class AutosaveService {
 
     private void restorePlayer(GameState gameState, GameSession session) {
         GameState.PlayerState playerState = gameState.getPlayerState();
+        Position savedPos = new Position(playerState.getPositionX(), playerState.getPositionY());
 
-        Player player = new Player(
-                new Position(playerState.getPositionX(), playerState.getPositionY()),
-                playerState.getEquippedWeapon(),
-                playerState.getMaxHealth(),
-                playerState.getHealth(),
-                playerState.getAgility(),
-                playerState.getStrength()
-        );
+        Player player = session.getPlayer();
+
+        if (player == null) {
+            player = new Player(
+                    savedPos,
+                    playerState.getEquippedWeapon(),
+                    playerState.getMaxHealth(),
+                    playerState.getHealth(),
+                    playerState.getAgility(),
+                    playerState.getStrength()
+            );
+            session.setPlayer(player);
+        } else {
+            player.setPosition(savedPos);
+            player.setMaxHealth(playerState.getMaxHealth());
+            player.setHealth(playerState.getHealth());
+            player.setAgility(playerState.getAgility());
+            player.setStrength(playerState.getStrength());
+            player.setEquippedWeapon(playerState.getEquippedWeapon());
+        }
 
         player.setSleepTurns(playerState.getSleepTurns());
 
@@ -218,11 +261,5 @@ public class AutosaveService {
             }
         }
         player.setInventory(inventory);
-
-        session.setPlayer(player);
-    }
-
-    public boolean hasSaves() {
-        return repository.hasSaves();
     }
 }

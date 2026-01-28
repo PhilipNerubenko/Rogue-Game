@@ -4,6 +4,7 @@ import org.example.domain.entity.GameSession;
 import org.example.domain.entity.SessionStat;
 import org.example.domain.interfaces.ISessionStatRepository;
 import java.io.IOException;
+import java.util.List;
 
 public class StatisticsService {
     private final ISessionStatRepository repository;
@@ -63,5 +64,9 @@ public class StatisticsService {
 
     public void addToScoreboard(SessionStat sessionStat, GameSession gameSession) throws IOException {
         repository.addToScoreboard(sessionStat, gameSession);
+    }
+
+    public List<SessionStat> getScoreboardStats() {
+        return repository.getAllStats();
     }
 }

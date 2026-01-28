@@ -3,6 +3,14 @@ package org.example.domain.interfaces;
 import org.example.domain.dto.VisibleMapDto;
 import org.example.domain.entity.Enemy;
 import org.example.domain.entity.GameSession;
+import org.example.domain.entity.Message;
+import org.example.domain.entity.SessionStat;
+import org.example.domain.input.ItemSelectionState;
+import org.example.domain.model.SaveSlotUiModel;
+import org.example.domain.service.FogOfWarService;
+import org.example.domain.service.MapVisibilityService;
+
+import java.util.List;
 
 /**
  * Интерфейс рендерера (контракт для отрисовки игрового интерфейса).
@@ -37,11 +45,6 @@ public interface Renderer {
      * Очистить весь экран (залить фоном).
      */
     void clearScreen();
-
-    /**
-     * Обновить экран (отобразить все накопленные изменения).
-     */
-    void refresh();
 
     /**
      * Очистить конкретную строку (заполнить пробелами).
@@ -82,10 +85,19 @@ public interface Renderer {
      */
     void drawMenuScreen(int currentOption);
 
+    void drawLoadGameScreen(int currentOption, List<SaveSlotUiModel> saveSlots);
+
     /**
      * Отрисовать таблицу рекордов.
      */
-    void drawScoreboard();
+    void drawScoreboard(List<SessionStat> stats);
+
+    void renderWorld(GameSession session,
+                     char[][] asciiMap,
+                     MapVisibilityService visibilityService,
+                     FogOfWarService fow,
+                     ItemSelectionState selectionState,
+                     Message message);
 
     // ========== СЛУЖЕБНЫЕ МЕТОДЫ ==========
 

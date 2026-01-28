@@ -75,10 +75,19 @@ public class FogOfWarService {
             exploredRooms.add(currentRoom);
         }
 
-        // 3. Ray casting для определения видимости в коридорах
-        for (int angle = 0; angle < 360; angle += 5) {
-            double radian = Math.toRadians(angle);
-            castRay(playerX, playerY, Math.cos(radian), Math.sin(radian), map);
+        // НОВЫЙ КОД - Брезенхэм по периметру квадрата видимости
+        int r = VISION_RADIUS;
+
+        // Верхняя и нижняя границы (включая углы)
+        for (int dx = -r; dx <= r; dx++) {
+            castRayBresenham(playerX, playerY, playerX + dx, playerY - r, map);
+            castRayBresenham(playerX, playerY, playerX + dx, playerY + r, map);
+        }
+
+        // Левая и правая границы (без углов, чтобы не дублировать)
+        for (int dy = -r + 1; dy <= r - 1; dy++) {
+            castRayBresenham(playerX, playerY, playerX - r, playerY + dy, map);
+            castRayBresenham(playerX, playerY, playerX + r, playerY + dy, map);
         }
 
         // 4. Объединяем видимые клетки
@@ -94,103 +103,114 @@ public class FogOfWarService {
     public void updateForLoadedGame(Position playerPos, char[][] map) {
         if (map == null || playerPos == null) return;
 
-        // Очищаем только видимые клетки (исследованные сохраняем)
         visibleCells.clear();
         currentVisibleCells.clear();
 
-        int playerX = playerPos.getX();
-        int playerY = playerPos.getY();
-
-        // Определяем текущую комнату
-        currentRoom = levelGenerator.getRoomAt(playerX, playerY);
-
-        // Добавляем все исследованные клетки как видимые (затемненные)
+        // 1. Сначала добавляем всё, что игрок уже когда-то видел (память)
         visibleCells.addAll(exploredCells);
 
-        // Если игрок в комнате - вся комната ярко видима
+        // 2. Определяем текущую комнату и яркость
+        int playerX = playerPos.getX();
+        int playerY = playerPos.getY();
+        currentRoom = levelGenerator.getRoomAt(playerX, playerY);
+
         if (currentRoom != null) {
             for (int x = currentRoom.getX1(); x <= currentRoom.getX2(); x++) {
                 for (int y = currentRoom.getY1(); y <= currentRoom.getY2(); y++) {
-                    if (y >= 0 && y < map.length && x >= 0 && x < map[y].length) {
-                        Position pos = new Position(x, y);
-                        currentVisibleCells.add(pos);
-                        visibleCells.add(pos);
-                        exploredCells.add(pos);
-                    }
+                    Position pos = new Position(x, y);
+                    currentVisibleCells.add(pos);
+                    exploredCells.add(pos);
                 }
             }
-            exploredRooms.add(currentRoom);
         }
 
-        // Ray casting для коридоров
-        for (int angle = 0; angle < 360; angle += 5) {
-            double radian = Math.toRadians(angle);
-            castRay(playerX, playerY, Math.cos(radian), Math.sin(radian), map);
+        // 3. Пускаем лучи для текущего обзора
+        int r = VISION_RADIUS;
+        for (int dx = -r; dx <= r; dx++) {
+            castRayBresenham(playerX, playerY, playerX + dx, playerY - r, map);
+            castRayBresenham(playerX, playerY, playerX + dx, playerY + r, map);
         }
+        for (int dy = -r + 1; dy <= r - 1; dy++) {
+            castRayBresenham(playerX, playerY, playerX - r, playerY + dy, map);
+            castRayBresenham(playerX, playerY, playerX + r, playerY + dy, map);
+        }
+
+        visibleCells.addAll(currentVisibleCells);
     }
 
     /**
-     * Бросает луч для определения видимости клеток
-     *
-     * @param startX начальная координата X
-     * @param startY начальная координата Y
-     * @param dx     направление луча по X
-     * @param dy     направление луча по Y
-     * @param map    карта уровня
+     * Целочисленный алгоритм Брезенхэма для луча
+     * Идет от (x0,y0) до (x1,y1), добавляя клетки в видимые
+     * Останавливается на стенах и границах карты
      */
-    private void castRay(int startX, int startY, double dx, double dy, char[][] map) {
-        if (map == null || map.length == 0) return;
+    private void castRayBresenham(int x0, int y0, int x1, int y1, char[][] map) {
+        int dx = Math.abs(x1 - x0);
+        int dy = Math.abs(y1 - y0);
+        int sx = x0 < x1 ? 1 : -1;
+        int sy = y0 < y1 ? 1 : -1;
+        int err = dx - dy;
 
-        double x = startX;
-        double y = startY;
-        double length = Math.sqrt(dx * dx + dy * dy);
-        if (length == 0) return;
+        int x = x0;
+        int y = y0;
 
-        // Нормализуем вектор направления
-        double stepX = dx / length;
-        double stepY = dy / length;
+        // Проверяем, в комнате ли игрок (для логики с дверями)
+        Room playerRoom = levelGenerator.getRoomAt(x0, y0);
 
-        Room playerInRoom = levelGenerator.getRoomAt(startX, startY);
+        while (true) {
+            // Границы карты
+            if (x < 0 || y < 0 || y >= map.length || x >= map[y].length) break;
 
-        // Проходим лучом на расстояние радиуса обзора
-        for (int i = 0; i < VISION_RADIUS; i++) {
-            x += stepX;
-            y += stepY;
+            Position pos = new Position(x, y);
 
-            int intX = (int) Math.round(x);
-            int intY = (int) Math.round(y);
+            // Добавляем клетку как видимую
+            addVisibleCell(pos);
 
-            // Проверка границ карты
-            if (intX < 0 || intY < 0 || intY >= map.length || intX >= map[intY].length) {
-                break;
-            }
+            char cell = map[y][x];
 
-            char cell = map[intY][intX];
-            Position pos = new Position(intX, intY);
-
-            // Если игрок в комнате
-            if (playerInRoom != null) {
-                if (cell == '|' || cell == '~' || cell == ' ') {
-                    break; // Стена или пустота прерывает луч
-                }
-                addVisibleCell(pos);
-                continue;
-            }
-
-            // Общая проверка препятствий
+            // Проверка препятствий
             if (cell == '|' || cell == '~' || cell == ' ') {
                 break;
             }
 
-            addVisibleCell(pos);
+            // Особая обработка дверей - видимость в соседнюю комнату
+//            if (cell == '+' && playerRoom != null) {
+//                Room adjacent = findAdjacentRoom(x, y);
+//                if (adjacent != null && adjacent != currentRoom) {
+//                    // Добавляем несколько клеток комнаты в направлении луча
+//                    addRoomSliceThroughDoor(x, y, sx, sy, adjacent);
+//                }
+//            }
 
-            // Если нашли дверь - добавляем видимость в соседнюю комнату
-            if (cell == '+') {
-                Room adjacentRoom = findAdjacentRoom(intX, intY);
-                if (adjacentRoom != null && adjacentRoom != currentRoom) {
-                    addVisibleRoomInterior(intX, intY, stepX, stepY, adjacentRoom);
-                }
-                break; // Дверь прерывает луч
+            // Достигли конца луча
+            if (x == x1 && y == y1) break;
+
+            // Шаг Брезенхэма
+            int e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+
+    /**
+     * Добавляет видимость в комнату через дверь
+     */
+    private void addRoomSliceThroughDoor(int doorX, int doorY, int dirX, int dirY, Room room) {
+        // Идем от двери вглубь комнаты до 5 шагов или до границы комнаты
+        for (int i = 1; i <= 5; i++) {
+            int nx = doorX + dirX * i;
+            int ny = doorY + dirY * i;
+
+            if (nx >= room.getX1() && nx <= room.getX2() &&
+                    ny >= room.getY1() && ny <= room.getY2()) {
+                addVisibleCell(new Position(nx, ny));
+            } else {
+                break;
             }
         }
     }
@@ -200,24 +220,6 @@ public class FogOfWarService {
      */
     private void addVisibleCell(Position pos) {
         currentVisibleCells.add(pos);
-    }
-
-    /**
-     * Добавляет видимость внутрь комнаты через дверь
-     */
-    private void addVisibleRoomInterior(int doorX, int doorY, double dx, double dy, Room room) {
-        // Видимость ограничена глубиной 8 клеток от двери
-        for (int depth = 1; depth <= 8; depth++) {
-            int viewX = doorX + (int)(dx * depth);
-            int viewY = doorY + (int)(dy * depth);
-
-            if (viewX >= room.getX1() && viewX <= room.getX2() &&
-                    viewY >= room.getY1() && viewY <= room.getY2()) {
-                addVisibleCell(new Position(viewX, viewY));
-            } else {
-                break; // Вышли за границы комнаты
-            }
-        }
     }
 
     /**

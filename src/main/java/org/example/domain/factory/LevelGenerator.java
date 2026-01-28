@@ -393,33 +393,6 @@ public class LevelGenerator {
                 }
             }
         }
-
-        // Привязываем клетки коридоров к ближайшим комнатам
-        for (Position corridorPos : corridorCells) {
-            assignCorridorToRoom(corridorPos);
-        }
-    }
-
-    /**
-     * Привязывает клетку коридора к ближайшей комнате.
-     */
-    private void assignCorridorToRoom(Position corridorPos) {
-        int x = corridorPos.getX();
-        int y = corridorPos.getY();
-
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                if (dx == 0 && dy == 0) continue;
-
-                Position adjacentPos = new Position(x + dx, y + dy);
-                Room adjacentRoom = cellToRoomMap.get(adjacentPos);
-
-                if (adjacentRoom != null) {
-                    cellToRoomMap.put(corridorPos, adjacentRoom);
-                    return;
-                }
-            }
-        }
     }
 
     /**
@@ -501,8 +474,6 @@ public class LevelGenerator {
         }
         return created;
     }
-
-    // ================= ГЕТТЕРЫ =================
 
     public List<Room> getRooms() {
         return rooms;

@@ -62,8 +62,8 @@ public final class GameConstants {
 
     public static final class TextMessages {
         public static final String TERMINATE = "\nTerminated via Ctrl+C";
-        public static final String DIED = "YOU DIED! any key to exit";
-        public static final String VICTORY = "Congratulations! YOU VICTORY!   Press ESC to exit";
+        public static final String DIED = "YOU DIED! Press any key to exit";
+        public static final String VICTORY = "Congratulations! YOU WIN! Press any key to exit";
         public static final String MISSED = "You missed!";
         public static final String MISSED_VAMPIRE = "First attack on vampire misses!";
         public static final int MESSAGE_DURATION = 2;
@@ -86,7 +86,7 @@ public final class GameConstants {
         public static final char H_WALL = '~';
         public static final char CORRIDOR = '#';
         public static final char EMPTINESS = ' ';
-        public static final char FLOOR = '.';  //Это точка!!!!!
+        public static final char FLOOR = '.';
         public static final char PLAYER = '@';
         public static final char ZOMBIE = 'z';
         public static final char VAMPIRE = 'v';
@@ -103,7 +103,7 @@ public final class GameConstants {
         public static final char WEAPON = ')';
     }
 
-    public static final class control {
+    public static final class Control {
         public static final int KEY_W = 'w';
         public static final int KEY_S = 's';
         public static final int ESC_KEY_CODE = 27; // Выход// Стрелка вниз

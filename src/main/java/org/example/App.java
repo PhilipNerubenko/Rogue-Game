@@ -8,12 +8,18 @@ import org.example.domain.interfaces.ISessionStatRepository;
 import org.example.domain.interfaces.Renderer;
 import org.example.presentation.views.JCursesRenderer;
 
+import java.io.IOException;
+
 public class App {
 
     public static void main(String[] args) {
         Renderer renderer = new JCursesRenderer();
         ISessionStatRepository sessionStatRepository = new SessionStatRepository();
         IAutosaveRepository autosaveRepository = new AutosaveRepository();
-        new GameApplication(renderer, sessionStatRepository, autosaveRepository).run();
+        try {
+            new GameApplication(renderer, sessionStatRepository, autosaveRepository).run();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

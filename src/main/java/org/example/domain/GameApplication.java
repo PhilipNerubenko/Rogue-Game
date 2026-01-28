@@ -1,6 +1,7 @@
 package org.example.domain;
 
 import org.example.config.GameConstants;
+import org.example.domain.controller.LoadMenuController;
 import org.example.domain.controller.MainMenuController;
 import org.example.domain.entity.SessionStat;
 import org.example.domain.enums.MenuAction;
@@ -10,8 +11,8 @@ import org.example.domain.interfaces.Renderer;
 import sun.misc.Signal;
 
 import java.io.IOException;
+import java.util.List;
 
-import static org.example.config.GameConstants.Colors.COLOR_RED;
 import static org.example.config.GameConstants.ScreenConfig.HIDE_CURSOR;
 import static org.example.config.GameConstants.ScreenConfig.SIGINT_STRING;
 import static org.example.config.GameConstants.TextMessages.TERMINATE;
@@ -30,7 +31,7 @@ public class GameApplication {
         this.sessionStat = new SessionStat();
     }
 
-    public void run() {
+    public void run() throws IOException {
         initTerminal();
 
         try {
@@ -44,12 +45,13 @@ public class GameApplication {
                 switch (action) {
                     case NEW_GAME -> startNewGame();
                     case LOAD_GAME -> loadGame();
-                    case SCOREBOARD -> renderer.drawScoreboard();
+                    case SCOREBOARD -> {
+                        List<SessionStat> stats = sessionStatRepository.getAllStats();
+                        renderer.drawScoreboard(stats);
+                    }
                     case EXIT -> running = false;
                 }
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         } finally {
             renderer.shutdown();
         }
@@ -66,37 +68,39 @@ public class GameApplication {
     }
 
     private void loadGame() {
-        GameInitializer initializer = new GameInitializer(sessionStat, renderer, sessionStatRepository, autosaveRepository);
+        // Создаем инициализатор (он же содержит все необходимые зависимости)
+        GameInitializer initializer = new GameInitializer(
+                sessionStat,
+                renderer,
+                sessionStatRepository,
+                autosaveRepository
+        );
 
-        // Проверяем наличие сохранений
-        if (!initializer.getAutosaveService().hasSaves()) {
-            renderer.drawString(10, 10, "No saved games found!", COLOR_RED);
-            renderer.readCharacter();
-            return;
-        }
-
-        // Загружаем игру
-        boolean loaded = initializer.getAutosaveService().loadAndRestoreGame(
+        // Создаем контроллер меню загрузки
+        LoadMenuController loadMenu = new LoadMenuController(
+                renderer,
+                initializer.getAutosaveService(),
                 initializer.getSession(),
                 initializer.getSessionStat(),
                 initializer.getLevelGenerator()
         );
 
-        if (!loaded) {
-            renderer.drawString(10, 10, "Failed to load game!", COLOR_RED);
-            renderer.readCharacter();
-            return;
-        }
+        // Показываем меню и получаем выбранное действие
+        MenuAction action = loadMenu.show();
 
-        // Обновляем туман войны
-        var fog = initializer.getFogOfWarService();
-        var pos = initializer.getSession().getPlayer().getPosition();
-        fog.updateForLoadedGame(pos, initializer.getSession().getCurrentMap());
+        // Если выбрана загрузка игры (а не выход из меню)
+        if (action == MenuAction.LOAD_GAME) {
+            // Обновляем туман войны для загруженной игры
+            var fog = initializer.getFogOfWarService();
+            var pos = initializer.getSession().getPlayer().getPosition();
+            fog.updateForLoadedGame(pos, initializer.getSession().getCurrentMap());
 
-        try {
-            new GameLoop(initializer).start();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            // Запускаем игровой цикл
+            try {
+                new GameLoop(initializer).start();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

@@ -14,6 +14,9 @@ import org.example.domain.interfaces.ISessionStatRepository;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class SessionStatRepository implements ISessionStatRepository {
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -47,6 +50,32 @@ public class SessionStatRepository implements ISessionStatRepository {
     public void reset(SessionStat sessionStat) throws IOException {
         sessionStat.reset();
         save(sessionStat);
+    }
+
+    @Override
+    public List<SessionStat> getAllStats() {
+        List<SessionStat> stats = new ArrayList<>();
+        ObjectMapper mapper = new ObjectMapper();
+
+        try {
+            File file = new File(GameConstants.PathToFiles.SCOREBOARD_PATH);
+            if (!file.exists()) {
+                return stats;
+            }
+
+            JsonNode root = mapper.readTree(file);
+            JsonNode sessionNode = root.get("sessionStats");
+
+            if (sessionNode != null && sessionNode.isArray()) {
+                SessionStat[] statArray = mapper.treeToValue(sessionNode, SessionStat[].class);
+                stats = Arrays.asList(statArray);
+            }
+        } catch (IOException e) {
+            System.err.println("Error loading scoreboard: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return stats;
     }
 
     // Приватные вспомогательные методы

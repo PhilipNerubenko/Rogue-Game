@@ -67,6 +67,26 @@ public class AutosaveRepository implements IAutosaveRepository {
     }
 
     @Override
+    public GameState load(int slotIndex) {
+        try {
+            List<File> saveFiles = getAutosaveFilesSorted();
+
+            // Проверяем, что индекс в допустимом диапазоне
+            if (slotIndex < 0 || slotIndex >= saveFiles.size()) {
+                return null;
+            }
+
+            File saveFile = saveFiles.get(slotIndex);
+
+            return objectMapper.readValue(saveFile, GameState.class);
+        } catch (IOException e) {
+            System.err.println("Failed to load game state from slot " + slotIndex + ": " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
     public List<String> getSaveInfo() {
         List<File> saves = getAutosaveFilesSorted();
         List<String> info = new ArrayList<>();
@@ -140,7 +160,6 @@ public class AutosaveRepository implements IAutosaveRepository {
             Path path = Paths.get(AUTOSAVE_DIR);
             if (!Files.exists(path)) {
                 Files.createDirectories(path);
-                System.out.println("Created autosave directory: " + AUTOSAVE_DIR);
             }
         } catch (IOException e) {
             System.err.println("Failed to create autosave directory: " + e.getMessage());
